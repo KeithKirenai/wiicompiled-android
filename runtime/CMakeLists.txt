@@ -1,10 +1,13 @@
 ﻿cmake_minimum_required(VERSION 3.16)
 project(mkw_recompiled)
 
-if(NOT WIN32 OR NOT MINGW OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
+if((NOT (WIN32 AND MINGW)) AND (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+    message(FATAL_ERROR "WiiCompiled requires Windows (LLVM-MinGW) or native Linux")
+endif()
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
    NOT CMAKE_SIZEOF_VOID_P EQUAL 8 OR
    NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64)$")
-    message(FATAL_ERROR "WiiCompiled requires 64-bit LLVM-MinGW Clang on Windows")
+    message(FATAL_ERROR "WiiCompiled requires 64-bit Clang targeting x86_64")
 endif()
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     message(FATAL_ERROR "WiiCompiled only supports Release builds")
@@ -110,12 +113,22 @@ else()
         message(FATAL_ERROR "Requested aurora-main but ${MKW_AURORA_DIR} is missing")
     endif()
     set(DAWN_ENABLE_D3D11 OFF CACHE BOOL "" FORCE)
-    set(DAWN_ENABLE_D3D12 ON CACHE BOOL "" FORCE)
+    if(WIN32)
+        set(DAWN_ENABLE_D3D12 ON CACHE BOOL "" FORCE)
+        set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "" FORCE)
+        set(DAWN_USE_WINDOWS_UI OFF CACHE BOOL "" FORCE)
+    else()
+        # Non-Windows (Linux): mirrors aurora-main's own
+        # _aurora_dawn_set_platform_backends() choice for this platform - Vulkan only, no
+        # D3D/HLSL. Kept in sync here because this project's own CMake FORCEs these cache
+        # variables before aurora-main's add_subdirectory() runs, which pre-empts aurora's
+        # auto-detection (CACHE ... INTERNAL "" without FORCE never overrides an existing value).
+        set(DAWN_ENABLE_D3D12 OFF CACHE BOOL "" FORCE)
+        set(TINT_BUILD_HLSL_WRITER OFF CACHE BOOL "" FORCE)
+    endif()
     set(DAWN_ENABLE_VULKAN ON CACHE BOOL "" FORCE)
-    set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "" FORCE)
     set(DAWN_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
     set(DAWN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(DAWN_USE_WINDOWS_UI OFF CACHE BOOL "" FORCE)
 
     # Provide a tiny stub for DXProgrammableCapture when the SDK/PIX headers are
     # missing (common on MinGW). Dawn only includes the header; no symbols are

@@ -48,7 +48,11 @@ extern "C" uint32_t PAD__Read_HLE(uint32_t statusPtr)
     PADStatus statuses[PAD_CHANMAX]{};
     std::array<PADStatus, PAD_CHANMAX> adapterStatuses{};
     uint32_t rumbleMask = 0;
-    if (Wup028Adapter::Read(adapterStatuses)) {
+    const bool adapterHasController = Wup028Adapter::Read(adapterStatuses) &&
+        std::any_of(adapterStatuses.begin(), adapterStatuses.end(), [](const PADStatus& status) {
+            return status.err == PAD_ERR_NONE;
+        });
+    if (adapterHasController) {
         std::copy(adapterStatuses.begin(), adapterStatuses.end(), statuses);
         for (uint32_t port = 0; port < PAD_CHANMAX; ++port) {
             if (statuses[port].err == PAD_ERR_NONE) {

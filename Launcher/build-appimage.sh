@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Packages Launcher/WiiCompiled.Setup.Linux as a self-contained AppImage: a single file Wheel
+# Wizard (or anyone else) can fetch and execute with no git clone and no `dotnet` install required
+# just to run the installer itself. It still shells out to system clang/cmake/ninja/dolphin-tool -
+# no toolchain is bundled, matching Launcher/local-build.sh's own prerequisites.
+#
+# An AppImage mounts read-only, but local-build.sh writes generated/, native-build/, Assets/, etc.
+# into the workspace it's given. So AppRun (written below) copies the bundled workspace snapshot
+# out to a writable cache directory on first run, and only ever re-syncs the bundled directories
+# (runtime/, aurora-main/, translator/, projects/, local-build.sh) on a later run whose bundled
+# version changed - generated/native-build/Assets/PulsarPacks live only in that writable cache and
+# are never touched by the sync, so local-build.sh's own incremental caching survives across runs
+# and across AppImage updates.
+set -euo pipefail
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+workspace=$(cd "$script_dir/.." && pwd)
+
+output_dir="$workspace/Launcher/dist"
+appimagetool_override=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --output-dir) output_dir=$2; shift 2 ;;
+        --appimagetool) appimagetool_override=$2; shift 2 ;;
+        -h|--help)
+            echo "Usage: build-appimage.sh [--output-dir DIR] [--appimagetool PATH]"
+            exit 0
+            ;;
+        *) echo "build-appimage.sh: unknown argument: $1" >&2; exit 1 ;;
+    esac
+done
+
+appdir="$workspace/Launcher/artifacts/appimage-build/AppDir"
+rm -rf "$appdir"
+mkdir -p "$appdir/usr/bin" "$appdir/workspace/Launcher"
+
+echo "Publishing the installer (self-contained linux-x64)..."
+publish_tmp="$workspace/Launcher/artifacts/appimage-build/publish"
+rm -rf "$publish_tmp"
+dotnet publish "$workspace/Launcher/WiiCompiled.Setup.Linux" -c Release -r linux-x64 \
+    --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true \
+    -o "$publish_tmp"
+cp "$publish_tmp/WiiCompiled.Setup.Linux" "$appdir/usr/bin/wiicompiled-setup"
+chmod +x "$appdir/usr/bin/wiicompiled-setup"
+
+echo "Staging the bundled workspace snapshot..."
+for dir in runtime aurora-main translator projects; do
+    cp -r "$workspace/$dir" "$appdir/workspace/$dir"
+done
+# Mirrors Build-Installer.ps1's own staging exclusions exactly: aurora-main/extern/CMakeLists.txt
+# is the real FetchContent driver and must ship, but any already-fetched dependency *subdirectory*
+# a developer's local checkout accumulated under extern/ is stale/large build output, not a
+# release input - only directories inside extern/ are stripped, never the file itself. runtime/build
+# is a plain developer build directory.
+find "$appdir/workspace/aurora-main/extern" -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} +
+rm -rf "$appdir/workspace/runtime/build"
+cp "$workspace/Launcher/local-build.sh" "$appdir/workspace/Launcher/local-build.sh"
+
+if git -C "$workspace" rev-parse HEAD >/dev/null 2>&1; then
+    git -C "$workspace" rev-parse HEAD > "$appdir/workspace/.bundle-version"
+else
+    date -u +%s > "$appdir/workspace/.bundle-version"
+fi
+
+echo "Writing AppRun..."
+cat > "$appdir/AppRun" <<'APPRUN'
+#!/bin/bash
+set -euo pipefail
+HERE="$(dirname "$(readlink -f "$0")")"
+CACHE="${XDG_DATA_HOME:-$HOME/.local/share}/WiiCompiled/workspace"
+if [ ! -f "$CACHE/.bundle-version" ] || \
+   [ "$(cat "$HERE/workspace/.bundle-version")" != "$(cat "$CACHE/.bundle-version")" ]; then
+    mkdir -p "$CACHE/Launcher"
+    for dir in runtime aurora-main translator projects; do
+        rm -rf "$CACHE/$dir"
+        cp -r "$HERE/workspace/$dir" "$CACHE/$dir"
+    done
+    cp "$HERE/workspace/Launcher/local-build.sh" "$CACHE/Launcher/local-build.sh"
+    cp "$HERE/workspace/.bundle-version" "$CACHE/.bundle-version"
+fi
+exec "$HERE/usr/bin/wiicompiled-setup" --workspace "$CACHE" "$@"
+APPRUN
+chmod +x "$appdir/AppRun"
+
+echo "Writing desktop entry and icon..."
+cat > "$appdir/wiicompiled-setup.desktop" <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=WiiCompiled Setup
+Comment=Translate, compile, and launch Mario Kart Wii natively on Linux
+Exec=AppRun
+Icon=wiicompiled-setup
+Categories=Game;
+Terminal=true
+DESKTOP
+
+# No WiiCompiled logo/icon asset exists anywhere in this repo yet. appimagetool refuses to package
+# without one, so this is a minimal solid-color placeholder - a one-line swap for real branding
+# later (just replace this generated file with a real wiicompiled-setup.png before packaging).
+python3 - "$appdir/wiicompiled-setup.png" <<'PY'
+import struct
+import sys
+import zlib
+
+path = sys.argv[1]
+
+
+def chunk(tag: bytes, data: bytes) -> bytes:
+    return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
+
+
+width = height = 256
+row = b"\x00" + bytes([0x3A, 0x5F, 0x8F, 0xFF]) * width  # filter byte + opaque blue-grey pixels
+raw = row * height
+ihdr = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+idat = zlib.compress(raw, 9)
+
+with open(path, "wb") as handle:
+    handle.write(b"\x89PNG\r\n\x1a\n")
+    handle.write(chunk(b"IHDR", ihdr))
+    handle.write(chunk(b"IDAT", idat))
+    handle.write(chunk(b"IEND", b""))
+PY
+
+echo "Resolving appimagetool..."
+appimagetool="$appimagetool_override"
+if [[ -z "$appimagetool" ]]; then
+    appimagetool="$workspace/Launcher/artifacts/appimagetool"
+    if [[ ! -x "$appimagetool" ]]; then
+        echo "Downloading appimagetool..."
+        mkdir -p "$(dirname "$appimagetool")"
+        curl -fsSL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" \
+            -o "$appimagetool"
+        chmod +x "$appimagetool"
+    fi
+fi
+
+mkdir -p "$output_dir"
+echo "Packaging..."
+# appimagetool detects the target architecture from the first ELF executable it finds in the
+# AppDir; AppRun here is a shell script, not ELF, so ARCH must be set explicitly.
+ARCH=x86_64 "$appimagetool" "$appdir" "$output_dir/WiiCompiled-Setup-x86_64.AppImage"
+echo "Built: $output_dir/WiiCompiled-Setup-x86_64.AppImage"

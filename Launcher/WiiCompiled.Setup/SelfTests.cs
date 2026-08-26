@@ -143,17 +143,17 @@ internal static class SelfTests
     private static void TestToolkitRefreshDecision()
     {
         if (!InstallerEngine.MustRefreshToolkit(sameToolkit: false, samePackageContent: true,
-                dolphinToolPresent: true))
+                nodToolPresent: true))
             throw new Exception("A republished workspace kept the installed toolkit; the shipped " +
                                 "translator and project file could come from different releases.");
         if (!InstallerEngine.MustRefreshToolkit(sameToolkit: true, samePackageContent: false,
-                dolphinToolPresent: true))
+                nodToolPresent: true))
             throw new Exception("Changed toolkit package content was not extracted.");
         if (!InstallerEngine.MustRefreshToolkit(sameToolkit: true, samePackageContent: true,
-                dolphinToolPresent: false))
-            throw new Exception("A missing DolphinTool.exe did not force toolkit extraction.");
+                nodToolPresent: false))
+            throw new Exception("A missing nodtool.exe did not force toolkit extraction.");
         if (InstallerEngine.MustRefreshToolkit(sameToolkit: true, samePackageContent: true,
-                dolphinToolPresent: true))
+                nodToolPresent: true))
             throw new Exception("An unchanged toolkit was needlessly re-extracted.");
     }
 
@@ -1010,7 +1010,7 @@ internal static class SelfTests
                 throw new Exception("The toolkit fingerprint is not stable.");
 
             // A file that has nothing to do with generated code must not invalidate every install.
-            File.WriteAllText(Path.Combine(root, "Toolkit", "DolphinTool.exe"), "irrelevant");
+            File.WriteAllText(Path.Combine(root, "Toolkit", "nodtool.exe"), "irrelevant");
             if (ToolkitFingerprint.Compute(root) != first)
                 throw new Exception("An unrelated toolkit file changed the fingerprint.");
 
@@ -1177,7 +1177,7 @@ internal static class SelfTests
                      "x86_64-w64-mingw32-clang++.exe", "x86_64-w64-mingw32-windres.exe"
                  })
             File.WriteAllText(Path.Combine(root, "Toolkit", "llvm-mingw", "bin", executable), executable);
-        File.WriteAllText(Path.Combine(root, "Toolkit", "DolphinTool.exe"), "tool");
+        File.WriteAllText(Path.Combine(root, "Toolkit", "nodtool.exe"), "tool");
         File.WriteAllText(Path.Combine(root, "BuildWorkspace", "LocalBuild.ps1"), "# build");
         File.WriteAllText(Path.Combine(root, "BuildWorkspace", "NativeBuildFlags.ps1"), "# flags");
         File.WriteAllText(Path.Combine(root, "BuildWorkspace", "projects", "mkwii", "recomp.yml"), "profiles: {}");

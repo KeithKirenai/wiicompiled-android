@@ -84,7 +84,8 @@ internal static class Program
         reporter.Progress(InstallStages.Validate, "Checking prerequisites", 1);
         if (flags.TryGetValue("game", out var isoPath) && !string.IsNullOrEmpty(isoPath))
         {
-            await DiscTool.ValidateAndExtractAsync(isoPath, manifest, assetsDir, reporter, token);
+            await DiscTool.ValidateAndExtractAsync(isoPath, manifest, assetsDir, workspace,
+                flags.GetValueOrDefault("disc-tool-bin"), reporter, token);
         }
         else
         {
@@ -261,7 +262,8 @@ internal static class Program
 
           install --profile {base|retro-rewind|both} [--game ISO_PATH] [--install-dir DIR]
                   [--retro-rewind-package-dir DIR] [--retro-wfc-offline-dir DIR | --skip-retro-wfc-payload]
-                  [--force-clean-build] [--translator-bin PATH] [--progress-json] [--workspace DIR]
+                  [--force-clean-build] [--translator-bin PATH] [--disc-tool-bin PATH]
+                  [--progress-json] [--workspace DIR]
           uninstall [--profile {base|retro-rewind|both|all}]
           launch-base
           launch-retro

@@ -1,7 +1,6 @@
 [CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$OutputDirectory = 'Launcher/dist',
-    [string]$DolphinToolPath,
     [string]$PortableToolsDirectory = 'Launcher/artifacts/portable-tools',
     [string]$DependencySourceDirectory = 'Launcher/artifacts/dependencies',
     [string]$VcRuntimeDirectory,
@@ -14,10 +13,6 @@ Set-StrictMode -Version 3.0
 # The canonical configure flags, and the Assert-File/Assert-Directory/Get-MkwFileSha256
 # helpers shared with LocalBuild.ps1 and Prepare-NativePrebuilt.ps1.
 . (Join-Path $PSScriptRoot 'NativeBuildFlags.ps1')
-
-if ([string]::IsNullOrWhiteSpace($DolphinToolPath)) {
-    throw 'Build-Installer.ps1 requires -DolphinToolPath pointing to DolphinTool.exe.'
-}
 
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $outputRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot $OutputDirectory))
@@ -91,7 +86,6 @@ function Compress-Zip([string]$Source, [string]$Destination, [string[]]$Entries)
 
 Assert-File $setupProject '.NET setup project'
 Assert-File $translatorProject 'Translator CLI project'
-Assert-File $DolphinToolPath 'DolphinTool'
 
 if (-not (Test-Path -LiteralPath (Join-Path $portableTools 'llvm-mingw\bin\x86_64-w64-mingw32-clang++.exe'))) {
     & (Join-Path $PSScriptRoot 'Prepare-PortableTools.ps1') -Destination $portableTools
@@ -169,6 +163,15 @@ $translator = Join-Path $publish 'translator\Translator.Cli.exe'
 Assert-File $setupHost 'Published setup host'
 Assert-File $translator 'Self-contained translator'
 
+# Resolved via the shared WiiCompiled.NodTool.Cli helper (also used by build-appimage.sh on Linux)
+# rather than a separate download/version-pin copy here: it downloads and caches the same way
+# NodToolProvider.cs always does (Launcher/artifacts/nodtool.exe), replacing the old manual
+# -DolphinToolPath handoff with an automated, pinned acquisition step.
+$nodToolCliProject = Join-Path $PSScriptRoot 'WiiCompiled.NodTool.Cli'
+$nodTool = (& dotnet run --project $nodToolCliProject -c Release -- --workspace $repoRoot | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0) { throw "nodtool resolution failed with exit code $LASTEXITCODE." }
+Assert-File $nodTool 'Resolved nodtool'
+
 Write-Host '[2/6] Staging the explicit, game-code-free payload allowlist...'
 # The staged layout mirrors the installed layout exactly (Toolkit, BuildWorkspace): payload
 # identities hash relative paths, so the names here are part of the fingerprint contract.
@@ -191,7 +194,7 @@ Get-ChildItem -LiteralPath (Join-Path $toolkit 'llvm-mingw\bin') -File |
     Remove-Item -Force
 [IO.Directory]::CreateDirectory((Join-Path $toolkit 'Translator')) | Out-Null
 Copy-Item -LiteralPath $translator -Destination (Join-Path $toolkit 'Translator\Translator.Cli.exe')
-Copy-Item -LiteralPath $DolphinToolPath -Destination (Join-Path $toolkit 'DolphinTool.exe')
+Copy-Item -LiteralPath $nodTool -Destination (Join-Path $toolkit 'nodtool.exe')
 [IO.Directory]::CreateDirectory((Join-Path $toolkit 'Redist')) | Out-Null
 Copy-Item -Path (Join-Path $vcRuntime '*.dll') -Destination (Join-Path $toolkit 'Redist')
 Copy-Item -Path (Join-Path $vcRuntime '*.dll') -Destination (Join-Path $toolkit 'CMake\bin')
@@ -225,18 +228,38 @@ Copy-Item (Join-Path $dependencySources 'cppwinrt\LICENSE.txt') (Join-Path $payl
 # The precompiled aurora/third-party archives are built from the very sources
 # already shipped under build-workspace\Dependencies and aurora-main, so they add
 # no third-party component and therefore no new license obligation.
-$dolphinLicense = Join-Path (Split-Path -Parent $DolphinToolPath) 'COPYING'
-if (Test-Path $dolphinLicense) { Copy-Item $dolphinLicense (Join-Path $payloadRoot 'licenses\Dolphin-COPYING.txt') }
 @"
-DolphinTool source offer
+nodtool (disc image extraction)
 
-Project and complete corresponding source: https://github.com/dolphin-emu/dolphin
-Dolphin is licensed under GPLv2+ with additional per-file SPDX licenses.
-"@ | Set-Content (Join-Path $payloadRoot 'licenses\Dolphin-SOURCE.txt') -Encoding UTF8
+Project: https://github.com/encounter/nod
+Dual-licensed under MIT OR Apache-2.0.
+
+MIT License
+
+Copyright 2021 Luke Street.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"@ | Set-Content (Join-Path $payloadRoot 'licenses\nodtool-LICENSE-MIT.txt') -Encoding UTF8
 @"
 Microsoft Visual C++ Runtime
 
-Redistributable x64 runtime DLLs are included app-locally for DolphinTool and third-party renderer DLLs.
+Redistributable x64 runtime DLLs are included app-locally for nodtool and third-party renderer DLLs.
 Microsoft license terms: https://visualstudio.microsoft.com/license-terms/
 "@ | Set-Content (Join-Path $payloadRoot 'licenses\Microsoft-VC-Runtime.txt') -Encoding UTF8
 # Compute the payload's content identities once, here, with the same code every installed host

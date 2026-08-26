@@ -57,9 +57,9 @@ internal sealed class InstallerEngine
 
         var runtimeAssetsCurrent = sameToolkit && RuntimeAssetsAreCurrent(existing,
             candidateRuntimeAssetsFingerprint, cancellationToken);
-        var installedDolphinTool = Path.Combine(existing.ToolkitDirectory, "DolphinTool.exe");
+        var installedNodTool = Path.Combine(existing.ToolkitDirectory, "nodtool.exe");
         var extractToolkit = MustRefreshToolkit(sameToolkit, samePackageContent,
-            File.Exists(installedDolphinTool));
+            File.Exists(installedNodTool));
         var extractWorkspace = !sameToolkit || !runtimeAssetsCurrent;
 
         _reporter.Progress(InstallStages.ExtractToolkit,
@@ -77,9 +77,9 @@ internal sealed class InstallerEngine
         payload.ExtractEntry(InstalledLayout.PayloadManifestFileName,
             Path.Combine(staging, InstalledLayout.PayloadManifestFileName));
 
-        var dolphinTool = extractToolkit ? Path.Combine(toolkit, "DolphinTool.exe") : installedDolphinTool;
+        var nodTool = extractToolkit ? Path.Combine(toolkit, "nodtool.exe") : installedNodTool;
         _reporter.Progress(InstallStages.Validate, "Checking the Wii disc image...", 2);
-        var header = await InputValidation.ReadDiscHeaderAsync(dolphinTool, options.GamePath,
+        var header = await InputValidation.ReadDiscHeaderAsync(nodTool, options.GamePath,
             cancellationToken);
         InputValidation.EnsureCompatibleDisc(header, manifest);
         var canonicalRetroRoot = options.RetroDirectoryPath is null
@@ -153,7 +153,7 @@ internal sealed class InstallerEngine
 
         if (reusableGameAssets is null)
         {
-            await ExtractGameAssetsAsync(dolphinTool, options.GamePath,
+            await ExtractGameAssetsAsync(nodTool, options.GamePath,
                 Path.Combine(staging, "GameAssets"), manifest, cancellationToken);
         }
 
@@ -164,8 +164,8 @@ internal sealed class InstallerEngine
 
 
     internal static bool MustRefreshToolkit(bool sameToolkit, bool samePackageContent,
-        bool dolphinToolPresent) =>
-        !sameToolkit || !samePackageContent || !dolphinToolPresent;
+        bool nodToolPresent) =>
+        !sameToolkit || !samePackageContent || !nodToolPresent;
 
     private static void AddComponent(List<InstallTransactionEntry> entries, string staging,
         string installDirectory, string name) =>
@@ -469,18 +469,23 @@ internal sealed class InstallerEngine
         }
     }
 
-    private async Task ExtractGameAssetsAsync(string dolphinTool, string gamePath, string destination,
+    private async Task ExtractGameAssetsAsync(string nodTool, string gamePath, string destination,
         PayloadManifest manifest, CancellationToken cancellationToken)
     {
         _reporter.Progress(InstallStages.ExtractDisc,
             "Extracting the game disc. This is the longest preparation step...", 6);
-        var extraction = await ProcessRunner.RunAsync(dolphinTool,
-            ["extract", "-i", Path.GetFullPath(gamePath), "-o", destination, "-g", "-q"],
+        // Extracted straight into a "DATA" subfolder so the on-disk layout matches what
+        // Installation.GameDataDirectory and every other reader of it already expect - nodtool
+        // itself has no such wrapper (it extracts sys/+files/ directly to whatever <outdir> is
+        // given), so this is purely destination-side, not a nodtool convention.
+        var dataRoot = Path.Combine(destination, "DATA");
+        var extraction = await ProcessRunner.RunAsync(nodTool,
+            ["extract", Path.GetFullPath(gamePath), dataRoot, "-q"],
             line => { if (!string.IsNullOrWhiteSpace(line)) _reporter.Diagnostic(line); },
             cancellationToken);
         if (extraction.ExitCode != 0)
             throw new InvalidDataException("Game extraction failed. " + extraction.CombinedOutput.Trim());
-        ValidateExtractedGame(Path.Combine(destination, "DATA"), manifest);
+        ValidateExtractedGame(dataRoot, manifest);
     }
 
     private static void ValidateExtractedGame(string dataRoot, PayloadManifest manifest)

@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using WiiCompiled.NodTool;
 
 namespace WiiCompiled.Setup;
 
@@ -47,22 +48,36 @@ internal static class InputValidation
                 "Select a complete Wii disc image in ISO, GCM, GCZ, CISO, WBFS, WIA, or RVZ format.");
     }
 
-    public static async Task<DiscHeader> ReadDiscHeaderAsync(string dolphinTool, string gamePath,
+    public static async Task<DiscHeader> ReadDiscHeaderAsync(string nodTool, string gamePath,
         CancellationToken cancellationToken = default)
     {
         ValidateExtension(gamePath);
-        var result = await ProcessRunner.RunAsync(dolphinTool,
-            ["header", "-i", Path.GetFullPath(gamePath), "-j"], null, cancellationToken);
+        var result = await ProcessRunner.RunAsync(nodTool,
+            ["info", Path.GetFullPath(gamePath)], null, cancellationToken);
         if (result.ExitCode != 0)
-            throw new InvalidDataException("DolphinTool could not read this disc image. " + result.CombinedOutput.Trim());
+            throw new InvalidDataException("nodtool could not read this disc image. " + result.CombinedOutput.Trim());
 
-        var json = result.StandardOutput.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault(line => line.TrimStart().StartsWith('{'));
-        if (json is null)
-            throw new InvalidDataException("DolphinTool did not return disc metadata.");
-        return JsonSerializer.Deserialize<DiscHeader>(json)
-               ?? throw new InvalidDataException("DolphinTool returned invalid disc metadata.");
+        var info = NodToolInfoParser.Parse(result.StandardOutput);
+        return new DiscHeader
+        {
+            GameId = info.GameId,
+            InternalName = info.Title,
+            Region = RegionFromGameId(info.GameId),
+            Revision = info.Revision,
+        };
     }
+
+    private static string RegionFromGameId(string gameId) => gameId.Length >= 4
+        ? gameId[3] switch
+        {
+            'P' => "PAL",
+            'E' => "NTSC-U",
+            'J' => "NTSC-J",
+            'K' => "Korea",
+            'W' => "Taiwan",
+            _ => gameId[3].ToString(),
+        }
+        : "Unknown";
 
     public static void EnsureCompatibleDisc(DiscHeader header, PayloadManifest manifest)
     {

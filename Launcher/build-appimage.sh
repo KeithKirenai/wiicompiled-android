@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Packages Launcher/WiiCompiled.Setup.Linux as a self-contained AppImage: a single file Wheel
-# Wizard (or anyone else) can fetch and execute with no git clone and no `dotnet` install at all -
-# both the installer and the translator are published as self-contained binaries and bundled, so
-# AppRun passes --translator-bin to skip local-build.sh's own dotnet-build-from-source step. It
-# still shells out to system clang/cmake/ninja/dolphin-tool - no C/C++ toolchain is bundled,
-# matching Launcher/local-build.sh's own remaining prerequisites.
+# Wizard (or anyone else) can fetch and execute with no git clone, no `dotnet` install, and no
+# `dolphin-tool` package required at all. The installer and translator are published as
+# self-contained binaries, and `nodtool` (a prebuilt MIT/Apache-2.0 CLI from encounter/nod, see
+# NodToolProvider.cs) is downloaded and bundled too - AppRun passes --translator-bin and
+# --disc-tool-bin so local-build.sh/DiscTool.cs skip their from-source/download fallbacks entirely.
+# It still shells out to system clang/cmake/ninja - no C/C++ toolchain is bundled, matching
+# Launcher/local-build.sh's own remaining prerequisites.
 #
 # An AppImage mounts read-only, but local-build.sh writes generated/, native-build/, Assets/, etc.
 # into the workspace it's given. So AppRun (written below) copies the bundled workspace snapshot
@@ -59,6 +61,16 @@ dotnet publish "$workspace/translator/src/Translator.Cli" -c Release -r linux-x6
 cp "$translator_publish_tmp/Translator.Cli" "$appdir/usr/bin/translator-cli"
 chmod +x "$appdir/usr/bin/translator-cli"
 
+# Resolved via the shared WiiCompiled.NodTool.Cli helper (also used by Build-Installer.ps1 on
+# Windows) rather than a second curl/version-pin copy here: it downloads and caches the same way
+# NodToolProvider.cs always does (Launcher/artifacts/nodtool), so there is exactly one place that
+# knows the nodtool version/URL/platform-asset mapping.
+echo "Resolving nodtool..."
+nodtool_path=$(dotnet run --project "$workspace/Launcher/WiiCompiled.NodTool.Cli" -c Release -- \
+    --workspace "$workspace" | tail -n1)
+cp "$nodtool_path" "$appdir/usr/bin/nodtool"
+chmod +x "$appdir/usr/bin/nodtool"
+
 echo "Staging the bundled workspace snapshot..."
 for dir in runtime aurora-main projects; do
     cp -r "$workspace/$dir" "$appdir/workspace/$dir"
@@ -94,7 +106,9 @@ if [ ! -f "$CACHE/.bundle-version" ] || \
     cp "$HERE/workspace/Launcher/local-build.sh" "$CACHE/Launcher/local-build.sh"
     cp "$HERE/workspace/.bundle-version" "$CACHE/.bundle-version"
 fi
-exec "$HERE/usr/bin/wiicompiled-setup" --workspace "$CACHE" --translator-bin "$HERE/usr/bin/translator-cli" "$@"
+exec "$HERE/usr/bin/wiicompiled-setup" --workspace "$CACHE" \
+    --translator-bin "$HERE/usr/bin/translator-cli" \
+    --disc-tool-bin "$HERE/usr/bin/nodtool" "$@"
 APPRUN
 chmod +x "$appdir/AppRun"
 

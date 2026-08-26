@@ -14,4 +14,7 @@
     <DebugType>embedded</DebugType>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\WiiCompiled.NodTool\WiiCompiled.NodTool.csproj" />
+  </ItemGroup>
 </Project>

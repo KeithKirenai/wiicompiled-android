@@ -140,6 +140,7 @@ included in the installer's `licenses/` folder.
 | SQLite | 3.51.3 amalgamation | Public domain | <https://sqlite.org/> |
 | Tracy Profiler | pinned commit | BSD-3-Clause | <https://github.com/wolfpld/tracy> |
 | C++/WinRT | - | MIT (Microsoft) | <https://github.com/microsoft/cppwinrt> |
+| nodtool (disc image extraction) | v2.0.0-alpha.10 | MIT OR Apache-2.0 | <https://github.com/encounter/nod> |
 
 ### Dual-licensed components - elections made by this project
 
@@ -164,16 +165,15 @@ unmodified, with their license texts, in the installer's `licenses/` folder.
 | llvm-mingw (Clang, LLD, libc++, libunwind, MinGW-w64 runtime) | Apache-2.0 with LLVM Exception; MinGW-w64 runtime under its own permissive terms; bundled GNU utilities under GPL-2.0-or-later or GPL-3.0-or-later | <https://github.com/mstorsjo/llvm-mingw> |
 | CMake | BSD-3-Clause | <https://cmake.org/> |
 | Ninja | Apache-2.0 | <https://ninja-build.org/> |
-| DolphinTool (disc image extraction) | GPL-2.0-or-later | <https://github.com/dolphin-emu/dolphin> |
+| nodtool (disc image extraction) | MIT OR Apache-2.0 | <https://github.com/encounter/nod> |
 | Microsoft Visual C++ Runtime (`vcruntime140.dll`, `vcruntime140_1.dll`, `msvcp140.dll`) | Microsoft redistributable terms | Microsoft Visual Studio |
 | `dxil.dll` | Microsoft redistributable (proprietary signing library) | Microsoft |
 
 > [!IMPORTANT]
-> Several toolkit components are GPL-licensed (DolphinTool, and the GNU utilities inside
-> llvm-mingw). Their complete corresponding source is available from the upstream projects linked
-> above at their pinned versions, and this project will supply it on request for the exact versions
-> shipped in any given release. Pins live in `Launcher/Prepare-PortableTools.ps1` and
-> `Launcher/NativeBuildFlags.ps1`.
+> The GNU utilities bundled inside llvm-mingw are GPL-licensed. Their complete corresponding source
+> is available from the upstream project linked above at its pinned version, and this project will
+> supply it on request for the exact version shipped in any given release. Pins live in
+> `Launcher/Prepare-PortableTools.ps1` and `Launcher/NativeBuildFlags.ps1`.
 
 ---
 

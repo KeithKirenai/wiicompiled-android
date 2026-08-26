@@ -1,6 +1,5 @@
 [CmdletBinding(PositionalBinding = $false)]
 param(
-    [string]$DolphinToolPath,
     [string]$PortableToolsDirectory = 'Launcher/artifacts/portable-tools',
     [string]$DependencySourceDirectory = 'Launcher/artifacts/dependencies',
     [string]$VcRuntimeDirectory,
@@ -10,12 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 3.0
 
-if ([string]::IsNullOrWhiteSpace($DolphinToolPath)) {
-    throw 'Prepare-Release.ps1 requires -DolphinToolPath pointing to DolphinTool.exe.'
-}
-
 $arguments = @{
-    DolphinToolPath = $DolphinToolPath
     PortableToolsDirectory = $PortableToolsDirectory
     DependencySourceDirectory = $DependencySourceDirectory
     ToolkitReleaseTag = $ToolkitReleaseTag

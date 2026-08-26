@@ -78,12 +78,12 @@ internal static class ToolkitFingerprint
         var workspace = InstalledLayout.Workspace(root);
         var entries = new SortedDictionary<string, string>(StringComparer.Ordinal);
 
-        // DolphinTool validates/extracts the user disc but does not influence generated products.
+        // nodtool validates/extracts the user disc but does not influence generated products.
         // Everything else in Toolkit can affect translation, compilation, linking, or copied
         // runtime support and therefore belongs to the compile identity.
         AddDirectory(entries, root, toolkit, null,
             cancellationToken,
-            file => !Path.GetFileName(file).Equals("DolphinTool.exe", StringComparison.OrdinalIgnoreCase));
+            file => !Path.GetFileName(file).Equals("nodtool.exe", StringComparison.OrdinalIgnoreCase));
         AddFile(entries, root, Path.Combine(workspace, "LocalBuild.ps1"), cancellationToken);
         AddFile(entries, root, Path.Combine(workspace, "NativeBuildFlags.ps1"), cancellationToken);
         AddDirectory(entries, root, Path.Combine(workspace, "projects"), null, cancellationToken);

@@ -63,8 +63,8 @@ internal static class ConsoleCommands
         {
             using var payload = PayloadArchive.OpenCurrent();
             var manifest = payload.ReadManifest();
-            var tool = Path.Combine(temp, "DolphinTool.exe");
-            payload.ExtractEntry(InstalledLayout.ToolkitEntryPrefix + "DolphinTool.exe", tool);
+            var tool = Path.Combine(temp, "nodtool.exe");
+            payload.ExtractEntry(InstalledLayout.ToolkitEntryPrefix + "nodtool.exe", tool);
             payload.ExtractDirectory(InstalledLayout.ToolkitEntryPrefix + "Redist", temp);
             reporter?.Progress(InstallStages.Validate, "Checking the Wii disc image...", 10);
             var header = InputValidation.ReadDiscHeaderAsync(tool, command.GamePath!).GetAwaiter().GetResult();

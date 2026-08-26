@@ -4,15 +4,14 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>WiiCompiled.Setup.Linux</AssemblyName>
-    <RootNamespace>WiiCompiled.Setup.Linux</RootNamespace>
+    <RootNamespace>WiiCompiled.NodTool.Cli</RootNamespace>
+    <AssemblyName>WiiCompiled.NodTool.Cli</AssemblyName>
     <Version>0.2.22</Version>
     <Authors>patchzy</Authors>
     <Product>WiiCompiled</Product>
-    <Description>Command-line installer and launcher for WiiCompiled on Linux</Description>
+    <Description>Packaging-time helper: resolves (downloading if needed) the nodtool binary bundled by build-appimage.sh and Build-Installer.ps1</Description>
     <DebugType>embedded</DebugType>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\WiiCompiled.NodTool\WiiCompiled.NodTool.csproj" />

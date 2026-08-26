@@ -1,28 +1,32 @@
 using System.Security.Cryptography;
-using System.Text.Json;
+using WiiCompiled.NodTool;
 
 namespace WiiCompiled.Setup.Linux;
 
 /// <summary>
-/// Validates and extracts the user's own Mario Kart Wii disc via the system-installed
-/// `dolphin-tool` (required prerequisite, per the project's scoping decision to depend on system
-/// tools rather than bundling one) - the Linux analogue of the Windows installer shelling out to a
-/// bundled DolphinTool.exe.
+/// Validates and extracts the user's own Mario Kart Wii disc via `nodtool` (see
+/// WiiCompiled.NodTool/NodToolProvider.cs) - a prebuilt, MIT/Apache-2.0-licensed CLI from
+/// encounter/nod, replacing the earlier dependency on a system-installed `dolphin-tool`
+/// (GPL-2.0-or-later, and not reliably packaged standalone by every distro).
 /// </summary>
 internal static class DiscTool
 {
     public static async Task ValidateAndExtractAsync(
-        string isoPath, ProjectManifest manifest, string assetsDirectory,
-        IInstallReporter reporter, CancellationToken cancellationToken)
+        string isoPath, ProjectManifest manifest, string assetsDirectory, string workspace,
+        string? nodToolBin, IInstallReporter reporter, CancellationToken cancellationToken)
     {
+        var nodTool = nodToolBin ?? await NodToolProvider.ResolveAsync(workspace, cancellationToken);
+
+        // `nodtool info` only decodes the disc/partition headers (milliseconds); `nodtool extract`
+        // copies the whole data partition to disk (tens of seconds for a custom-track-heavy MKWii
+        // ISO). Checking the game ID first, before extracting, means a wrong disc fails fast -
+        // matching the original dolphin-tool `header` step this replaces.
         reporter.Progress(InstallStages.ExtractDisc, "Reading the disc header", 2);
-        var headerJson = await RunAsync(["header", "-i", isoPath, "-j"], cancellationToken);
-        using var header = JsonDocument.Parse(headerJson);
-        var gameId = header.RootElement.GetProperty("game_id").GetString();
-        if (!string.Equals(gameId, manifest.GameId, StringComparison.Ordinal))
+        var info = NodToolInfoParser.Parse(await RunInfoAsync(nodTool, isoPath, cancellationToken));
+        if (!string.Equals(info.GameId, manifest.GameId, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
-                $"This disc is '{gameId}', not the expected '{manifest.GameId}' (Mario Kart Wii, region {manifest.Region}). " +
+                $"This disc is '{info.GameId}', not the expected '{manifest.GameId}' (Mario Kart Wii, region {manifest.Region}). " +
                 "Only your own legally-owned copy of that exact game/region can be used.");
         }
 
@@ -31,12 +35,12 @@ internal static class DiscTool
         Directory.CreateDirectory(scratch);
         try
         {
-            await RunAsync(["extract", "-i", isoPath, "-g", "-o", scratch, "-q"], cancellationToken);
+            await RunExtractAsync(nodTool, isoPath, scratch, cancellationToken);
 
-            var dolPath = Path.Combine(scratch, "DATA", "sys", "main.dol");
-            var relPath = Path.Combine(scratch, "DATA", "files", "rel", "StaticR.rel");
-            if (!File.Exists(dolPath)) throw new FileNotFoundException("dolphin-tool did not produce main.dol", dolPath);
-            if (!File.Exists(relPath)) throw new FileNotFoundException("dolphin-tool did not produce StaticR.rel", relPath);
+            var dolPath = Path.Combine(scratch, "sys", "main.dol");
+            var relPath = Path.Combine(scratch, "files", "rel", "StaticR.rel");
+            if (!File.Exists(dolPath)) throw new FileNotFoundException("nodtool did not produce main.dol", dolPath);
+            if (!File.Exists(relPath)) throw new FileNotFoundException("nodtool did not produce StaticR.rel", relPath);
 
             var dolSha = Sha256Of(dolPath);
             var relSha = Sha256Of(relPath);
@@ -64,32 +68,53 @@ internal static class DiscTool
         }
     }
 
-    private static string Sha256Of(string path)
+    private static async Task<string> RunInfoAsync(string nodTool, string isoPath, CancellationToken cancellationToken)
     {
-        using var stream = File.OpenRead(path);
-        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
-    }
-
-    private static async Task<string> RunAsync(string[] arguments, CancellationToken cancellationToken)
-    {
-        var startInfo = new System.Diagnostics.ProcessStartInfo("dolphin-tool")
+        var startInfo = new System.Diagnostics.ProcessStartInfo(nodTool)
         {
+            ArgumentList = { "info", isoPath },
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        foreach (var argument in arguments) startInfo.ArgumentList.Add(argument);
-
         using var process = System.Diagnostics.Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Failed to start dolphin-tool. Is it installed and on PATH?");
+            ?? throw new InvalidOperationException($"Failed to start {nodTool}.");
         var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
         await process.WaitForExitAsync(cancellationToken);
         if (process.ExitCode != 0)
         {
             throw new InvalidOperationException(
-                $"dolphin-tool {string.Join(' ', arguments)} failed (exit {process.ExitCode}): {stderr}");
+                $"nodtool could not read this disc image (exit {process.ExitCode}): {stderr}{stdout}".Trim());
         }
         return stdout;
+    }
+
+    private static string Sha256Of(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
+
+    private static async Task RunExtractAsync(string nodTool, string isoPath, string outDir, CancellationToken cancellationToken)
+    {
+        var startInfo = new System.Diagnostics.ProcessStartInfo(nodTool)
+        {
+            ArgumentList = { "extract", isoPath, outDir, "-q" },
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        using var process = System.Diagnostics.Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Failed to start {nodTool}.");
+        var stdout = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
+        await process.WaitForExitAsync(cancellationToken);
+        if (process.ExitCode != 0)
+        {
+            throw new InvalidOperationException(
+                $"nodtool extract {isoPath} failed (exit {process.ExitCode}): {stderr}{stdout}");
+        }
     }
 }

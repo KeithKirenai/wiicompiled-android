@@ -51,6 +51,16 @@ internal static class AssemblyBlobWriter
         {
             if (!expectedFiles.Contains(Path.GetFullPath(stalePath))) File.Delete(stalePath);
         }
+        if (!OperatingSystem.IsWindows())
+        {
+            // Absence of a .note.GNU-stack section makes the linker assume the oldest, most
+            // conservative default for this object (an executable stack) and warn about it; this
+            // file has no code needing one, so mark it explicitly like every other GNU-as ELF
+            // object linked into the binary already does (the norm on modern toolchains, just not
+            // producible without an explicit section since this file is hand-assembled, not
+            // compiler-emitted).
+            assembly.AppendLine(".section .note.GNU-stack,\"\",@progbits");
+        }
         FileOutput.WriteTextIfChanged(assemblyPath, assembly.ToString());
     }
 

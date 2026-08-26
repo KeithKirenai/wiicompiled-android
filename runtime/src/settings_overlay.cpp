@@ -322,6 +322,32 @@ void DrawControllerSettings() {
     }
 
     ImGui::Separator();
+    if (ImGui::BeginMenu("GameCube controller adapter")) {
+        const auto adapter = Wup028Adapter::GetInfo();
+        const char* state = adapter.state == Wup028Adapter::ConnectionState::Connected
+                                ? "Connected"
+                                : adapter.state == Wup028Adapter::ConnectionState::DriverError ? "Driver error"
+                                                                                               : "Searching";
+        ImGui::Text("Status: %s", state);
+        if (!adapter.deviceName.empty()) {
+            ImGui::Text("Device: %s", adapter.deviceName.c_str());
+        }
+        ImGui::TextWrapped("%s", adapter.detail.c_str());
+        if (adapter.state == Wup028Adapter::ConnectionState::Connected) {
+            ImGui::Text("Poll rate: %.1f reports/s", adapter.pollRateHz);
+            ImGui::Text("Endpoints: IN 0x%02X, OUT 0x%02X", adapter.inputEndpoint, adapter.outputEndpoint);
+            for (size_t port = 0; port < adapter.ports.size(); ++port) {
+                const uint8_t type = adapter.portStatus[port] & 0x30;
+                const char* typeName = type == 0x10 ? "wired" : type == 0x20 ? "wireless" : "none";
+                ImGui::Text("Adapter port %u: %s (type %s, raw 0x%02X)",
+                            static_cast<unsigned>(port + 1),
+                            adapter.ports[port] ? "Controller connected" : "Empty", typeName,
+                            adapter.portStatus[port]);
+            }
+        }
+        ImGui::EndMenu();
+    }
+    ImGui::Separator();
     controller_mapping_wizard::DrawSetupList();
     const uint32_t controllerCount = PADCount();
     if (controllerCount == 0) {

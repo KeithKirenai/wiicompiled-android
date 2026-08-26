@@ -37,6 +37,8 @@
 #include <mmsystem.h>
 #include <dbghelp.h>
 #else
+#include <signal.h>
+#include <ucontext.h>
 #include <unistd.h>
 #endif
 
@@ -988,7 +990,12 @@ LONG CALLBACK SehLogger(EXCEPTION_POINTERS* info) {
     // flat module registers its own handler first, but registration order is
     // not guaranteed once another VEH is installed later, so consult it here
     // too - resolving a fault twice is a no-op.
-    if (GuestFlat::HandleAccessViolation(info)) {
+    if (info->ExceptionRecord != nullptr &&
+        info->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION &&
+        info->ExceptionRecord->NumberParameters >= 2 &&
+        GuestFlat::HandleAccessViolation(
+            reinterpret_cast<void*>(info->ExceptionRecord->ExceptionInformation[1]),
+            info->ExceptionRecord->ExceptionInformation[0] != 0)) {
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     if (g_suppressSehReporting && g_sehJumpTarget) {
@@ -1058,6 +1065,102 @@ void InstallSehLogger() {
     if (!g_vectoredSehHandle) {
         g_vectoredSehHandle = AddVectoredExceptionHandler(1, SehLogger);
     }
+}
+#else
+// POSIX counterpart to SehLogger above. Unlike Windows' AddVectoredExceptionHandler, which lets
+// GuestFlat and this module each install their own handler and defensively re-check each other,
+// sigaction only allows one handler per signal - the second registration replaces the first
+// instead of chaining. So this is the single SIGSEGV/SIGBUS handler for the whole process, and it
+// owns checking GuestFlat's fault-interception logic first, exactly mirroring the order SehLogger
+// already uses on Windows.
+void ReportUnhandledSignalFault(int sig, void* faultAddress) {
+    RT_LOG(RT_TAG_RUNTIME) << "Signal " << sig << " (fault address 0x" << std::hex
+              << reinterpret_cast<uintptr_t>(faultAddress) << std::dec << ")";
+    if (!g_lastEntryLabel.empty()) {
+        std::cerr << " while executing " << g_lastEntryLabel;
+    }
+    std::cerr << std::endl;
+    if (const CpuContext* cpu = TryGetCpuContext()) {
+        RT_LOG(RT_TAG_RUNTIME) << "===== DUMPING CPU STATE =====" << std::endl;
+        SystemBridge::DumpCpuState(cpu);
+    }
+    std::cerr.flush();
+}
+
+void PosixMemoryFaultHandler(int sig, siginfo_t* info, void* ucontextVoid) {
+    void* faultAddress = info != nullptr ? info->si_addr : nullptr;
+    bool isWrite = false;
+#if defined(__x86_64__)
+    // Standard glibc technique for a POSIX fastmem-style handler: bit 1 (0x2) of the hardware
+    // error code x86 pushes on a page fault records whether it was a write.
+    if (ucontextVoid != nullptr) {
+        auto* uc = static_cast<ucontext_t*>(ucontextVoid);
+        isWrite = (uc->uc_mcontext.gregs[REG_ERR] & 0x2) != 0;
+    }
+#endif
+
+    // Guest-space faults are the flat memory interception mechanism (MMIO, deferred EFB reads,
+    // the executable-write guard, unmapped pages). Resolving one here means resuming the
+    // faulting instruction, which just returning from the handler does.
+    if (faultAddress != nullptr && GuestFlat::HandleAccessViolation(faultAddress, isWrite)) {
+        return;
+    }
+
+    if (g_suppressSehReporting && g_sehJumpTarget) {
+        g_sehLastExceptionCode = static_cast<uint32_t>(sig);
+        g_sehLastExceptionAddress = reinterpret_cast<uintptr_t>(faultAddress);
+        g_sehLastAccessType = isWrite ? 1u : 0u;
+        g_sehLastAccessedAddress = reinterpret_cast<uintptr_t>(faultAddress);
+        siglongjmp(*g_sehJumpTarget, 1);
+    }
+    if (g_suppressSehReporting) {
+        // Reporting suppressed but nobody armed a recovery jump: restore the default disposition
+        // and re-raise so the process still terminates, instead of returning into the same fault.
+        signal(sig, SIG_DFL);
+        raise(sig);
+        return;
+    }
+
+    // Guard against re-entrancy: if we crash while reporting, don't recurse.
+    static std::atomic_flag s_inCrashHandler = ATOMIC_FLAG_INIT;
+    if (s_inCrashHandler.test_and_set()) {
+        std::_Exit(EXIT_FAILURE);
+    }
+
+    ReportUnhandledSignalFault(sig, faultAddress);
+    std::ostringstream popupDetails;
+    popupDetails << "A native signal (" << sig << ") occurred";
+    if (!g_lastEntryLabel.empty()) {
+        popupDetails << " while executing " << g_lastEntryLabel;
+    }
+    if (faultAddress != nullptr) {
+        popupDetails << ".\n\nThe game attempted a " << (isWrite ? "write" : "read")
+                     << " at host address 0x" << std::hex
+                     << reinterpret_cast<uintptr_t>(faultAddress) << std::dec;
+    }
+    popupDetails << ".\n\nThe process transcript and crash log contain the full CPU and stack "
+                    "diagnostics.";
+    ShowRuntimeFatalPopup("a native crash occurred", popupDetails.str());
+    DumpHostStackTrace();
+    WriteFatalLogImpl(sig == SIGBUS ? "sigbus" : "sigsegv");
+
+    std::cerr.flush();
+    std::cout.flush();
+    std::fflush(stdout);
+    std::fflush(stderr);
+    std::_Exit(EXIT_FAILURE);
+}
+
+void InstallPosixMemoryFaultHandler() {
+    struct sigaction action {};
+    action.sa_sigaction = PosixMemoryFaultHandler;
+    action.sa_flags = SA_SIGINFO;
+    sigemptyset(&action.sa_mask);
+    sigaction(SIGSEGV, &action, nullptr);
+    // A touch beyond a memfd-backed mapping's ftruncate()'d size raises SIGBUS rather than
+    // SIGSEGV on Linux; region sizing should make this unreachable, but routing it to the same
+    // handler costs nothing and avoids a silent gap if it ever isn't.
+    sigaction(SIGBUS, &action, nullptr);
 }
 #endif
 
@@ -1174,6 +1277,8 @@ int RuntimeMain(int argc, char** argv) {
     ConfigureWindowsFatalDialogBehavior();
     InstallSehLogger();
     WindowsTimerResolutionGuard timerResolutionGuard;
+#else
+    InstallPosixMemoryFaultHandler();
 #endif
     InitializeProcessTranscript(argc, argv);
     std::signal(SIGABRT, AbortSignalHandler);

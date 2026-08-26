@@ -387,6 +387,7 @@ bool Read(std::array<PADStatus, 4>& statuses) {
 bool SetRumble(uint32_t port, bool enabled) {
     if (port >= g_rumble.size() || !g_connected.load(std::memory_order_acquire)) return false;
     std::lock_guard lock(g_mutex);
+    if (!g_connected.load(std::memory_order_acquire) || g_statuses[port].err != PAD_ERR_NONE) return false;
     g_rumble[port] = enabled ? 1 : 0;
     return true;
 }

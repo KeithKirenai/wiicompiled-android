@@ -213,6 +213,16 @@ function(mkw_configure_product target)
             dbghelp user32 winmm ws2_32 iphlpapi secur32 crypt32 windowsapp setupapi winusb)
 
         set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE TRUE)
+    else()
+        # mkw_runtime_common is an OBJECT library: WiiCompiled/RetroRewind only pull in its .o
+        # files via $<TARGET_OBJECTS:>, which does not propagate mkw_runtime_common's own
+        # target_link_libraries (object libraries don't carry usage requirements to a consumer
+        # that isn't itself linked against as a target). fiber_manager.cpp's co_* calls live in
+        # those objects, so the actual executable link needs mkw::libco directly, same as it
+        # needs it independently of that first `if(WIN32)` branch above.
+        target_link_libraries(${target} PRIVATE mkw::libco)
+    endif()
+    if(WIN32)
         foreach(runtime_dll libc++.dll libunwind.dll)
             execute_process(
                 COMMAND "${CMAKE_CXX_COMPILER}" "--print-file-name=${runtime_dll}"

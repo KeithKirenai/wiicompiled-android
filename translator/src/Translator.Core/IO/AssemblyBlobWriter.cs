@@ -22,7 +22,14 @@ internal static class AssemblyBlobWriter
         var expectedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var assembly = new StringBuilder();
         foreach (var header in headerLines) assembly.AppendLine(header);
-        assembly.AppendLine(".section .rdata,\"dr\"");
+        // PE/COFF (Windows) and ELF (Linux) spell a read-only data section differently in GNU-as
+        // syntax - COFF section flags ("dr" = data, read-only) versus an ELF section needing an
+        // allocatable-only flag plus an explicit @progbits type. The build always targets
+        // whichever platform the translator itself runs on (there is no cross-compilation
+        // support), so that's what this picks the section syntax from.
+        assembly.AppendLine(OperatingSystem.IsWindows()
+            ? ".section .rdata,\"dr\""
+            : ".section .rodata,\"a\",@progbits");
         assembly.AppendLine();
 
         foreach (var blob in blobs)

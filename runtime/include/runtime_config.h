@@ -23,6 +23,9 @@
 #endif
 #include <windows.h>
 #include <shlobj.h>
+#else
+#include <cstdlib>
+#include <unistd.h>
 #endif
 
 struct RuntimeUserConfig {
@@ -168,7 +171,22 @@ inline std::optional<std::filesystem::path> ExecutableDirectory() {
         buffer.resize(buffer.size() * 2);
     }
 #else
-    return std::nullopt;
+    // /proc/self/exe is a Linux-specific magic symlink to the running executable; readlink()
+    // does not NUL-terminate and silently truncates if the buffer is too small, so this grows
+    // the buffer until the result no longer fills it completely, the same doubling strategy as
+    // the Windows branch above uses for GetModuleFileNameW.
+    std::string buffer(256, '\0');
+    for (;;) {
+        const ssize_t length = readlink("/proc/self/exe", buffer.data(), buffer.size());
+        if (length < 0) {
+            return std::nullopt;
+        }
+        if (static_cast<size_t>(length) < buffer.size()) {
+            buffer.resize(static_cast<size_t>(length));
+            return std::filesystem::path(buffer).parent_path();
+        }
+        buffer.resize(buffer.size() * 2);
+    }
 #endif
 }
 
@@ -208,6 +226,15 @@ inline std::filesystem::path ApplicationDataDirectory() {
         const std::filesystem::path directory = std::filesystem::path(rawPath) / kApplicationDirectoryName;
         CoTaskMemFree(rawPath);
         return directory;
+    }
+#else
+    // XDG Base Directory spec equivalent of FOLDERID_LocalAppData: $XDG_DATA_HOME if set and
+    // non-empty, otherwise its default of $HOME/.local/share.
+    if (const char* xdgDataHome = std::getenv("XDG_DATA_HOME"); xdgDataHome && *xdgDataHome) {
+        return std::filesystem::path(xdgDataHome) / kApplicationDirectoryName;
+    }
+    if (const char* home = std::getenv("HOME"); home && *home) {
+        return std::filesystem::path(home) / ".local" / "share" / kApplicationDirectoryName;
     }
 #endif
     return std::filesystem::current_path() / kApplicationDirectoryName;

@@ -49,6 +49,23 @@ target_include_directories(mkw_pugixml PUBLIC third_party/pugixml)
 target_compile_features(mkw_pugixml PUBLIC cxx_std_17)
 set_target_properties(mkw_pugixml PROPERTIES UNITY_BUILD OFF)
 
+# Non-Windows guest-fiber scheduling (runtime/src/fiber_manager.cpp) needs a symmetric
+# stackful-coroutine primitive to stand in for Win32 Fibers. libco's co_switch() transfers
+# directly to any other created coroutine, matching SwitchToFiber's semantics exactly (unlike
+# asymmetric resume/yield coroutine libraries, which would need every call site restructured).
+# Vendored from upstream (higan-emu/libco @ e18e09d, 2019-10-16, ISC license; valgrind.h is
+# separately BSD-style licensed, see third_party/libco/LICENSE) - all of libco's non-Windows
+# CPU-architecture backends are kept, even though libco.c's own preprocessor dispatch
+# (__amd64__/__i386__/__arm__/__aarch64__/etc.) only ever selects amd64.c for this project's
+# x86_64-only target (see the platform/arch check above). Windows keeps using native Fibers
+# untouched, so this target is never built there.
+if(NOT WIN32)
+    add_library(mkw_libco STATIC third_party/libco/libco.c)
+    add_library(mkw::libco ALIAS mkw_libco)
+    target_include_directories(mkw_libco PUBLIC third_party/libco)
+    set_target_properties(mkw_libco PROPERTIES UNITY_BUILD OFF)
+endif()
+
 # Runtime configuration is real TOML, parsed by toml11 rather than a project-
 # specific line parser. Keep it header-only and vendored so disconnected release
 # builds have exactly the same parser as developer builds.

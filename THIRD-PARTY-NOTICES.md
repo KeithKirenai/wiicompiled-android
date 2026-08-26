@@ -103,6 +103,17 @@ Source: <https://github.com/ToruNiina/toml11/tree/v4.4.0>. Full license text:
 Copyright (c) Antoine Aubry and contributors.
 Referenced by `translator/src/Translator.Core`. Source: <https://github.com/aaubry/YamlDotNet>
 
+### libco - ISC (valgrind.h: BSD-style)
+
+Copyright byuu and the higan team.
+Non-Windows builds use libco's symmetric stackful coroutines in place of Win32 Fibers for guest
+OSThread scheduling (`runtime/src/fiber_manager.cpp`). Vendored in full (all non-Windows
+CPU-architecture backends - amd64, x86, arm, aarch64, ppc, ppc64v2, plus the portable sjlj
+fallback - though this project's x86_64-only target only ever compiles amd64.c) in
+`runtime/third_party/libco` from commit `e18e09d634d612a01781168ad4d76be10a7e3bad`.
+Source: <https://github.com/higan-emu/libco>. Full license text:
+`runtime/third_party/libco/LICENSE`.
+
 ---
 
 ## Fetched at build time and redistributed in release builds

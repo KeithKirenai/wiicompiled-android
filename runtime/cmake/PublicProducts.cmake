@@ -79,6 +79,8 @@ target_link_libraries(mkw_runtime_common PRIVATE
 target_link_libraries(mkw_runtime_common PRIVATE mkw::pugixml mkw::toml11 mkw::cryptopp)
 if(WIN32)
     target_link_libraries(mkw_runtime_common PRIVATE shell32 windowsapp)
+else()
+    target_link_libraries(mkw_runtime_common PRIVATE mkw::libco)
 endif()
 if(MKW_CPPWINRT_INCLUDE_DIR)
     if(NOT EXISTS "${MKW_CPPWINRT_INCLUDE_DIR}/winrt/base.h")

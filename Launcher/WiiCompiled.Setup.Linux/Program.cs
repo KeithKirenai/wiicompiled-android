@@ -1,0 +1,254 @@
+using System.Security.Cryptography;
+
+namespace WiiCompiled.Setup.Linux;
+
+internal static class Program
+{
+    private static async Task<int> Main(string[] args)
+    {
+        if (args.Length == 0 || args[0] is "-h" or "--help") { PrintUsage(); return 0; }
+        if (args[0] == "--version") { Console.WriteLine(ProductInfo.Version); return 0; }
+
+        using var cts = new CancellationTokenSource();
+        // Replaces CancellationSignal.cs's named-EventWaitHandle IPC (Windows-only): SIGINT/SIGTERM
+        // are the portable, standard way for a parent (Wheel Wizard or a shell) to cancel this
+        // process and the build it spawned.
+        using var sigint = System.Runtime.InteropServices.PosixSignalRegistration.Create(
+            System.Runtime.InteropServices.PosixSignal.SIGINT, context => { context.Cancel = true; cts.Cancel(); });
+        using var sigterm = System.Runtime.InteropServices.PosixSignalRegistration.Create(
+            System.Runtime.InteropServices.PosixSignal.SIGTERM, context => { context.Cancel = true; cts.Cancel(); });
+        return await RunAsync(args, cts);
+    }
+
+    private static async Task<int> RunAsync(string[] args, CancellationTokenSource cts)
+    {
+        var command = args[0];
+        var rest = args[1..];
+        var flags = ParseFlags(rest);
+        var progressJson = flags.ContainsKey("progress-json");
+        IInstallReporter reporter = progressJson ? new NdjsonInstallReporter() : new ConsoleInstallReporter();
+
+        try
+        {
+            switch (command)
+            {
+                case "install":
+                    await InstallAsync(flags, reporter, cts.Token);
+                    break;
+                case "uninstall":
+                    Uninstall(flags);
+                    break;
+                case "launch-base":
+                    return Launch("base", flags);
+                case "launch-retro":
+                    return Launch("retro-rewind", flags);
+                case "check-products":
+                    CheckProducts();
+                    break;
+                default:
+                    Console.Error.WriteLine($"Unknown command: {command}");
+                    PrintUsage();
+                    return 1;
+            }
+            (reporter as NdjsonInstallReporter)?.Success(flags.GetValueOrDefault("install-dir") ?? "");
+            return 0;
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("Cancelled.");
+            (reporter as NdjsonInstallReporter)?.Failure("cancelled");
+            return 130;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"error: {ex.Message}");
+            (reporter as NdjsonInstallReporter)?.Failure(ex.Message);
+            return 1;
+        }
+    }
+
+    private static async Task InstallAsync(Dictionary<string, string?> flags, IInstallReporter reporter, CancellationToken token)
+    {
+        var profile = flags.GetValueOrDefault("profile") ?? "base";
+        if (profile is not ("base" or "retro-rewind" or "both"))
+            throw new ArgumentException("--profile must be base, retro-rewind, or both");
+
+        var workspace = flags.GetValueOrDefault("workspace") ?? WorkspaceLocator.FindFrom(AppContext.BaseDirectory);
+        var manifest = ProjectManifest.Load(Path.Combine(workspace, "projects", "mkwii", "recomp.yml"));
+        var assetsDir = Path.Combine(workspace, "Assets");
+
+        reporter.Progress(InstallStages.Validate, "Checking prerequisites", 1);
+        if (flags.TryGetValue("game", out var isoPath) && !string.IsNullOrEmpty(isoPath))
+        {
+            await DiscTool.ValidateAndExtractAsync(isoPath, manifest, assetsDir, reporter, token);
+        }
+        else
+        {
+            var dol = Path.Combine(assetsDir, "main.dol");
+            var rel = Path.Combine(assetsDir, "StaticR.rel");
+            if (!File.Exists(dol) || !File.Exists(rel))
+            {
+                throw new InvalidOperationException(
+                    "No --game ISO was given and Assets/main.dol + Assets/StaticR.rel are not already present. " +
+                    "Either pass --game <path-to-iso>, or extract them yourself first (see translator/README.md).");
+            }
+        }
+
+        var state = JsonState.TryRead<InstallState>(StatePath) ?? new InstallState { Workspace = workspace };
+        state.Workspace = workspace;
+
+        var profiles = profile == "both" ? new[] { "base", "retro-rewind" } : new[] { profile };
+        var baseInstallDir = profile == "both" ? DefaultInstallDir("base") : null;
+        var installDir = flags.GetValueOrDefault("install-dir") ?? DefaultInstallDir(profile == "both" ? "retro-rewind" : profile);
+
+        await BuildRunner.RunAsync(
+            workspace, profile, installDir, baseInstallDir,
+            flags.GetValueOrDefault("retro-rewind-package-dir"),
+            flags.GetValueOrDefault("retro-wfc-offline-dir"),
+            flags.ContainsKey("skip-retro-wfc-payload"),
+            flags.ContainsKey("force-clean-build"),
+            reporter, token);
+
+        reporter.Progress(InstallStages.Shortcuts, "Creating shortcuts", 98);
+        var dolSha = Sha256Of(Path.Combine(assetsDir, "main.dol"));
+        var relSha = Sha256Of(Path.Combine(assetsDir, "StaticR.rel"));
+
+        foreach (var p in profiles)
+        {
+            var dir = p == "base" ? (baseInstallDir ?? installDir) : installDir;
+            var exeName = p == "base" ? "WiiCompiled" : "RetroRewind";
+            var displayName = p == "base" ? "WiiCompiled (base game)" : "WiiCompiled (Retro Rewind)";
+            state.Products.RemoveAll(r => r.Profile == p);
+            state.Products.Add(new ProductInstallRecord
+            {
+                Profile = p,
+                InstallDirectory = dir,
+                ExecutableName = exeName,
+                DolSha256 = dolSha,
+                RelSha256 = relSha,
+                BuiltUtc = DateTime.UtcNow.ToString("O"),
+            });
+            DesktopEntry.Create(p, displayName, Path.Combine(dir, exeName));
+        }
+        JsonState.Write(StatePath, state);
+        reporter.Progress(InstallStages.Shortcuts, "Install complete", 99);
+    }
+
+    private static void Uninstall(Dictionary<string, string?> flags)
+    {
+        var profile = flags.GetValueOrDefault("profile") ?? "all";
+        var state = JsonState.TryRead<InstallState>(StatePath) ?? new InstallState();
+        var toRemove = profile == "all" ? state.Products.ToList() : state.Products.Where(r => r.Profile == profile).ToList();
+        foreach (var record in toRemove)
+        {
+            if (Directory.Exists(record.InstallDirectory))
+            {
+                Directory.Delete(record.InstallDirectory, recursive: true);
+            }
+            DesktopEntry.Remove(record.Profile);
+            state.Products.Remove(record);
+            Console.WriteLine($"Removed {record.Profile} from {record.InstallDirectory}");
+        }
+        JsonState.Write(StatePath, state);
+    }
+
+    private static int Launch(string profile, Dictionary<string, string?> flags)
+    {
+        var state = JsonState.TryRead<InstallState>(StatePath);
+        var record = state?.Products.FirstOrDefault(r => r.Profile == profile);
+        if (record is null)
+        {
+            var installHint = profile == "retro-rewind"
+                ? "install --retro-dir <RetroRewind6> {--download-retro-wfc-payload | --skip-retro-wfc-payload}"
+                : $"install --profile {profile}";
+            Console.Error.WriteLine($"{profile} is not installed. Run '{installHint}' first.");
+            return 1;
+        }
+        var exePath = Path.Combine(record.InstallDirectory, record.ExecutableName);
+        if (!File.Exists(exePath))
+        {
+            Console.Error.WriteLine($"Installed executable is missing: {exePath}. Run 'install --profile {profile}' again.");
+            return 1;
+        }
+        var startInfo = new System.Diagnostics.ProcessStartInfo(exePath)
+        {
+            WorkingDirectory = record.InstallDirectory,
+            UseShellExecute = false,
+        };
+        using var process = System.Diagnostics.Process.Start(startInfo);
+        process?.WaitForExit();
+        return process?.ExitCode ?? 1;
+    }
+
+    private static void CheckProducts()
+    {
+        var state = JsonState.TryRead<InstallState>(StatePath);
+        if (state is null || state.Products.Count == 0)
+        {
+            Console.WriteLine("Nothing installed.");
+            return;
+        }
+        var assetsDir = Path.Combine(state.Workspace, "Assets");
+        var currentDol = Sha256IfExists(Path.Combine(assetsDir, "main.dol"));
+        var currentRel = Sha256IfExists(Path.Combine(assetsDir, "StaticR.rel"));
+        foreach (var record in state.Products)
+        {
+            var exePath = Path.Combine(record.InstallDirectory, record.ExecutableName);
+            var present = File.Exists(exePath);
+            var stale = present && (currentDol != record.DolSha256 || currentRel != record.RelSha256);
+            var status = !present ? "MISSING" : stale ? "STALE (game assets changed since last build)" : "current";
+            Console.WriteLine($"{record.Profile,-14} {status,-45} {record.InstallDirectory}");
+        }
+    }
+
+    private static string Sha256Of(string path)
+    {
+        using var stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
+
+    private static string? Sha256IfExists(string path) => File.Exists(path) ? Sha256Of(path) : null;
+
+    private static string StatePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WiiCompiled", "install-state.json");
+
+    private static string DefaultInstallDir(string profile) => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WiiCompiled", "Install",
+        profile == "base" ? "Base" : "RetroRewind");
+
+    private static Dictionary<string, string?> ParseFlags(string[] args)
+    {
+        var flags = new Dictionary<string, string?>();
+        for (var i = 0; i < args.Length; i++)
+        {
+            var arg = args[i];
+            if (!arg.StartsWith("--", StringComparison.Ordinal)) continue;
+            var name = arg[2..];
+            if (i + 1 < args.Length && !args[i + 1].StartsWith("--", StringComparison.Ordinal))
+            {
+                flags[name] = args[++i];
+            }
+            else
+            {
+                flags[name] = null; // boolean flag
+            }
+        }
+        return flags;
+    }
+
+    private static void PrintUsage()
+    {
+        Console.WriteLine("""
+        Usage: wiicompiled-setup <command> [options]
+
+          install --profile {base|retro-rewind|both} [--game ISO_PATH] [--install-dir DIR]
+                  [--retro-rewind-package-dir DIR] [--retro-wfc-offline-dir DIR | --skip-retro-wfc-payload]
+                  [--force-clean-build] [--progress-json] [--workspace DIR]
+          uninstall [--profile {base|retro-rewind|both|all}]
+          launch-base
+          launch-retro
+          check-products
+          --version
+        """);
+    }
+}

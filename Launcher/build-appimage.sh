@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Packages Launcher/WiiCompiled.Setup.Linux as a self-contained AppImage: a single file Wheel
-# Wizard (or anyone else) can fetch and execute with no git clone and no `dotnet` install required
-# just to run the installer itself. It still shells out to system clang/cmake/ninja/dolphin-tool -
-# no toolchain is bundled, matching Launcher/local-build.sh's own prerequisites.
+# Wizard (or anyone else) can fetch and execute with no git clone and no `dotnet` install at all -
+# both the installer and the translator are published as self-contained binaries and bundled, so
+# AppRun passes --translator-bin to skip local-build.sh's own dotnet-build-from-source step. It
+# still shells out to system clang/cmake/ninja/dolphin-tool - no C/C++ toolchain is bundled,
+# matching Launcher/local-build.sh's own remaining prerequisites.
 #
 # An AppImage mounts read-only, but local-build.sh writes generated/, native-build/, Assets/, etc.
 # into the workspace it's given. So AppRun (written below) copies the bundled workspace snapshot
 # out to a writable cache directory on first run, and only ever re-syncs the bundled directories
-# (runtime/, aurora-main/, translator/, projects/, local-build.sh) on a later run whose bundled
-# version changed - generated/native-build/Assets/PulsarPacks live only in that writable cache and
-# are never touched by the sync, so local-build.sh's own incremental caching survives across runs
-# and across AppImage updates.
+# (runtime/, aurora-main/, projects/, local-build.sh) on a later run whose bundled version changed
+# - generated/native-build/Assets/PulsarPacks live only in that writable cache and are never
+# touched by the sync, so local-build.sh's own incremental caching survives across runs and across
+# AppImage updates. translator/ isn't part of this snapshot at all: it's published as its own
+# self-contained binary (usr/bin/translator-cli) below and never needs a writable copy.
 set -euo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -44,8 +47,20 @@ dotnet publish "$workspace/Launcher/WiiCompiled.Setup.Linux" -c Release -r linux
 cp "$publish_tmp/WiiCompiled.Setup.Linux" "$appdir/usr/bin/wiicompiled-setup"
 chmod +x "$appdir/usr/bin/wiicompiled-setup"
 
+# Published as a self-contained binary too, so an AppImage user never needs a `dotnet` SDK on
+# PATH at all - local-build.sh is told about it via --translator-bin and skips its own
+# dotnet-build-from-source step entirely (see local-build.sh's translator resolution branch).
+echo "Publishing the translator (self-contained linux-x64)..."
+translator_publish_tmp="$workspace/Launcher/artifacts/appimage-build/publish-translator"
+rm -rf "$translator_publish_tmp"
+dotnet publish "$workspace/translator/src/Translator.Cli" -c Release -r linux-x64 \
+    --self-contained -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true \
+    -o "$translator_publish_tmp"
+cp "$translator_publish_tmp/Translator.Cli" "$appdir/usr/bin/translator-cli"
+chmod +x "$appdir/usr/bin/translator-cli"
+
 echo "Staging the bundled workspace snapshot..."
-for dir in runtime aurora-main translator projects; do
+for dir in runtime aurora-main projects; do
     cp -r "$workspace/$dir" "$appdir/workspace/$dir"
 done
 # Mirrors Build-Installer.ps1's own staging exclusions exactly: aurora-main/extern/CMakeLists.txt
@@ -72,14 +87,14 @@ CACHE="${XDG_DATA_HOME:-$HOME/.local/share}/WiiCompiled/workspace"
 if [ ! -f "$CACHE/.bundle-version" ] || \
    [ "$(cat "$HERE/workspace/.bundle-version")" != "$(cat "$CACHE/.bundle-version")" ]; then
     mkdir -p "$CACHE/Launcher"
-    for dir in runtime aurora-main translator projects; do
+    for dir in runtime aurora-main projects; do
         rm -rf "$CACHE/$dir"
         cp -r "$HERE/workspace/$dir" "$CACHE/$dir"
     done
     cp "$HERE/workspace/Launcher/local-build.sh" "$CACHE/Launcher/local-build.sh"
     cp "$HERE/workspace/.bundle-version" "$CACHE/.bundle-version"
 fi
-exec "$HERE/usr/bin/wiicompiled-setup" --workspace "$CACHE" "$@"
+exec "$HERE/usr/bin/wiicompiled-setup" --workspace "$CACHE" --translator-bin "$HERE/usr/bin/translator-cli" "$@"
 APPRUN
 chmod +x "$appdir/AppRun"
 

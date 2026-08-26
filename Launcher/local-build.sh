@@ -62,6 +62,7 @@ cmake_override=""
 ninja_override=""
 dotnet_override=""
 translator_dll_override=""
+translator_bin_override=""
 
 usage() {
     cat <<'EOF'
@@ -79,7 +80,8 @@ Usage: local-build.sh --output-dir DIR [options]
   --cc PATH / --cxx PATH          C/C++ compiler (default: cc/c++ on PATH)
   --cmake PATH / --ninja PATH     Build tools (default: on PATH)
   --dotnet PATH                   dotnet executable (default: on PATH)
-  --translator-dll PATH           Pre-built Translator.Cli.dll (skips building the translator)
+  --translator-dll PATH           Pre-built Translator.Cli.dll (skips building the translator; still needs --dotnet to run it)
+  --translator-bin PATH           Self-contained Translator.Cli executable (skips building AND needs no dotnet at all)
 EOF
 }
 
@@ -101,6 +103,7 @@ while [[ $# -gt 0 ]]; do
         --ninja) ninja_override=$2; shift 2 ;;
         --dotnet) dotnet_override=$2; shift 2 ;;
         --translator-dll) translator_dll_override=$2; shift 2 ;;
+        --translator-bin) translator_bin_override=$2; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) fail "unknown argument: $1" ;;
     esac
@@ -146,7 +149,11 @@ ninja_bin=${ninja_override:-ninja}
 cc_bin=${cc_override:-clang}
 cxx_bin=${cxx_override:-clang++}
 
-require_command "$dotnet_bin" dotnet
+# A self-contained --translator-bin needs no dotnet at all (it bundles its own runtime); dotnet is
+# only required when the translator has to be built from source or run as a plain .dll.
+if [[ -z "$translator_bin_override" ]]; then
+    require_command "$dotnet_bin" dotnet
+fi
 require_command "$cmake_bin" cmake
 require_command "$ninja_bin" ninja
 require_command "$cc_bin" cc
@@ -180,14 +187,20 @@ entry_point=$(awk '
 ' "$project")
 [[ -n "$entry_point" ]] || fail "Could not find a translation entry point in $project"
 
+translator_bin=$translator_bin_override
 translator_dll=$translator_dll_override
-if [[ -z "$translator_dll" ]]; then
-    translator_dll=$workspace/translator/src/Translator.Cli/bin/Release/net8.0/Translator.Cli.dll
-    log_step build-translator "Building the translator"
-    "$dotnet_bin" build "$workspace/translator/src/Translator.Cli/Translator.Cli.csproj" -c Release
+if [[ -n "$translator_bin" ]]; then
+    assert_file "$translator_bin" "Translator.Cli executable"
+    translator() { "$translator_bin" "$@"; }
+else
+    if [[ -z "$translator_dll" ]]; then
+        translator_dll=$workspace/translator/src/Translator.Cli/bin/Release/net8.0/Translator.Cli.dll
+        log_step build-translator "Building the translator"
+        "$dotnet_bin" build "$workspace/translator/src/Translator.Cli/Translator.Cli.csproj" -c Release
+    fi
+    assert_file "$translator_dll" "Translator.Cli.dll"
+    translator() { "$dotnet_bin" "$translator_dll" "$@"; }
 fi
-assert_file "$translator_dll" "Translator.Cli.dll"
-translator() { "$dotnet_bin" "$translator_dll" "$@"; }
 
 # ---------------------------------------------------------------------------
 # Parallelism: three independent knobs, same reasoning as LocalBuild.ps1 -

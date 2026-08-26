@@ -12,7 +12,7 @@ internal static class BuildRunner
     public static async Task RunAsync(
         string workspace, string profile, string outputDir, string? baseOutputDir,
         string? retroRewindPackageDir, string? retroWfcOfflineDir, bool skipRetroWfcPayload,
-        bool forceCleanBuild, IInstallReporter reporter, CancellationToken cancellationToken)
+        bool forceCleanBuild, string? translatorBin, IInstallReporter reporter, CancellationToken cancellationToken)
     {
         var script = Path.Combine(workspace, "Launcher", "local-build.sh");
         if (!File.Exists(script)) throw new FileNotFoundException("local-build.sh is missing", script);
@@ -41,6 +41,10 @@ internal static class BuildRunner
         }
         if (skipRetroWfcPayload) startInfo.ArgumentList.Add("--skip-retro-wfc-payload");
         if (forceCleanBuild) startInfo.ArgumentList.Add("--force-clean-build");
+        if (!string.IsNullOrEmpty(translatorBin))
+        {
+            startInfo.ArgumentList.Add("--translator-bin"); startInfo.ArgumentList.Add(translatorBin);
+        }
 
         using var process = new Process { StartInfo = startInfo };
         var window = new BuildProgressWindow(reporter, InstallStages.Build, start: 6, end: 96);

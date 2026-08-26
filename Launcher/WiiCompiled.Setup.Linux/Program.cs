@@ -111,6 +111,7 @@ internal static class Program
             flags.GetValueOrDefault("retro-wfc-offline-dir"),
             flags.ContainsKey("skip-retro-wfc-payload"),
             flags.ContainsKey("force-clean-build"),
+            flags.GetValueOrDefault("translator-bin"),
             reporter, token);
 
         reporter.Progress(InstallStages.Shortcuts, "Creating shortcuts", 98);
@@ -260,7 +261,7 @@ internal static class Program
 
           install --profile {base|retro-rewind|both} [--game ISO_PATH] [--install-dir DIR]
                   [--retro-rewind-package-dir DIR] [--retro-wfc-offline-dir DIR | --skip-retro-wfc-payload]
-                  [--force-clean-build] [--progress-json] [--workspace DIR]
+                  [--force-clean-build] [--translator-bin PATH] [--progress-json] [--workspace DIR]
           uninstall [--profile {base|retro-rewind|both|all}]
           launch-base
           launch-retro

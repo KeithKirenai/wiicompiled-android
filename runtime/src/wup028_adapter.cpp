@@ -1,6 +1,7 @@
 #include "wup028_adapter.h"
 
 #include "runtime_log.h"
+#include "runtime_config.h"
 
 #include <dolphin/pad.h>
 #include <windows.h>
@@ -27,10 +28,12 @@ namespace {
 constexpr uint16_t kNintendoVendor = 0x057e;
 constexpr uint16_t kAdapterProduct = 0x0337;
 constexpr size_t kReportSize = 37;
+constexpr auto kInputReportTimeout = std::chrono::milliseconds(500);
 
 std::mutex g_mutex;
 std::array<PADStatus, PAD_CHANMAX> g_statuses{};
 std::array<uint8_t, PAD_CHANMAX> g_rumble{};
+std::array<int8_t, PAD_CHANMAX> g_portAssignments{{-1, -1, -1, -1}};
 std::thread g_worker;
 std::atomic_bool g_stop{false};
 std::atomic_bool g_running{false};
@@ -190,7 +193,10 @@ bool Open(Device& device, std::string& name, std::string& error) {
 }
 
 int8_t Axis(uint8_t raw) {
-    return static_cast<int8_t>(std::clamp(static_cast<int>(raw) - 128, -128, 127));
+    constexpr int kCenter = 128;
+    constexpr int kCenterTolerance = 10;
+    if (raw >= kCenter - kCenterTolerance && raw <= kCenter + kCenterTolerance) return 0;
+    return static_cast<int8_t>(std::clamp(static_cast<int>(raw) - kCenter, -128, 127));
 }
 
 PADStatus DecodePort(const uint8_t* p) {
@@ -296,16 +302,21 @@ void Worker() {
         auto rateStart = std::chrono::steady_clock::now();
         uint32_t rateReports = 0;
         std::array<bool, PAD_CHANMAX> reportedPorts{};
+        auto lastReport = std::chrono::steady_clock::now();
 
         while (!g_stop.load(std::memory_order_acquire)) {
             std::array<UCHAR, kReportSize> report{};
             ULONG read = 0;
             bool timedOut = false;
             if (!Transfer(device, true, device.inputPipe, report.data(), report.size(), read, 100, &timedOut)) {
-                if (timedOut) continue;
+                if (timedOut && std::chrono::steady_clock::now() - lastReport < kInputReportTimeout) continue;
                 break;
             }
-            if (read != report.size() || report[0] != 0x21) continue;
+            if (read != report.size() || report[0] != 0x21) {
+                if (std::chrono::steady_clock::now() - lastReport >= kInputReportTimeout) break;
+                continue;
+            }
+            lastReport = std::chrono::steady_clock::now();
             ++rateReports;
             std::array<PADStatus, PAD_CHANMAX> decoded{};
             for (size_t port = 0; port < decoded.size(); ++port) decoded[port] = DecodePort(report.data() + 1 + port * 9);
@@ -347,6 +358,8 @@ void Worker() {
             }
             if (refreshStream && !RefreshInputStream(device)) break;
         }
+        // Do not leave a motor latched on when stopping or abandoning this handle.
+        SendRumble(device, {});
         g_connected.store(false, std::memory_order_release);
         ClearConnectedPorts("adapter unavailable");
         {
@@ -367,6 +380,9 @@ void Initialize() {
     bool expected = false;
     if (!g_running.compare_exchange_strong(expected, true)) return;
     for (auto& status : g_statuses) status.err = PAD_ERR_NO_CONTROLLER;
+    for (size_t gamePort = 0; gamePort < g_portAssignments.size(); ++gamePort) {
+        g_portAssignments[gamePort] = static_cast<int8_t>(RuntimeConfigFile::GameCubeAdapterPort(gamePort));
+    }
     g_stop.store(false, std::memory_order_release);
     g_worker = std::thread(Worker);
 }
@@ -381,19 +397,48 @@ void Shutdown() {
 bool Read(std::array<PADStatus, 4>& statuses) {
     if (!g_connected.load(std::memory_order_acquire)) return false;
     std::lock_guard lock(g_mutex);
-    statuses = g_statuses;
+    for (auto& status : statuses) status.err = PAD_ERR_NO_CONTROLLER;
+    for (size_t gamePort = 0; gamePort < statuses.size(); ++gamePort) {
+        const int physicalPort = g_portAssignments[gamePort];
+        if (physicalPort >= 0) statuses[gamePort] = g_statuses[static_cast<size_t>(physicalPort)];
+    }
     return true;
+}
+
+void SetPortAssignment(uint32_t gamePort, int physicalPort) {
+    if (gamePort >= g_portAssignments.size() || physicalPort < -1 || physicalPort >= PAD_CHANMAX) return;
+    std::lock_guard lock(g_mutex);
+    const int oldPhysicalPort = g_portAssignments[gamePort];
+    if (oldPhysicalPort >= 0) g_rumble[static_cast<size_t>(oldPhysicalPort)] = 0;
+    if (physicalPort >= 0) {
+        for (auto& assignment : g_portAssignments) {
+            if (assignment == physicalPort) {
+                assignment = -1;
+                g_rumble[static_cast<size_t>(physicalPort)] = 0;
+            }
+        }
+    }
+    g_portAssignments[gamePort] = static_cast<int8_t>(physicalPort);
+}
+
+int GetPortAssignment(uint32_t gamePort) {
+    if (gamePort >= g_portAssignments.size()) return -1;
+    std::lock_guard lock(g_mutex);
+    return g_portAssignments[gamePort];
 }
 
 bool SetRumble(uint32_t port, bool enabled) {
     if (port >= g_rumble.size() || !g_connected.load(std::memory_order_acquire)) return false;
     std::lock_guard lock(g_mutex);
     if (!g_connected.load(std::memory_order_acquire)) return false;
-    if (g_statuses[port].err != PAD_ERR_NONE) {
-        g_rumble[port] = 0;
+    const int physicalPort = g_portAssignments[port];
+    if (physicalPort < 0) return false;
+    const size_t adapterPort = static_cast<size_t>(physicalPort);
+    if (g_statuses[adapterPort].err != PAD_ERR_NONE) {
+        g_rumble[adapterPort] = 0;
         return false;
     }
-    g_rumble[port] = enabled ? 1 : 0;
+    g_rumble[adapterPort] = enabled ? 1 : 0;
     return true;
 }
 

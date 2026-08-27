@@ -34,6 +34,10 @@ void Shutdown();
 // Returns true while an official adapter is open. Each entry is a native
 // GameCube port; an empty port is represented by PAD_ERR_NO_CONTROLLER.
 bool Read(std::array<PADStatus, 4>& statuses);
+// Assigns a physical adapter port to a game port. Pass -1 to leave the game
+// port under Aurora's normal controller assignment.
+void SetPortAssignment(uint32_t gamePort, int physicalPort);
+int GetPortAssignment(uint32_t gamePort);
 // Returns true when the command belongs to an active WUP-028, allowing the
 // caller to avoid also sending it to Aurora's unrelated controller backend.
 bool SetRumble(uint32_t port, bool enabled);

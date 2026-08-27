@@ -776,7 +776,8 @@ inline std::string DvdRoot(std::string fallback = "") {
 // never to the process working directory (docs/WHEELWIZARD_CONTRACT.md).
 inline std::filesystem::path ResolveRelativeTo(const std::filesystem::path& base,
                                                const std::string& value) {
-    std::filesystem::path path(value);
+    // Config strings are UTF-8; the char overload would decode via the ANSI codepage.
+    std::filesystem::path path(reinterpret_cast<const char8_t*>(value.c_str()));
     if (path.is_relative()) {
         path = base / path;
     }

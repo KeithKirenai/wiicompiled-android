@@ -86,6 +86,8 @@ void RiivoAddRoot(std::vector<RuntimeRiivolution::Overlay>& overlays, fs::path r
                   const char* source) {
     std::error_code ec;
     if (!fs::is_directory(root, ec)) {
+        RT_LOG(RT_TAG_RIIVOLUTION) << "rejected overlay root (" << (source ? source : "unknown")
+                  << "): " << root.string() << " is not a reachable directory" << std::endl;
         return;
     }
 

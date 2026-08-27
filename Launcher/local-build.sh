@@ -52,7 +52,6 @@ output_dir=""
 base_output_dir=""
 retro_rewind_package_dir=""
 retro_wfc_offline_dir=""
-retro_wfc_payload_origin=offline
 skip_retro_wfc_payload=0
 force_clean_build=0
 parallel_override=0
@@ -93,7 +92,6 @@ while [[ $# -gt 0 ]]; do
         --base-output-dir) base_output_dir=$2; shift 2 ;;
         --retro-rewind-package-dir) retro_rewind_package_dir=$2; shift 2 ;;
         --retro-wfc-offline-dir) retro_wfc_offline_dir=$2; shift 2 ;;
-        --retro-wfc-payload-origin) retro_wfc_payload_origin=$2; shift 2 ;;
         --skip-retro-wfc-payload) skip_retro_wfc_payload=1; shift ;;
         --force-clean-build) force_clean_build=1; shift ;;
         --parallel) parallel_override=$2; shift 2 ;;

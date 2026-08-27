@@ -15,7 +15,7 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
 }
 $repoRoot = [IO.Path]::GetFullPath($RepositoryRoot)
 $launcher = Join-Path $repoRoot 'Launcher'
-$setup = Join-Path $launcher 'WiiCompiled.Setup'
+$setup = Join-Path $launcher 'WiiCompiled.Setup.Windows'
 
 $failures = [Collections.Generic.List[string]]::new()
 function Add-Failure([string]$Message) { $failures.Add($Message) }

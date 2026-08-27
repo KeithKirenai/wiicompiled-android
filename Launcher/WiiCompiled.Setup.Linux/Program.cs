@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using WiiCompiled.Setup.Common;
 
 namespace WiiCompiled.Setup.Linux;
 
@@ -40,7 +41,7 @@ internal static class Program
                     await InstallAsync(flags, reporter, cts.Token);
                     break;
                 case "uninstall":
-                    Uninstall(flags);
+                    Uninstall();
                     break;
                 case "launch-base":
                     return Launch("base", flags);
@@ -73,9 +74,25 @@ internal static class Program
 
     private static async Task InstallAsync(Dictionary<string, string?> flags, IInstallReporter reporter, CancellationToken token)
     {
-        var profile = flags.GetValueOrDefault("profile") ?? "base";
-        if (profile is not ("base" or "retro-rewind" or "both"))
-            throw new ArgumentException("--profile must be base, retro-rewind, or both");
+        var retroDir = flags.GetValueOrDefault("retro-dir");
+        var installsRetro = !string.IsNullOrEmpty(retroDir);
+        var downloadPayload = flags.ContainsKey("download-retro-wfc-payload");
+        var skipPayload = flags.ContainsKey("skip-retro-wfc-payload");
+        if (installsRetro)
+        {
+            if (downloadPayload == skipPayload)
+                throw new ArgumentException(
+                    "Choose exactly one Retro-WFC mode: --download-retro-wfc-payload or --skip-retro-wfc-payload.");
+        }
+        else if (downloadPayload || skipPayload)
+        {
+            throw new ArgumentException("A Retro-WFC payload option is valid only with --retro-dir.");
+        }
+
+        // Canonicalizes to the exact RetroRewind6 folder (accepting a parent folder or a symlink),
+        // the same validation Windows applies via this same shared method - local-build.sh's own
+        // check further down is a simpler backstop, not the primary validation anymore.
+        if (installsRetro) retroDir = RetroRewindSource.ResolveRetroRewind6(retroDir!);
 
         var workspace = flags.GetValueOrDefault("workspace") ?? WorkspaceLocator.FindFrom(AppContext.BaseDirectory);
         var manifest = ProjectManifest.Load(Path.Combine(workspace, "projects", "mkwii", "recomp.yml"));
@@ -102,15 +119,35 @@ internal static class Program
         var state = JsonState.TryRead<InstallState>(StatePath) ?? new InstallState { Workspace = workspace };
         state.Workspace = workspace;
 
-        var profiles = profile == "both" ? new[] { "base", "retro-rewind" } : new[] { profile };
-        var baseInstallDir = profile == "both" ? DefaultInstallDir("base") : null;
-        var installDir = flags.GetValueOrDefault("install-dir") ?? DefaultInstallDir(profile == "both" ? "retro-rewind" : profile);
+        var profile = installsRetro ? "both" : "base";
+        var profiles = installsRetro ? new[] { "base", "retro-rewind" } : new[] { "base" };
+        var baseInstallDir = installsRetro ? DefaultInstallDir("base") : null;
+        var installDir = flags.GetValueOrDefault("install-dir") ?? DefaultInstallDir(installsRetro ? "retro-rewind" : "base");
+
+        string? retroWfcOfflineDir = null;
+        if (downloadPayload)
+        {
+            // Reused if a previous install already downloaded and it's still valid - matches
+            // Windows's own reuse-if-valid behavior instead of re-downloading on every install.
+            var cacheDir = Path.Combine(workspace, "generated", "retro-wfc-payload");
+            reporter.Progress(InstallStages.Validate, "Preparing the Retro-WFC payload", 1);
+            try
+            {
+                RetroWfcPayload.ValidateStagedRetroWfcPayloadDirectory(cacheDir);
+            }
+            catch (InvalidDataException)
+            {
+                await RetroWfcPayload.DownloadRetroWfcPayloadAsync(
+                    RetroWfcPayload.CurrentRetroWfcPayloadUri, cacheDir, token);
+            }
+            retroWfcOfflineDir = cacheDir;
+        }
 
         await BuildRunner.RunAsync(
             workspace, profile, installDir, baseInstallDir,
-            flags.GetValueOrDefault("retro-rewind-package-dir"),
-            flags.GetValueOrDefault("retro-wfc-offline-dir"),
-            flags.ContainsKey("skip-retro-wfc-payload"),
+            retroDir,
+            retroWfcOfflineDir,
+            skipPayload,
             flags.ContainsKey("force-clean-build"),
             flags.GetValueOrDefault("translator-bin"),
             reporter, token);
@@ -137,15 +174,32 @@ internal static class Program
             DesktopEntry.Create(p, displayName, Path.Combine(dir, exeName));
         }
         JsonState.Write(StatePath, state);
+
+        // The runtime reads course/texture/audio data live from dvd_root at every launch, not just
+        // at translation time - without this the game fatally errors the instant it needs any file
+        // that isn't main.dol/StaticR.rel. Linux has no --portable flag, so this is always the
+        // per-user Config.toml (RuntimeConfiguration.ResolveConfigPath's Windows-only portable-root
+        // lookup has nothing to find here either way).
+        var configPath = RuntimeConfiguration.ApplicationDataConfigPath;
+        var dataDir = Path.Combine(assetsDir, "DATA");
+        if (Directory.Exists(dataDir))
+        {
+            RuntimeConfiguration.SetDvdRoot(configPath, dataDir);
+        }
+        if (installsRetro)
+        {
+            RuntimeConfiguration.SetRetroRewindRoot(configPath, retroDir!);
+        }
+
         reporter.Progress(InstallStages.Shortcuts, "Install complete", 99);
     }
 
-    private static void Uninstall(Dictionary<string, string?> flags)
+    private static void Uninstall()
     {
-        var profile = flags.GetValueOrDefault("profile") ?? "all";
+        // Matches Windows: UninstallService.cs removes the whole install directory unconditionally -
+        // there is no partial-product uninstall on either platform.
         var state = JsonState.TryRead<InstallState>(StatePath) ?? new InstallState();
-        var toRemove = profile == "all" ? state.Products.ToList() : state.Products.Where(r => r.Profile == profile).ToList();
-        foreach (var record in toRemove)
+        foreach (var record in state.Products.ToList())
         {
             if (Directory.Exists(record.InstallDirectory))
             {
@@ -260,11 +314,11 @@ internal static class Program
         Console.WriteLine("""
         Usage: wiicompiled-setup <command> [options]
 
-          install --profile {base|retro-rewind|both} [--game ISO_PATH] [--install-dir DIR]
-                  [--retro-rewind-package-dir DIR] [--retro-wfc-offline-dir DIR | --skip-retro-wfc-payload]
+          install [--game ISO_PATH] [--install-dir DIR] [--retro-dir DIR
+                  {--download-retro-wfc-payload | --skip-retro-wfc-payload}]
                   [--force-clean-build] [--translator-bin PATH] [--disc-tool-bin PATH]
                   [--progress-json] [--workspace DIR]
-          uninstall [--profile {base|retro-rewind|both|all}]
+          uninstall
           launch-base
           launch-retro
           check-products

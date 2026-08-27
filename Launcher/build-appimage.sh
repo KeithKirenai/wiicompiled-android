@@ -61,12 +61,12 @@ dotnet publish "$workspace/translator/src/Translator.Cli" -c Release -r linux-x6
 cp "$translator_publish_tmp/Translator.Cli" "$appdir/usr/bin/translator-cli"
 chmod +x "$appdir/usr/bin/translator-cli"
 
-# Resolved via the shared WiiCompiled.NodTool.Cli helper (also used by Build-Installer.ps1 on
+# Resolved via the shared WiiCompiled.Setup.Common.Cli helper (also used by Build-Installer.ps1 on
 # Windows) rather than a second curl/version-pin copy here: it downloads and caches the same way
 # NodToolProvider.cs always does (Launcher/artifacts/nodtool), so there is exactly one place that
 # knows the nodtool version/URL/platform-asset mapping.
 echo "Resolving nodtool..."
-nodtool_path=$(dotnet run --project "$workspace/Launcher/WiiCompiled.NodTool.Cli" -c Release -- \
+nodtool_path=$(dotnet run --project "$workspace/Launcher/WiiCompiled.Setup.Common.Cli" -c Release -- \
     --workspace "$workspace" | tail -n1)
 cp "$nodtool_path" "$appdir/usr/bin/nodtool"
 chmod +x "$appdir/usr/bin/nodtool"

@@ -1,11 +1,11 @@
 using System.Security.Cryptography;
-using WiiCompiled.NodTool;
+using WiiCompiled.Setup.Common;
 
 namespace WiiCompiled.Setup.Linux;
 
 /// <summary>
 /// Validates and extracts the user's own Mario Kart Wii disc via `nodtool` (see
-/// WiiCompiled.NodTool/NodToolProvider.cs) - a prebuilt, MIT/Apache-2.0-licensed CLI from
+/// WiiCompiled.Setup.Common/NodToolProvider.cs) - a prebuilt, MIT/Apache-2.0-licensed CLI from
 /// encounter/nod, replacing the earlier dependency on a system-installed `dolphin-tool`
 /// (GPL-2.0-or-later, and not reliably packaged standalone by every distro).
 /// </summary>
@@ -30,42 +30,38 @@ internal static class DiscTool
                 "Only your own legally-owned copy of that exact game/region can be used.");
         }
 
+        // Extracted straight into Assets/DATA (kept, not a scratch dir) - the runtime reads course/
+        // texture/audio data from this directory live via [paths] dvd_root, not just at translation
+        // time, so it has to survive past this install (see Program.cs, which points dvd_root here).
         reporter.Progress(InstallStages.ExtractDisc, "Extracting the disc image", 4);
-        var scratch = Path.Combine(Path.GetTempPath(), "wiicompiled-disc-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(scratch);
-        try
+        var dataDir = Path.Combine(assetsDirectory, "DATA");
+        if (Directory.Exists(dataDir)) Directory.Delete(dataDir, recursive: true);
+        await RunExtractAsync(nodTool, isoPath, dataDir, cancellationToken);
+
+        var dolPath = Path.Combine(dataDir, "sys", "main.dol");
+        var relPath = Path.Combine(dataDir, "files", "rel", "StaticR.rel");
+        if (!File.Exists(dolPath)) throw new FileNotFoundException("nodtool did not produce main.dol", dolPath);
+        if (!File.Exists(relPath)) throw new FileNotFoundException("nodtool did not produce StaticR.rel", relPath);
+
+        var dolSha = Sha256Of(dolPath);
+        var relSha = Sha256Of(relPath);
+        if (!string.Equals(dolSha, manifest.DolSha256, StringComparison.Ordinal))
         {
-            await RunExtractAsync(nodTool, isoPath, scratch, cancellationToken);
-
-            var dolPath = Path.Combine(scratch, "sys", "main.dol");
-            var relPath = Path.Combine(scratch, "files", "rel", "StaticR.rel");
-            if (!File.Exists(dolPath)) throw new FileNotFoundException("nodtool did not produce main.dol", dolPath);
-            if (!File.Exists(relPath)) throw new FileNotFoundException("nodtool did not produce StaticR.rel", relPath);
-
-            var dolSha = Sha256Of(dolPath);
-            var relSha = Sha256Of(relPath);
-            if (!string.Equals(dolSha, manifest.DolSha256, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    $"main.dol sha256 mismatch: expected {manifest.DolSha256}, got {dolSha}. " +
-                    "This disc revision does not match what this project's manifest is pinned to.");
-            }
-            if (!string.Equals(relSha, manifest.RelSha256, StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    $"StaticR.rel sha256 mismatch: expected {manifest.RelSha256}, got {relSha}. " +
-                    "This disc revision does not match what this project's manifest is pinned to.");
-            }
-
-            Directory.CreateDirectory(assetsDirectory);
-            File.Copy(dolPath, Path.Combine(assetsDirectory, "main.dol"), overwrite: true);
-            File.Copy(relPath, Path.Combine(assetsDirectory, "StaticR.rel"), overwrite: true);
-            reporter.Progress(InstallStages.ExtractDisc, "Disc validated and extracted", 6);
+            throw new InvalidOperationException(
+                $"main.dol sha256 mismatch: expected {manifest.DolSha256}, got {dolSha}. " +
+                "This disc revision does not match what this project's manifest is pinned to.");
         }
-        finally
+        if (!string.Equals(relSha, manifest.RelSha256, StringComparison.Ordinal))
         {
-            try { Directory.Delete(scratch, recursive: true); } catch { /* best-effort cleanup */ }
+            throw new InvalidOperationException(
+                $"StaticR.rel sha256 mismatch: expected {manifest.RelSha256}, got {relSha}. " +
+                "This disc revision does not match what this project's manifest is pinned to.");
         }
+
+        Directory.CreateDirectory(assetsDirectory);
+        File.Copy(dolPath, Path.Combine(assetsDirectory, "main.dol"), overwrite: true);
+        File.Copy(relPath, Path.Combine(assetsDirectory, "StaticR.rel"), overwrite: true);
+        reporter.Progress(InstallStages.ExtractDisc, "Disc validated and extracted", 6);
     }
 
     private static async Task<string> RunInfoAsync(string nodTool, string isoPath, CancellationToken cancellationToken)

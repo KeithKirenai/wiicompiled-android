@@ -11,7 +11,7 @@ internal static class BuildRunner
 {
     public static async Task RunAsync(
         string workspace, string profile, string outputDir, string? baseOutputDir,
-        string? retroRewindPackageDir, string? retroWfcOfflineDir, bool skipRetroWfcPayload,
+        string? retroDir, string? retroWfcOfflineDir, bool skipRetroWfcPayload,
         bool forceCleanBuild, string? translatorBin, IInstallReporter reporter, CancellationToken cancellationToken)
     {
         var script = Path.Combine(workspace, "Launcher", "local-build.sh");
@@ -31,9 +31,11 @@ internal static class BuildRunner
         {
             startInfo.ArgumentList.Add("--base-output-dir"); startInfo.ArgumentList.Add(baseOutputDir);
         }
-        if (!string.IsNullOrEmpty(retroRewindPackageDir))
+        if (!string.IsNullOrEmpty(retroDir))
         {
-            startInfo.ArgumentList.Add("--retro-rewind-package-dir"); startInfo.ArgumentList.Add(retroRewindPackageDir);
+            // Still forwarded to local-build.sh under its own internal name -
+            // --retro-rewind-package-dir - matching LocalBuild.ps1's own -RetroRewindPackageDirectory.
+            startInfo.ArgumentList.Add("--retro-rewind-package-dir"); startInfo.ArgumentList.Add(retroDir);
         }
         if (!string.IsNullOrEmpty(retroWfcOfflineDir))
         {

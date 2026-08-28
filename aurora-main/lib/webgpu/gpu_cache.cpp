@@ -137,7 +137,7 @@ static void prune_stale_rows() {
 static bool cache_init_core() {
   Log.debug("SQLite version {}", sqlite3_libversion());
 
-  const auto path = std::filesystem::path{reinterpret_cast<const char8_t*>(g_config.cachePath)} / "dawn_cache.db";
+  const auto path = fs_path_from_string(g_config.cachePath) / "dawn_cache.db";
   std::string file = fs_path_to_string(path);
   Log.debug("Using dawn cache at {}", file);
   auto ret = sqlite3_open(file.c_str(), &db);

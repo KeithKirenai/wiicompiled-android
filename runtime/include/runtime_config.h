@@ -777,7 +777,7 @@ inline std::string DvdRoot(std::string fallback = "") {
 inline std::filesystem::path ResolveRelativeTo(const std::filesystem::path& base,
                                                const std::string& value) {
     // Config strings are UTF-8; the char overload would decode via the ANSI codepage.
-    std::filesystem::path path(reinterpret_cast<const char8_t*>(value.c_str()));
+    std::filesystem::path path(std::u8string(value.begin(), value.end()));
     if (path.is_relative()) {
         path = base / path;
     }

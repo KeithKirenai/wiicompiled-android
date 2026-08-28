@@ -90,7 +90,7 @@ std::string RiivoGenericText(const fs::path& path) {
 }
 
 fs::path RiivoPathFromUtf8(const std::string& text) {
-    return fs::path(reinterpret_cast<const char8_t*>(text.c_str()));
+    return fs::path(std::u8string(text.begin(), text.end()));
 }
 
 std::string RiivoComparablePath(const fs::path& path) {

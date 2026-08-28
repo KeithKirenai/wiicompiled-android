@@ -74,8 +74,27 @@ std::string RiivoGameId() {
     return id;
 }
 
+// Every narrow path string in this file is UTF-8: string()/generic_string()
+// would use the ANSI codepage on Windows, and the XML-supplied halves the
+// resolved paths are built from are UTF-8 already.
+std::string RiivoUtf8(const std::u8string& text) {
+    return std::string(reinterpret_cast<const char*>(text.c_str()), text.size());
+}
+
+std::string RiivoPathText(const fs::path& path) {
+    return RiivoUtf8(path.u8string());
+}
+
+std::string RiivoGenericText(const fs::path& path) {
+    return RiivoUtf8(path.generic_u8string());
+}
+
+fs::path RiivoPathFromUtf8(const std::string& text) {
+    return fs::path(reinterpret_cast<const char8_t*>(text.c_str()));
+}
+
 std::string RiivoComparablePath(const fs::path& path) {
-    std::string text = path.lexically_normal().generic_string();
+    std::string text = RiivoGenericText(path.lexically_normal());
 #ifdef _WIN32
     RuntimeHle::LowerInPlace(text);
 #endif
@@ -87,7 +106,7 @@ void RiivoAddRoot(std::vector<RuntimeRiivolution::Overlay>& overlays, fs::path r
     std::error_code ec;
     if (!fs::is_directory(root, ec)) {
         RT_LOG(RT_TAG_RIIVOLUTION) << "rejected overlay root (" << (source ? source : "unknown")
-                  << "): " << root.string() << " is not a reachable directory" << std::endl;
+                  << "): " << RiivoPathText(root) << " is not a reachable directory" << std::endl;
         return;
     }
 
@@ -106,7 +125,7 @@ void RiivoAddRoot(std::vector<RuntimeRiivolution::Overlay>& overlays, fs::path r
     }
 
     RT_LOG(RT_TAG_RIIVOLUTION) << "overlay root (" << (source ? source : "unknown")
-              << "): " << normalized.string() << std::endl;
+              << "): " << RiivoPathText(normalized) << std::endl;
     overlays.push_back({std::move(normalized), std::nullopt});
 }
 
@@ -156,7 +175,7 @@ std::optional<RiivoXmlSet> RiivoFindXmls(const fs::path& overlayRoot) {
     // <sd>/RetroRewind6), so externals resolve against the root's parent.
     const std::string& configured = RecompMod::RiivolutionXml();
     if (!configured.empty()) {
-        const fs::path configuredXml = overlayRoot / fs::path(configured);
+        const fs::path configuredXml = overlayRoot / RiivoPathFromUtf8(configured);
         if (fs::is_regular_file(configuredXml, ec)) {
             return RiivoXmlSet{overlayRoot.parent_path(), {configuredXml}};
         }
@@ -213,7 +232,7 @@ void RiivoCollectMappings(const RiivolutionContract::Patch& patch, const std::st
             ++set.skippedExternals;
             continue;
         }
-        const fs::path hostFile(*resolved);
+        const fs::path hostFile = RiivoPathFromUtf8(*resolved);
         if (!fs::is_regular_file(hostFile, ec)) {
             ++set.skippedExternals;
             continue;
@@ -229,7 +248,7 @@ void RiivoCollectMappings(const RiivolutionContract::Patch& patch, const std::st
             ++set.skippedExternals;
             continue;
         }
-        const fs::path hostFolder(*resolved);
+        const fs::path hostFolder = RiivoPathFromUtf8(*resolved);
         if (!fs::is_directory(hostFolder, ec)) {
             ++set.skippedExternals;
             continue;
@@ -248,7 +267,7 @@ std::optional<RuntimeRiivolution::PatchSet> RiivoLoadPatchSet(const fs::path& ov
     }
 
     const std::string gameId = RiivoGameId();
-    const std::string sdRootGeneric = xmlSet->sdRoot.generic_string();
+    const std::string sdRootGeneric = RiivoGenericText(xmlSet->sdRoot);
     const auto manifestSelections = RiivoManifestSelections();
 
     // Dolphin-compatible remembered choices; a recomp.yml pin overrides them.
@@ -263,19 +282,20 @@ std::optional<RuntimeRiivolution::PatchSet> RiivoLoadPatchSet(const fs::path& ov
     for (const fs::path& xmlFile : xmlSet->xmlFiles) {
         const auto text = RiivoReadFile(xmlFile);
         if (!text) {
-            RT_LOG(RT_TAG_RIIVOLUTION) << "WARNING: cannot read " << xmlFile.string() << std::endl;
+            RT_LOG(RT_TAG_RIIVOLUTION) << "WARNING: cannot read " << RiivoPathText(xmlFile)
+                      << std::endl;
             continue;
         }
 
         auto disc = RiivolutionContract::ParseString(*text);
         if (!disc) {
-            RT_LOG(RT_TAG_RIIVOLUTION) << "WARNING: " << xmlFile.string()
+            RT_LOG(RT_TAG_RIIVOLUTION) << "WARNING: " << RiivoPathText(xmlFile)
                       << " is not a valid Riivolution XML (version 1 wiidisc); ignoring it"
                       << std::endl;
             continue;
         }
         if (!disc->IsValidForGame(gameId, std::nullopt, std::nullopt)) {
-            RT_LOG(RT_TAG_RIIVOLUTION) << xmlFile.string() << ": not valid for " << gameId
+            RT_LOG(RT_TAG_RIIVOLUTION) << RiivoPathText(xmlFile) << ": not valid for " << gameId
                       << ", skipped" << std::endl;
             continue;
         }
@@ -286,7 +306,7 @@ std::optional<RuntimeRiivolution::PatchSet> RiivoLoadPatchSet(const fs::path& ov
         RiivolutionContract::ApplySelections(*disc, manifestSelections);
 
         const auto activePatches = disc->GeneratePatches(gameId);
-        const std::string xmlDirGeneric = xmlFile.parent_path().generic_string();
+        const std::string xmlDirGeneric = RiivoGenericText(xmlFile.parent_path());
 
         const size_t before = set.mappings.size();
         for (const auto& patch : activePatches) {
@@ -299,9 +319,10 @@ std::optional<RuntimeRiivolution::PatchSet> RiivoLoadPatchSet(const fs::path& ov
                 if (const auto resolvedSave = RiivolutionContract::MakeAbsoluteFromRelative(
                         sdRootGeneric, xmlDirGeneric, savegame->external)) {
                     state.saveRedirect =
-                        RuntimeRiivolution::SaveRedirect{fs::path(*resolvedSave), savegame->clone};
+                        RuntimeRiivolution::SaveRedirect{RiivoPathFromUtf8(*resolvedSave),
+                                                         savegame->clone};
                     RT_LOG(RT_TAG_RIIVOLUTION) << "savegame redirect: "
-                              << state.saveRedirect->hostDirectory.string()
+                              << RiivoPathText(state.saveRedirect->hostDirectory)
                               << (savegame->clone ? " (clone)" : "") << std::endl;
                 }
             }
@@ -310,11 +331,11 @@ std::optional<RuntimeRiivolution::PatchSet> RiivoLoadPatchSet(const fs::path& ov
         // A pack whose XML parses but activates nothing is the most confusing
         // failure this layer has: the game boots, plays, and quietly shows
         // vanilla content. Always say what happened.
-        RT_LOG(RT_TAG_RIIVOLUTION) << xmlFile.string() << ": " << activePatches.size()
+        RT_LOG(RT_TAG_RIIVOLUTION) << RiivoPathText(xmlFile) << ": " << activePatches.size()
                   << " active patch(es), " << (set.mappings.size() - before) << " mapping(s)"
                   << std::endl;
         if (activePatches.empty()) {
-            RT_LOG(RT_TAG_RIIVOLUTION) << "WARNING: " << xmlFile.string()
+            RT_LOG(RT_TAG_RIIVOLUTION) << "WARNING: " << RiivoPathText(xmlFile)
                       << " has no enabled options for " << gameId
                       << "; check the riivolution option selections (recomp.yml) or "
                       << sdRootGeneric << "/riivolution/config/" << gameId.substr(0, 4) << ".xml"
@@ -323,7 +344,7 @@ std::optional<RuntimeRiivolution::PatchSet> RiivoLoadPatchSet(const fs::path& ov
     }
 
     if (set.skippedExternals != 0) {
-        RT_LOG(RT_TAG_RIIVOLUTION) << overlayRoot.string() << ": skipped "
+        RT_LOG(RT_TAG_RIIVOLUTION) << RiivoPathText(overlayRoot) << ": skipped "
                   << set.skippedExternals << " mapping(s) whose external path does not exist"
                   << std::endl;
     }

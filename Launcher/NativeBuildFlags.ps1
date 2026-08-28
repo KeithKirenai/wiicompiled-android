@@ -42,7 +42,9 @@ function Get-MkwToolchainPath([string]$ToolchainRoot) {
 
 function Get-MkwShellSafeToolchainRoot([string]$ToolchainRoot) {
     if ([string]::IsNullOrWhiteSpace($ToolchainRoot)) { throw 'A toolchain root is required.' }
-    $full = [IO.Path]::GetFullPath($ToolchainRoot).TrimEnd('\')
+    $full = [IO.Path]::GetFullPath($ToolchainRoot)
+    # A drive root keeps its separator: "C:" is relative to the current directory on that drive.
+    if ($full -ne [IO.Path]::GetPathRoot($full)) { $full = $full.TrimEnd('\') }
     if ($full -notmatch '[()&^%!]') { return $full }
 
     $sha = [Security.Cryptography.SHA256]::Create()

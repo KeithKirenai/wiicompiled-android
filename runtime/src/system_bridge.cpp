@@ -19,6 +19,7 @@
 #include "memory.h"
 #include "ppc_runtime.h"
 #include "recomp_mod_loader.h"
+#include "runtime_config.h"
 #include "runtime_log.h"
 #include "runtime_product.h"
 #include "timebase_contract.h"

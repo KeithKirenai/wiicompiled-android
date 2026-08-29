@@ -165,8 +165,12 @@ static bool cache_init_core() {
     db = nullptr;
     std::error_code ec;
     std::filesystem::remove(path, ec);
-    std::filesystem::remove(std::filesystem::path{file + "-wal"}, ec);
-    std::filesystem::remove(std::filesystem::path{file + "-shm"}, ec);
+    auto wal = path;
+    wal += "-wal";
+    std::filesystem::remove(wal, ec);
+    auto shm = path;
+    shm += "-shm";
+    std::filesystem::remove(shm, ec);
     ret = sqlite3_open(file.c_str(), &db);
     if (ret != SQLITE_OK) {
       Log.error("Failed to recreate database: {}", sqlite3_errmsg(db));

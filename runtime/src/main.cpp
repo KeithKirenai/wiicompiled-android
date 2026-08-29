@@ -578,11 +578,23 @@ std::string FormatHostStackTrace(unsigned framesToSkip) {
                                &module) != 0 &&
             module != nullptr) {
             moduleBase = reinterpret_cast<DWORD64>(module);
-            wchar_t modulePathBuffer[MAX_PATH] = L"";
-            const DWORD length = GetModuleFileNameW(module, modulePathBuffer, MAX_PATH);
-            if (length != 0) {
-                modulePath = RuntimeConfigFile::PathToUtf8(
-                    std::filesystem::path(std::wstring(modulePathBuffer, length)));
+            std::wstring modulePathBuffer(MAX_PATH, L'\0');
+            for (;;) {
+                const DWORD length =
+                    GetModuleFileNameW(module, modulePathBuffer.data(), static_cast<DWORD>(modulePathBuffer.size()));
+                if (length == 0) {
+                    break;
+                }
+                if (length < modulePathBuffer.size()) {
+                    modulePathBuffer.resize(length);
+                    modulePath = RuntimeConfigFile::PathToUtf8(std::filesystem::path(modulePathBuffer));
+                    break;
+                }
+                // Truncated; retry with a larger buffer up to the extended path limit.
+                if (modulePathBuffer.size() >= 32768) {
+                    break;
+                }
+                modulePathBuffer.resize(modulePathBuffer.size() * 2);
             }
         }
 

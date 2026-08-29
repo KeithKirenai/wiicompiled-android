@@ -329,12 +329,52 @@ void apply_port_preferences() noexcept {
   }
 }
 
+#if defined(_WIN32)
 // Ports are explicit assignments. SDL may choose a player index at connection
 // time, but accepting it would make a newly connected controller silently take
-// over a game port before the user assigns it in the controller menu.
+// over a game port before the user assigns it in the controller menu - which
+// matters here because a manually-assigned WUP-028 adapter port (see
+// wup028_adapter.cpp, Windows-only) could otherwise collide with one SDL
+// auto-claimed. Elsewhere, with no WUP-028 port to collide with, the original
+// auto-claim behavior below is restored instead.
 void ensure_player_index(GameController& controller) noexcept {
   assign_player_index(controller, -1);
 }
+#else
+// SDL only hands out a player index when the device already had a gamepad mapping
+// at connect time, so anything mapped later (the setup wizard) stays at -1.
+void ensure_player_index(GameController& controller) noexcept {
+  const int32_t player = SDL_GetGamepadPlayerIndex(controller.m_controller);
+  if (player >= 0) {
+    controller.m_playerIndex = player;
+    return;
+  }
+  if (controller.m_playerIndex >= 0) {
+    return;
+  }
+  ensure_port_preferences_loaded();
+  const auto claim = [&](bool skipConfiguredPorts) {
+    for (int32_t port = 0; port < PAD_MAX_CONTROLLERS; ++port) {
+      if (skipConfiguredPorts && g_portPreferences[port].state != PortPreferenceState::Unset) {
+        continue;
+      }
+      const bool taken = std::any_of(g_GameControllers.begin(), g_GameControllers.end(), [&](const auto& entry) {
+        return entry.second.m_controller != controller.m_controller && effective_player_index(entry.second) == port;
+      });
+      if (!taken) {
+        assign_player_index(controller, port);
+        return true;
+      }
+    }
+    return false;
+  };
+  // Explicitly configured ports are only used as a last resort so a hot-plugged
+  // controller cannot steal the port its preferred device will claim.
+  if (!claim(true)) {
+    claim(false);
+  }
+}
+#endif
 } // namespace
 
 GameController* get_controller_for_player(uint32_t player) noexcept {

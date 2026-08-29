@@ -1,10 +1,13 @@
 ﻿cmake_minimum_required(VERSION 3.16)
 project(mkw_recompiled)
 
-if(NOT WIN32 OR NOT MINGW OR NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
+if((NOT (WIN32 AND MINGW)) AND (NOT CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+    message(FATAL_ERROR "WiiCompiled requires Windows (LLVM-MinGW) or native Linux")
+endif()
+if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
    NOT CMAKE_SIZEOF_VOID_P EQUAL 8 OR
    NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64)$")
-    message(FATAL_ERROR "WiiCompiled requires 64-bit LLVM-MinGW Clang on Windows")
+    message(FATAL_ERROR "WiiCompiled requires 64-bit Clang targeting x86_64")
 endif()
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     message(FATAL_ERROR "WiiCompiled only supports Release builds")
@@ -45,6 +48,23 @@ add_library(mkw::pugixml ALIAS mkw_pugixml)
 target_include_directories(mkw_pugixml PUBLIC third_party/pugixml)
 target_compile_features(mkw_pugixml PUBLIC cxx_std_17)
 set_target_properties(mkw_pugixml PROPERTIES UNITY_BUILD OFF)
+
+# Non-Windows guest-fiber scheduling (runtime/src/fiber_manager.cpp) needs a symmetric
+# stackful-coroutine primitive to stand in for Win32 Fibers. libco's co_switch() transfers
+# directly to any other created coroutine, matching SwitchToFiber's semantics exactly (unlike
+# asymmetric resume/yield coroutine libraries, which would need every call site restructured).
+# Vendored from upstream (higan-emu/libco @ e18e09d, 2019-10-16, ISC license; valgrind.h is
+# separately BSD-style licensed, see third_party/libco/LICENSE) - all of libco's non-Windows
+# CPU-architecture backends are kept, even though libco.c's own preprocessor dispatch
+# (__amd64__/__i386__/__arm__/__aarch64__/etc.) only ever selects amd64.c for this project's
+# x86_64-only target (see the platform/arch check above). Windows keeps using native Fibers
+# untouched, so this target is never built there.
+if(NOT WIN32)
+    add_library(mkw_libco STATIC third_party/libco/libco.c)
+    add_library(mkw::libco ALIAS mkw_libco)
+    target_include_directories(mkw_libco PUBLIC third_party/libco)
+    set_target_properties(mkw_libco PROPERTIES UNITY_BUILD OFF)
+endif()
 
 # Runtime configuration is real TOML, parsed by toml11 rather than a project-
 # specific line parser. Keep it header-only and vendored so disconnected release
@@ -110,12 +130,22 @@ else()
         message(FATAL_ERROR "Requested aurora-main but ${MKW_AURORA_DIR} is missing")
     endif()
     set(DAWN_ENABLE_D3D11 OFF CACHE BOOL "" FORCE)
-    set(DAWN_ENABLE_D3D12 ON CACHE BOOL "" FORCE)
+    if(WIN32)
+        set(DAWN_ENABLE_D3D12 ON CACHE BOOL "" FORCE)
+        set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "" FORCE)
+        set(DAWN_USE_WINDOWS_UI OFF CACHE BOOL "" FORCE)
+    else()
+        # Non-Windows (Linux): mirrors aurora-main's own
+        # _aurora_dawn_set_platform_backends() choice for this platform - Vulkan only, no
+        # D3D/HLSL. Kept in sync here because this project's own CMake FORCEs these cache
+        # variables before aurora-main's add_subdirectory() runs, which pre-empts aurora's
+        # auto-detection (CACHE ... INTERNAL "" without FORCE never overrides an existing value).
+        set(DAWN_ENABLE_D3D12 OFF CACHE BOOL "" FORCE)
+        set(TINT_BUILD_HLSL_WRITER OFF CACHE BOOL "" FORCE)
+    endif()
     set(DAWN_ENABLE_VULKAN ON CACHE BOOL "" FORCE)
-    set(TINT_BUILD_HLSL_WRITER ON CACHE BOOL "" FORCE)
     set(DAWN_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
     set(DAWN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(DAWN_USE_WINDOWS_UI OFF CACHE BOOL "" FORCE)
 
     # Provide a tiny stub for DXProgrammableCapture when the SDK/PIX headers are
     # missing (common on MinGW). Dawn only includes the header; no symbols are
@@ -206,6 +236,15 @@ set(MKW_RETRO_REWIND_PRODUCT_SOURCE "${CMAKE_CURRENT_LIST_DIR}/src/product/retro
 set(MKW_CPU_BASELINE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/src/host_cpu_baseline.cpp")
 list(REMOVE_ITEM SOURCES ${MKW_BASE_PRODUCT_SOURCE} ${MKW_RETRO_REWIND_PRODUCT_SOURCE}
      ${MKW_CPU_BASELINE_SOURCE})
+
+# WUP-028 (official GameCube adapter) support talks to the adapter over WinUSB, which only
+# exists on Windows - SDL3 already exposes the same hardware as a normal joystick on Linux/macOS,
+# so this file has nothing to do there. Every call site into it is separately gated behind
+# #if defined(_WIN32) (see wup028_adapter.cpp's own header comment), so it's safe to simply not
+# compile it at all on other platforms rather than build a stub implementation.
+if(NOT WIN32)
+    list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/wup028_adapter.cpp")
+endif()
 
 # The translator emits the complete, content-addressed source graph. Consuming
 # this one manifest keeps configure independent of the 28k generated function

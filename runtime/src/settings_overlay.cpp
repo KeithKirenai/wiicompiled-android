@@ -547,9 +547,9 @@ void DrawAudioSettings() {
         if (MusicAttenuation::IsExternalMediaPlaying()) {
             ImGui::TextDisabled("External media is playing; game music is muted.");
         } else if (!MusicAttenuation::IsMediaControlInitializationComplete()) {
-            ImGui::TextDisabled("Waiting for Windows Media Control...");
+            ImGui::TextDisabled("Waiting for media controls...");
         } else if (!MusicAttenuation::IsMediaControlAvailable()) {
-            ImGui::TextDisabled("Windows Media Control is unavailable.");
+            ImGui::TextDisabled("Media controls are unavailable.");
         } else {
             ImGui::TextDisabled("No external media is currently playing.");
         }

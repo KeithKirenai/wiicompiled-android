@@ -1,7 +1,9 @@
 #include "hle_stubs.h"
 #include "memory.h"
 #include "hle/controller_status_contract.h"
+#ifdef _WIN32
 #include "wup028_adapter.h"
+#endif
 
 #include <algorithm>
 #include <cstdio>
@@ -34,7 +36,9 @@ void WritePadStatus(uint32_t base, const PADStatus& status) {
 
 extern "C" uint32_t PAD__Init_HLE()
 {
+#if defined(_WIN32)
     Wup028Adapter::Initialize();
+#endif
     return PADInit() ? 1u : 0u;
 }
 PPC_NATIVE_OVERRIDE(801AF2F0, PAD__Init_HLE, uint32_t, (), ());
@@ -46,8 +50,9 @@ extern "C" uint32_t PAD__Read_HLE(uint32_t statusPtr)
     }
 
     PADStatus statuses[PAD_CHANMAX]{};
-    std::array<PADStatus, PAD_CHANMAX> adapterStatuses{};
     uint32_t rumbleMask = PADRead(statuses);
+#if defined(_WIN32)
+    std::array<PADStatus, PAD_CHANMAX> adapterStatuses{};
     if (Wup028Adapter::Read(adapterStatuses) && !PADIsInputBlocked()) {
         for (uint32_t port = 0; port < PAD_CHANMAX; ++port) {
             if (adapterStatuses[port].err == PAD_ERR_NONE) {
@@ -56,6 +61,7 @@ extern "C" uint32_t PAD__Read_HLE(uint32_t statusPtr)
             }
         }
     }
+#endif
 
     try {
         for (uint32_t i = 0; i < PAD_CHANMAX; ++i) {
@@ -84,8 +90,12 @@ PPC_NATIVE_OVERRIDE(801AF1E4, PAD__Recalibrate_HLE, uint32_t, (uint32_t mask), (
 
 extern "C" void PAD__ControlMotor_HLE(int32_t chan, uint32_t command)
 {
+#if defined(_WIN32)
     if (!Wup028Adapter::SetRumble(static_cast<uint32_t>(chan), command == PAD_MOTOR_RUMBLE)) {
         PADControlMotor(chan, command);
     }
+#else
+    PADControlMotor(chan, command);
+#endif
 }
 PPC_NATIVE_OVERRIDE_VOID(801AF908, PAD__ControlMotor_HLE, (int32_t chan, uint32_t command), (chan, command));

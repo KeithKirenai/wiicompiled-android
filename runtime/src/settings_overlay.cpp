@@ -1,5 +1,7 @@
 #include "settings_overlay.h"
+#ifdef _WIN32
 #include "wup028_adapter.h"
+#endif
 #include "audio_backend.h"
 #include "controller_mapping_wizard.h"
 #include "game_graphics_options.h"
@@ -313,6 +315,12 @@ void ApplyConfiguredMappings() {
 }
 
 void DrawGameCubeAdapterInfo() {
+    // The official GameCube adapter is Windows-only (see wup028_adapter.cpp); on Linux/macOS,
+    // Wup028Adapter is a permanently-disconnected stub, and SDL3 already exposes the same
+    // hardware as a normal joystick, so this menu would only ever show "Searching" and four
+    // perpetually-empty adapter ports - confusing clutter for a feature that can't do anything
+    // on this platform. Skip it entirely rather than render a menu that never has content.
+#if defined(_WIN32)
     ImGui::Separator();
     if (!ImGui::BeginMenu("GameCube adapter info")) return;
 
@@ -338,6 +346,7 @@ void DrawGameCubeAdapterInfo() {
         }
     }
     ImGui::EndMenu();
+#endif
 }
 
 void DrawControllerSettings() {
@@ -351,13 +360,20 @@ void DrawControllerSettings() {
 
     ImGui::Separator();
     const uint32_t selectedGamePort = static_cast<uint32_t>(g_controllerPort);
+#if defined(_WIN32)
     const int adapterAssignment = Wup028Adapter::GetPortAssignment(selectedGamePort);
     if (adapterAssignment >= 0) {
         ImGui::Text("Assigned: GameCube adapter port %d", adapterAssignment + 1);
-    } else {
+    } else
+#endif
+    {
         const char* currentName = PADGetName(selectedGamePort);
         ImGui::Text("Assigned: %s", currentName != nullptr ? currentName : "None");
     }
+#if defined(_WIN32)
+    // Windows-only, same reasoning as DrawGameCubeAdapterInfo() above: on other platforms
+    // adapterAssignment is always -1 and every port would always read "(empty)", so this submenu
+    // would never have anything real to offer.
     if (ImGui::BeginMenu("Assign GameCube adapter port")) {
         if (ImGui::MenuItem("None", nullptr, adapterAssignment < 0)) {
             Wup028Adapter::SetPortAssignment(selectedGamePort, -1);
@@ -381,10 +397,13 @@ void DrawControllerSettings() {
         }
         ImGui::EndMenu();
     }
+#endif
     if (ImGui::MenuItem("Unassign controller")) {
         PADClearPort(selectedGamePort);
+#if defined(_WIN32)
         Wup028Adapter::SetPortAssignment(selectedGamePort, -1);
         RuntimeConfigFile::SetGameCubeAdapterPort(selectedGamePort, -1);
+#endif
         g_configuredControllerIndices.fill(std::numeric_limits<int32_t>::min());
     }
     ImGui::Separator();
@@ -392,7 +411,9 @@ void DrawControllerSettings() {
     const uint32_t controllerCount = PADCount();
     if (controllerCount == 0) {
         ImGui::TextDisabled("No controller connected");
+#if defined(_WIN32)
         DrawGameCubeAdapterInfo();
+#endif
         return;
     }
 
@@ -401,8 +422,10 @@ void DrawControllerSettings() {
             const char* name = PADGetNameForControllerIndex(index);
             ImGui::PushID(static_cast<int>(index));
             if (ImGui::MenuItem(name != nullptr ? name : "Unknown controller")) {
+#if defined(_WIN32)
                 Wup028Adapter::SetPortAssignment(selectedGamePort, -1);
                 RuntimeConfigFile::SetGameCubeAdapterPort(selectedGamePort, -1);
+#endif
                 PADSetPortForIndex(index, selectedGamePort);
                 g_configuredControllerIndices.fill(std::numeric_limits<int32_t>::min());
                 ApplyConfiguredMappings();
@@ -416,7 +439,9 @@ void DrawControllerSettings() {
     PADButtonMapping* mappings = PADGetButtonMappings(static_cast<uint32_t>(g_controllerPort), &mappingCount);
     if (mappings == nullptr || mappingCount != PAD_BUTTON_COUNT) {
         ImGui::TextDisabled("Assign a controller to edit its buttons");
+#if defined(_WIN32)
         DrawGameCubeAdapterInfo();
+#endif
         return;
     }
 
@@ -556,7 +581,9 @@ void DrawControllerSettings() {
         ImGui::TextUnformatted(kControllerButtons[i].label);
         ImGui::PopID();
     }
+#if defined(_WIN32)
     DrawGameCubeAdapterInfo();
+#endif
 }
 
 void DrawAudioSettings() {

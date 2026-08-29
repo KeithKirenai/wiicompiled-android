@@ -1377,7 +1377,9 @@ int RuntimeMain(int argc, char** argv) {
         }
         aurora_set_frame_worker_wait_callback(ServiceGuestTimingDuringAuroraFrameWait);
         GxGuestWrite::InstallAuroraHooks();
+#if defined(_WIN32)
         Wup028Adapter::Initialize();
+#endif
         UpdateMkwDynamicAspectSurface(auroraInfo.windowSize.native_fb_width,
                                       auroraInfo.windowSize.native_fb_height);
         settings_overlay::InitializeRuntimeSettings();
@@ -1419,7 +1421,9 @@ int RuntimeMain(int argc, char** argv) {
         // Shutdown fiber system
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
+#if defined(_WIN32)
         Wup028Adapter::Shutdown();
+#endif
         aurora_shutdown();
         SetRuntimeExitCodeImpl(0);
         ShutdownProcessTranscript();
@@ -1437,7 +1441,9 @@ int RuntimeMain(int argc, char** argv) {
         SetRuntimeExitCodeImpl(1);
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
+#if defined(_WIN32)
         Wup028Adapter::Shutdown();
+#endif
         aurora_shutdown();
         ShutdownProcessTranscript();
         return 1;
@@ -1449,7 +1455,9 @@ int RuntimeMain(int argc, char** argv) {
         SetRuntimeExitCodeImpl(1);
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
+#if defined(_WIN32)
         Wup028Adapter::Shutdown();
+#endif
         aurora_shutdown();
         ShutdownProcessTranscript();
         return 1;

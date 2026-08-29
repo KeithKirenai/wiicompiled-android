@@ -237,6 +237,15 @@ set(MKW_CPU_BASELINE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/src/host_cpu_baseline.cpp
 list(REMOVE_ITEM SOURCES ${MKW_BASE_PRODUCT_SOURCE} ${MKW_RETRO_REWIND_PRODUCT_SOURCE}
      ${MKW_CPU_BASELINE_SOURCE})
 
+# WUP-028 (official GameCube adapter) support talks to the adapter over WinUSB, which only
+# exists on Windows - SDL3 already exposes the same hardware as a normal joystick on Linux/macOS,
+# so this file has nothing to do there. Every call site into it is separately gated behind
+# #if defined(_WIN32) (see wup028_adapter.cpp's own header comment), so it's safe to simply not
+# compile it at all on other platforms rather than build a stub implementation.
+if(NOT WIN32)
+    list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/wup028_adapter.cpp")
+endif()
+
 # The translator emits the complete, content-addressed source graph. Consuming
 # this one manifest keeps configure independent of the 28k generated function
 # files and of optional Retro Rewind artifacts such as code.map.

@@ -18,7 +18,7 @@ $llvmReadobj = [System.IO.Path]::GetFullPath($LlvmReadobjPath)
 
 $systemDlls = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
 @(
-    'advapi32.dll', 'authz.dll', 'bcrypt.dll', 'combase.dll', 'comdlg32.dll', 'crypt32.dll',
+    'advapi32.dll', 'authz.dll', 'bcrypt.dll', 'bcryptprimitives.dll', 'combase.dll', 'comdlg32.dll', 'crypt32.dll',
     'd3d11.dll', 'd3d12.dll', 'dbghelp.dll', 'dcomp.dll', 'dwrite.dll', 'dwmapi.dll',
     'dxgi.dll', 'gdi32.dll', 'imm32.dll',
     'iphlpapi.dll', 'kernel32.dll', 'mf.dll', 'mfplat.dll', 'mfreadwrite.dll', 'mfuuid.dll',

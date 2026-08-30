@@ -329,18 +329,6 @@ void apply_port_preferences() noexcept {
   }
 }
 
-#if defined(_WIN32)
-// Ports are explicit assignments. SDL may choose a player index at connection
-// time, but accepting it would make a newly connected controller silently take
-// over a game port before the user assigns it in the controller menu - which
-// matters here because a manually-assigned WUP-028 adapter port (see
-// wup028_adapter.cpp, Windows-only) could otherwise collide with one SDL
-// auto-claimed. Elsewhere, with no WUP-028 port to collide with, the original
-// auto-claim behavior below is restored instead.
-void ensure_player_index(GameController& controller) noexcept {
-  assign_player_index(controller, -1);
-}
-#else
 // SDL only hands out a player index when the device already had a gamepad mapping
 // at connect time, so anything mapped later (the setup wizard) stays at -1.
 void ensure_player_index(GameController& controller) noexcept {
@@ -374,7 +362,6 @@ void ensure_player_index(GameController& controller) noexcept {
     claim(false);
   }
 }
-#endif
 } // namespace
 
 GameController* get_controller_for_player(uint32_t player) noexcept {

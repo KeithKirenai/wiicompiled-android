@@ -59,6 +59,7 @@
 #include <aurora/aurora.h>
 #include <aurora/gfx.h>
 #include <dolphin/gx/GXAurora.h>
+#include <dolphin/pad.h>
 #include <dolphin/vi.h>
 
 // Defined in `runtime/src/hle/vi.cpp` (used by GX/VI HLE).
@@ -1379,6 +1380,9 @@ int RuntimeMain(int argc, char** argv) {
         GxGuestWrite::InstallAuroraHooks();
 #if defined(_WIN32)
         Wup028Adapter::Initialize();
+        for (uint32_t port = 0; port < PAD_CHANMAX; ++port) {
+            if (Wup028Adapter::GetPortAssignment(port) >= 0) PADClearPort(port);
+        }
 #endif
         UpdateMkwDynamicAspectSurface(auroraInfo.windowSize.native_fb_width,
                                       auroraInfo.windowSize.native_fb_height);

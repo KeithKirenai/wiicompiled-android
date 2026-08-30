@@ -526,12 +526,60 @@ inline double PpcFnmsubsInline(double a, double c, double b)
     return static_cast<double>(std::isnan(result) ? result : -result);
 }
 
+#if defined(__aarch64__)
+// x86 resolves a single NaN source operand (SNaN or QNaN alike) to that operand quieted with
+// sign and payload kept, and an invalid op with no NaN input to 0xFFC00000; NEON prefers SNaNs,
+// checks the accumulator first, and yields the positive default NaN 0x7FC00000. NaN result
+// lanes (rare: one branch on the pair) are therefore rewritten to the x86 answer, keeping the
+// two hosts bit-identical for every case where x86 itself is deterministic. With two or more
+// NaN operands even x86 is not: the winning operand depends on which FMA form / commuted
+// operand order clang picked per call site, so this resolver's fixed first-operand priority is
+// one of the answers a real x86 build can give, not a guaranteed match.
+inline uint64_t PpcPairNanLaneBitsInline(PpcPairVec value)
+{
+    return vget_lane_u64(vreinterpret_u64_u32(vmvn_u32(vceq_f32(value, value))), 0);
+}
+
+inline PpcPairVec PpcQuietPairInline(PpcPairVec value)
+{
+    return vreinterpret_f32_u32(vorr_u32(vreinterpret_u32_f32(value), vdup_n_u32(0x00400000u)));
+}
+
+inline PpcPairVec PpcResolveNanLanesInline(PpcPairVec result, PpcPairVec op1, PpcPairVec op2)
+{
+    const uint32x2_t op1Nan = vmvn_u32(vceq_f32(op1, op1));
+    const uint32x2_t op2Nan = vmvn_u32(vceq_f32(op2, op2));
+    PpcPairVec replacement = vreinterpret_f32_u32(vdup_n_u32(0xFFC00000u));
+    replacement = vbsl_f32(op2Nan, PpcQuietPairInline(op2), replacement);
+    replacement = vbsl_f32(op1Nan, PpcQuietPairInline(op1), replacement);
+    const uint32x2_t resultNan = vmvn_u32(vceq_f32(result, result));
+    return vbsl_f32(resultNan, replacement, result);
+}
+
+inline PpcPairVec PpcResolveNanLanes3Inline(
+    PpcPairVec result, PpcPairVec op1, PpcPairVec op2, PpcPairVec op3)
+{
+    const uint32x2_t op3Nan = vmvn_u32(vceq_f32(op3, op3));
+    PpcPairVec replacement = vreinterpret_f32_u32(vdup_n_u32(0xFFC00000u));
+    replacement = vbsl_f32(op3Nan, PpcQuietPairInline(op3), replacement);
+    const uint32x2_t op2Nan = vmvn_u32(vceq_f32(op2, op2));
+    replacement = vbsl_f32(op2Nan, PpcQuietPairInline(op2), replacement);
+    const uint32x2_t op1Nan = vmvn_u32(vceq_f32(op1, op1));
+    replacement = vbsl_f32(op1Nan, PpcQuietPairInline(op1), replacement);
+    const uint32x2_t resultNan = vmvn_u32(vceq_f32(result, result));
+    return vbsl_f32(resultNan, replacement, result);
+}
+#endif // defined(__aarch64__)
+
 inline PpcPairVec PpcMulPairInline(PpcPairVec lhs, PpcPairVec rhs)
 {
 #if defined(__x86_64__)
     return _mm_mul_ps(lhs, rhs);
 #elif defined(__aarch64__)
-    return vmul_f32(lhs, rhs);
+    const PpcPairVec result = vmul_f32(lhs, rhs);
+    if (PpcPairNanLaneBitsInline(result) != 0) [[unlikely]]
+        return PpcResolveNanLanesInline(result, lhs, rhs);
+    return result;
 #endif
 }
 
@@ -554,14 +602,17 @@ inline double PPC_PsMulNoNiInline(double lhs, double rhs)
 
 // Fused multiply-add/subtract on a pair. NEON's vfma_f32(acc, a, b) = acc + a*b has an
 // accumulator-first operand order, unlike x86's _mm_fmadd_ps(a, b, c) = a*b + c - msub is
-// therefore expressed as an fma against a negated accumulator on both architectures, not a
-// dedicated fms intrinsic, so the two branches stay structurally parallel.
+// therefore an fma against a negated accumulator. That vneg would flip a sole-NaN subtractor's
+// sign, which x86's vfmsub does not do, so the NaN resolver receives the original subtractor.
 inline PpcPairVec PpcFmaddPairInline(PpcPairVec multiplicand, PpcPairVec multiplier, PpcPairVec addend)
 {
 #if defined(__x86_64__)
     return _mm_fmadd_ps(multiplicand, multiplier, addend);
 #elif defined(__aarch64__)
-    return vfma_f32(addend, multiplicand, multiplier);
+    const PpcPairVec result = vfma_f32(addend, multiplicand, multiplier);
+    if (PpcPairNanLaneBitsInline(result) != 0) [[unlikely]]
+        return PpcResolveNanLanes3Inline(result, multiplicand, multiplier, addend);
+    return result;
 #endif
 }
 
@@ -570,7 +621,10 @@ inline PpcPairVec PpcFmsubPairInline(PpcPairVec multiplicand, PpcPairVec multipl
 #if defined(__x86_64__)
     return _mm_fmsub_ps(multiplicand, multiplier, subtractor);
 #elif defined(__aarch64__)
-    return vfma_f32(vneg_f32(subtractor), multiplicand, multiplier);
+    const PpcPairVec result = vfma_f32(vneg_f32(subtractor), multiplicand, multiplier);
+    if (PpcPairNanLaneBitsInline(result) != 0) [[unlikely]]
+        return PpcResolveNanLanes3Inline(result, multiplicand, multiplier, subtractor);
+    return result;
 #endif
 }
 
@@ -718,7 +772,10 @@ inline PpcPairVec PpcAddPairInline(PpcPairVec lhs, PpcPairVec rhs)
 #if defined(__x86_64__)
     return _mm_add_ps(lhs, rhs);
 #elif defined(__aarch64__)
-    return vadd_f32(lhs, rhs);
+    const PpcPairVec result = vadd_f32(lhs, rhs);
+    if (PpcPairNanLaneBitsInline(result) != 0) [[unlikely]]
+        return PpcResolveNanLanesInline(result, lhs, rhs);
+    return result;
 #endif
 }
 
@@ -727,7 +784,10 @@ inline PpcPairVec PpcSubPairInline(PpcPairVec lhs, PpcPairVec rhs)
 #if defined(__x86_64__)
     return _mm_sub_ps(lhs, rhs);
 #elif defined(__aarch64__)
-    return vsub_f32(lhs, rhs);
+    const PpcPairVec result = vsub_f32(lhs, rhs);
+    if (PpcPairNanLaneBitsInline(result) != 0) [[unlikely]]
+        return PpcResolveNanLanesInline(result, lhs, rhs);
+    return result;
 #endif
 }
 
@@ -736,7 +796,10 @@ inline PpcPairVec PpcDivPairInline(PpcPairVec lhs, PpcPairVec rhs)
 #if defined(__x86_64__)
     return _mm_div_ps(lhs, rhs);
 #elif defined(__aarch64__)
-    return vdiv_f32(lhs, rhs);
+    const PpcPairVec result = vdiv_f32(lhs, rhs);
+    if (PpcPairNanLaneBitsInline(result) != 0) [[unlikely]]
+        return PpcResolveNanLanesInline(result, lhs, rhs);
+    return result;
 #endif
 }
 

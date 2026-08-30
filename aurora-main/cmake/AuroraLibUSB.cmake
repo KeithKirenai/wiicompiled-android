@@ -38,6 +38,6 @@ add_library(LibUSB::LibUSB ALIAS usb-1.0)
 # probe is answered up front because the archive does not exist until build time.
 set(LibUSB_INCLUDE_PATH "${_libusb_root}" CACHE PATH "" FORCE)
 set(LibUSB_LIBRARY "usb-1.0" CACHE STRING "" FORCE)
-set(HAVE_LIBUSB_H 1 CACHE INTERNAL "")
+set(HAVE_LIBUSB_H 1 CACHE INTERNAL "" FORCE)
 set(SDL_HIDAPI_LIBUSB ON CACHE BOOL "" FORCE)
 set(SDL_HIDAPI_LIBUSB_SHARED OFF CACHE BOOL "" FORCE)

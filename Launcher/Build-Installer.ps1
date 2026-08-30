@@ -98,7 +98,7 @@ Assert-Directory $dependencySources 'Pinned offline dependency sources'
 # to compile (launcher/Prepare-NativePrebuilt.ps1).
 # Kept in step with InstalledLayout.DependencyNames by Test-PinnedFacts.ps1: the installed host
 # refuses to call a toolkit complete unless every one of these directories is present.
-$requiredDependencies = @('abseil-cpp','cppwinrt','dawn_prebuilt','fmt','freetype','imgui','native_prebuilt','png','SDL','sqlite3','tracy','xxhash','zlib','zstd')
+$requiredDependencies = @('abseil-cpp','cppwinrt','dawn_prebuilt','fmt','freetype','imgui','libusb','native_prebuilt','png','SDL','sqlite3','tracy','xxhash','zlib','zstd')
 
 # The precompiled archives are only interchangeable with what the user's machine
 # compiles if both came from this toolchain and this flag set, so a stale package

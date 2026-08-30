@@ -16,6 +16,7 @@ option(AURORA_CACHE_USE_ZSTD "Compress WebGPU cache entries with zstd" ON)
 set(AURORA_DAWN_VERSION "v20260603.191052" CACHE STRING "Dawn version tag (https://github.com/encounter/dawn-build/releases)")
 set(AURORA_SDL3_VERSION "3.4.4" CACHE STRING "SDL3 version tag (https://github.com/libsdl-org/SDL/releases)")
 set(AURORA_NOD_VERSION "v2.0.0-alpha.8" CACHE STRING "nod version tag (https://github.com/encounter/nod/releases)")
+set(AURORA_LIBUSB_VERSION "1.0.30" CACHE STRING "libusb version tag (https://github.com/libusb/libusb/releases)")
 
 # Platform-specific defaults
 if (CMAKE_CROSSCOMPILING)
@@ -44,6 +45,7 @@ set(AURORA_SDL3_PROVIDER "${_default_provider}" CACHE STRING
 set_property(CACHE AURORA_SDL3_PROVIDER PROPERTY STRINGS auto vendor system package)
 set(AURORA_SDL3_LINKAGE "${_default_linkage}" CACHE STRING "SDL3 linkage type preference")
 set_property(CACHE AURORA_SDL3_LINKAGE PROPERTY STRINGS shared static)
+option(AURORA_SDL3_LIBUSB "Build the vendored SDL3 with libusb on Windows (official GameCube adapter support)" ON)
 
 # nod (if AURORA_ENABLE_DVD)
 set(AURORA_NOD_PROVIDER "${_default_provider}" CACHE STRING

@@ -210,7 +210,7 @@ function(mkw_configure_product target)
 
     if(WIN32)
         target_link_libraries(${target} PRIVATE
-            dbghelp user32 winmm ws2_32 iphlpapi secur32 crypt32 windowsapp setupapi winusb)
+            dbghelp user32 winmm ws2_32 iphlpapi secur32 crypt32 windowsapp)
 
         set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE TRUE)
     else()

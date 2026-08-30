@@ -270,7 +270,6 @@ void SetTopBarVisible(bool visible) {
         return;
     }
     g_topBarVisible = visible;
-    PADBlockInput(visible);
 }
 
 void ApplyConfiguredMappings() {
@@ -957,7 +956,7 @@ void InitializeRuntimeSettings() noexcept {
     aurora_set_skip_unready_pipelines(g_skipUnreadyPipelines);
     g_strapInputAccepted.store(false, std::memory_order_relaxed);
     g_startupDismissFrame.store(UINT64_MAX, std::memory_order_relaxed);
-    PADBlockInput(g_topBarVisible);
+    PADBlockInput(false);
 }
 
 void HandleEvents(const AuroraEvent* events) noexcept {
@@ -994,9 +993,8 @@ void Draw() noexcept {
     DrawFpsOverlay();
     DrawTopBar();
     controller_mapping_wizard::Draw();
-    // The wizard captures raw presses; keep them out of the game even when the
-    // top bar is hidden mid-setup.
-    PADBlockInput(g_topBarVisible || controller_mapping_wizard::IsActive());
+    // The wizard captures raw presses; keep them out of the game.
+    PADBlockInput(controller_mapping_wizard::IsActive());
     DrawStartupScreen();
 }
 

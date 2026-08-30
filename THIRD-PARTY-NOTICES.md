@@ -118,7 +118,7 @@ Source: <https://github.com/higan-emu/libco>. Full license text:
 
 ## Fetched at build time and redistributed in release builds
 
-These are pinned in `aurora-main/extern/CMakeLists.txt` and
+These are pinned in `aurora-main/extern/CMakeLists.txt`, `aurora-main/CMakeLists.txt` and
 `aurora-main/cmake/AuroraDawnProvider.cmake`. They are not stored in this repository; the build
 downloads them, and release installers carry the resulting binaries. Their license texts are
 included in the installer's `licenses/` folder.
@@ -129,6 +129,7 @@ included in the installer's `licenses/` folder.
 | Tint (part of Dawn) | with Dawn | BSD-3-Clause | <https://dawn.googlesource.com/dawn> |
 | DirectXShaderCompiler (`dxcompiler.dll`) | with Dawn | NCSA / University of Illinois Open Source | <https://github.com/microsoft/DirectXShaderCompiler> |
 | SDL | 3.4.4 | zlib | <https://github.com/libsdl-org/SDL> |
+| libusb (linked into SDL on Windows) | 1.0.30 | LGPL-2.1-or-later | <https://github.com/libusb/libusb> |
 | Abseil | LTS 20240722.0 | Apache-2.0 | <https://github.com/abseil/abseil-cpp> |
 | Dear ImGui | 1.91.9b-docking | MIT | <https://github.com/ocornut/imgui> |
 | {fmt} | 11.1.4 | MIT | <https://github.com/fmtlib/fmt> |

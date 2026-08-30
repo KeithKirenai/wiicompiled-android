@@ -49,7 +49,6 @@
 #include "system_bridge.h"
 #include "ppc_runtime.h"
 #include "aurora_events.h"
-#include "wup028_adapter.h"
 #include "fiber_manager.h"
 #include "hle_stubs.h"
 #include "runtime_config.h"
@@ -59,7 +58,6 @@
 #include <aurora/aurora.h>
 #include <aurora/gfx.h>
 #include <dolphin/gx/GXAurora.h>
-#include <dolphin/pad.h>
 #include <dolphin/vi.h>
 
 // Defined in `runtime/src/hle/vi.cpp` (used by GX/VI HLE).
@@ -1378,12 +1376,6 @@ int RuntimeMain(int argc, char** argv) {
         }
         aurora_set_frame_worker_wait_callback(ServiceGuestTimingDuringAuroraFrameWait);
         GxGuestWrite::InstallAuroraHooks();
-#if defined(_WIN32)
-        Wup028Adapter::Initialize();
-        for (uint32_t port = 0; port < PAD_CHANMAX; ++port) {
-            if (Wup028Adapter::GetPortAssignment(port) >= 0) PADClearPort(port);
-        }
-#endif
         UpdateMkwDynamicAspectSurface(auroraInfo.windowSize.native_fb_width,
                                       auroraInfo.windowSize.native_fb_height);
         settings_overlay::InitializeRuntimeSettings();
@@ -1425,9 +1417,6 @@ int RuntimeMain(int argc, char** argv) {
         // Shutdown fiber system
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
-#if defined(_WIN32)
-        Wup028Adapter::Shutdown();
-#endif
         aurora_shutdown();
         SetRuntimeExitCodeImpl(0);
         ShutdownProcessTranscript();
@@ -1445,9 +1434,6 @@ int RuntimeMain(int argc, char** argv) {
         SetRuntimeExitCodeImpl(1);
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
-#if defined(_WIN32)
-        Wup028Adapter::Shutdown();
-#endif
         aurora_shutdown();
         ShutdownProcessTranscript();
         return 1;
@@ -1459,9 +1445,6 @@ int RuntimeMain(int argc, char** argv) {
         SetRuntimeExitCodeImpl(1);
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
-#if defined(_WIN32)
-        Wup028Adapter::Shutdown();
-#endif
         aurora_shutdown();
         ShutdownProcessTranscript();
         return 1;

@@ -57,6 +57,8 @@ The port does NOT pretend to be a Wii Remote or Classic Controller.
 Mappings are positional (`south`, `east`, `west`, `north`) rather than Xbox-labelled, so the
 same config makes sense on Xbox, PlayStation, Nintendo and generic SDL pads alike, and extra
 inputs like paddles, touchpads and share buttons show up when the hardware reports them.
+The official Wii U / Switch GameCube adapter (WUP-028) works too; as with Dolphin, on Windows the
+adapter must be switched to the WinUSB driver once (Zadig).
 
 ## Requirements
 

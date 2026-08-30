@@ -63,11 +63,6 @@ struct RuntimeUserConfig {
     // comma-separated SDL-style physical button names ("south", or
     // "dpad_up,left_shoulder") as values; pressing either bound button counts.
     std::array<std::optional<std::string>, 12> controllerButtons;
-#ifdef _WIN32
-    // One-based physical WUP-028 adapter port assigned to each game port.
-    // Zero or a missing value means the adapter does not own that game port.
-    std::array<uint32_t, 4> gameCubeAdapterPorts{};
-#endif
 };
 
 namespace RuntimeConfigFile {
@@ -367,14 +362,6 @@ inline RuntimeUserConfig ParseConfigDocument(const toml::value& document) {
         config.controllerButtons[index] =
             FindConfigValue<std::string>(document, "controller", buttonKeys[index]);
     }
-#ifdef _WIN32
-    for (size_t index = 0; index < config.gameCubeAdapterPorts.size(); ++index) {
-        const std::string key = "adapter_port_" + std::to_string(index + 1);
-        if (auto value = FindConfigUint(document, "controller", key); value && *value <= 4) {
-            config.gameCubeAdapterPorts[index] = *value;
-        }
-    }
-#endif
 
     config.widescreen = FindConfigValue<bool>(document, "video", "widescreen");
     config.windowPosX = FindConfigInt(document, "video", "window_x");
@@ -637,21 +624,6 @@ inline bool SetControllerButton(size_t index, std::string value) {
     Mutable().controllerButtons[index] = value;
     return WriteSetting("controller", kControllerButtonKeys[index], FormatString(value));
 }
-
-#ifdef _WIN32
-inline int GameCubeAdapterPort(size_t gamePort) {
-    if (gamePort >= Get().gameCubeAdapterPorts.size()) return -1;
-    const uint32_t physicalPort = Get().gameCubeAdapterPorts[gamePort];
-    return physicalPort >= 1 && physicalPort <= 4 ? static_cast<int>(physicalPort - 1) : -1;
-}
-
-inline bool SetGameCubeAdapterPort(size_t gamePort, int physicalPort) {
-    if (gamePort >= Mutable().gameCubeAdapterPorts.size() || physicalPort < -1 || physicalPort >= 4) return false;
-    const uint32_t storedPort = physicalPort < 0 ? 0u : static_cast<uint32_t>(physicalPort + 1);
-    Mutable().gameCubeAdapterPorts[gamePort] = storedPort;
-    return WriteSetting("controller", "adapter_port_" + std::to_string(gamePort + 1), std::to_string(storedPort));
-}
-#endif
 
 inline bool SetAudioVolume(float value) {
     value = std::clamp(value, 0.0f, 1.0f);

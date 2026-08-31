@@ -49,6 +49,7 @@
 #include "system_bridge.h"
 #include "ppc_runtime.h"
 #include "aurora_events.h"
+#include "discord_presence.h"
 #include "fiber_manager.h"
 #include "hle_stubs.h"
 #include "runtime_config.h"
@@ -1292,6 +1293,9 @@ int RuntimeMain(int argc, char** argv) {
             throw std::invalid_argument("The game runtime does not accept command-line options; use Config.toml through the installed host.");
         }
         RuntimeConfigFile::LogLoadedConfig();
+        if (RuntimeConfigFile::DiscordPresenceEnabled()) {
+            DiscordPresence::Initialize(RuntimeConfigFile::DiscordClientId(), "Mario Kart Wii");
+        }
         SystemBridge::Initialize();
         TranslatedFunctionRegistry::Finalize();
 
@@ -1418,6 +1422,7 @@ int RuntimeMain(int argc, char** argv) {
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
         aurora_shutdown();
+        DiscordPresence::Shutdown();
         SetRuntimeExitCodeImpl(0);
         ShutdownProcessTranscript();
         return 0;
@@ -1435,6 +1440,7 @@ int RuntimeMain(int argc, char** argv) {
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
         aurora_shutdown();
+        DiscordPresence::Shutdown();
         ShutdownProcessTranscript();
         return 1;
     } catch (const std::exception& ex) {
@@ -1446,6 +1452,7 @@ int RuntimeMain(int argc, char** argv) {
         Fiber::GuestFiberManager::Shutdown();
         WindowPlacementPersistence::Flush(true);
         aurora_shutdown();
+        DiscordPresence::Shutdown();
         ShutdownProcessTranscript();
         return 1;
     }

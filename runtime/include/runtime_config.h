@@ -53,6 +53,11 @@ struct RuntimeUserConfig {
     std::optional<bool> audioMixWorker;
     std::optional<bool> attenuateMusicWhenMediaPlays;
     std::optional<bool> networkEnabled;
+    std::optional<bool> discordPresenceEnabled;
+    // The application ID of the WiiCompiled Discord application. This is only
+    // used by the base product; Retro Rewind supplies its own ID through the
+    // standard Dolphin /dev/dolphin interface.
+    std::optional<std::string> discordClientId;
     std::optional<std::string> nandRoot;
     std::optional<std::string> dvdRoot;
     // The one canonical Retro Rewind installation, owned and updated by the frontend. Setup records
@@ -286,6 +291,12 @@ inline void EnsureConfigFile() {
               "mix_worker = true\n\n"
               "[network]\n"
               "enabled = true\n\n"
+              "[discord]\n"
+              "# Rich Presence talks only to a locally-running Discord client.\n"
+              "# Retro Rewind supplies its official app ID automatically. Set this\n"
+              "# to WiiCompiled's Discord application ID for basic base-game presence.\n"
+              "enabled = true\n"
+              "# client_id = \"123456789012345678\"\n\n"
               "[paths]\n"
               "# dvd_root = \"D:\\\\MarioKartWii\\\\DATA\"\n"
               "# nand_root = \"D:\\\\WiiNand\"\n"
@@ -418,6 +429,8 @@ inline RuntimeUserConfig ParseConfigDocument(const toml::value& document) {
     config.attenuateMusicWhenMediaPlays =
         FindConfigValue<bool>(document, "audio", "attenuate_music_when_media_plays");
     config.networkEnabled = FindConfigValue<bool>(document, "network", "enabled");
+    config.discordPresenceEnabled = FindConfigValue<bool>(document, "discord", "enabled");
+    config.discordClientId = FindConfigValue<std::string>(document, "discord", "client_id");
 
     config.nandRoot = FindConfigValue<std::string>(document, "paths", "nand_root");
     config.dvdRoot = FindConfigValue<std::string>(document, "paths", "dvd_root");
@@ -815,6 +828,14 @@ inline std::string RetroRewindRoot(std::string fallback = "") {
     return Get().retroRewindRoot.value_or(std::move(fallback));
 }
 
+inline bool DiscordPresenceEnabled(bool fallback = true) {
+    return Get().discordPresenceEnabled.value_or(fallback);
+}
+
+inline std::string DiscordClientId(std::string fallback = "") {
+    return Get().discordClientId.value_or(std::move(fallback));
+}
+
 inline const std::vector<std::string>& OverlayRoots() {
     return Get().overlayRoots;
 }
@@ -870,6 +891,9 @@ inline void LogLoadedConfig() {
             }
             if (config.networkEnabled) {
                 std::cout << " network_enabled=" << (*config.networkEnabled ? "true" : "false");
+            }
+            if (config.discordPresenceEnabled) {
+                std::cout << " discord_enabled=" << (*config.discordPresenceEnabled ? "true" : "false");
             }
             if (config.nandRoot) {
                 std::cout << " nand_root=" << *config.nandRoot;

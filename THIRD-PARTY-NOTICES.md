@@ -26,10 +26,6 @@ Aurora itself vendors:
   (shagkur) and Dave Murphy (WinterMute). `aurora-main/lib/card/SRAM.hpp`.
   Source: <https://github.com/devkitPro/libogc>
 
-> [!NOTE]
-> Upstream aurora ships `assets/screenshot.png`, a rendered frame from a different Nintendo
-> title. It is intentionally omitted from this repository.
-
 ### Dolphin Emulator data files - GPL-2.0-or-later
 
 Copyright (c) 2003+ Dolphin Emulator Project.

@@ -226,7 +226,8 @@ private:
     }
 
     void SendActivityLocked() {
-        if (!connected_ && !ConnectLocked()) {
+        if (!connected_) {
+            ReconnectAndSendLocked();
             return;
         }
         if (ActiveClientIdLocked().empty()) {

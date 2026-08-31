@@ -832,7 +832,7 @@ inline bool DiscordPresenceEnabled(bool fallback = true) {
     return Get().discordPresenceEnabled.value_or(fallback);
 }
 
-inline std::string DiscordClientId(std::string fallback = "") {
+inline std::string DiscordClientId(std::string fallback = "1543869015015952485") {
     return Get().discordClientId.value_or(std::move(fallback));
 }
 

@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -32,6 +33,7 @@ namespace {
 constexpr uint32_t kHandshakeOpcode = 0;
 constexpr uint32_t kFrameOpcode = 1;
 constexpr size_t kMaxClientIdLength = 32;
+constexpr auto kConnectionRetryCooldown = std::chrono::seconds(1);
 
 bool IsClientId(std::string_view value) {
     return !value.empty() && value.size() <= kMaxClientIdLength &&
@@ -87,32 +89,48 @@ std::string BuildActivityPayload(const Activity& activity) {
     bool hasActivityField = false;
     AppendJsonString(json, hasActivityField, "details", activity.details);
     AppendJsonString(json, hasActivityField, "state", activity.state);
+    const auto appendSection = [&](std::string_view name, const auto& append) {
+        if (hasActivityField) {
+            json << ',';
+        }
+        json << '\"' << name << "\":{";
+        append();
+        json << '}';
+        hasActivityField = true;
+    };
+    const bool hasAssets = !activity.largeImageKey.empty() || !activity.largeImageText.empty() ||
+                           !activity.smallImageKey.empty() || !activity.smallImageText.empty();
+    if (hasAssets) {
+        appendSection("assets", [&] {
+            bool hasAsset = false;
+            AppendJsonString(json, hasAsset, "large_image", activity.largeImageKey);
+            AppendJsonString(json, hasAsset, "large_text", activity.largeImageText);
+            AppendJsonString(json, hasAsset, "small_image", activity.smallImageKey);
+            AppendJsonString(json, hasAsset, "small_text", activity.smallImageText);
+        });
+    }
+    if (activity.startTimestamp > 0 || activity.endTimestamp > 0) {
+        appendSection("timestamps", [&] {
+            if (activity.startTimestamp > 0) {
+                json << "\"start\":" << activity.startTimestamp;
+            }
+            if (activity.endTimestamp > 0) {
+                if (activity.startTimestamp > 0) {
+                    json << ',';
+                }
+                json << "\"end\":" << activity.endTimestamp;
+            }
+        });
+    }
+    if (activity.partySize > 0 && activity.partyMax > 0) {
+        appendSection("party", [&] {
+            json << "\"size\":[" << activity.partySize << ',' << activity.partyMax << ']';
+        });
+    }
     if (hasActivityField) {
         json << ',';
     }
-    json << "\"assets\":{";
-    bool hasAsset = false;
-    AppendJsonString(json, hasAsset, "large_image", activity.largeImageKey);
-    AppendJsonString(json, hasAsset, "large_text", activity.largeImageText);
-    AppendJsonString(json, hasAsset, "small_image", activity.smallImageKey);
-    AppendJsonString(json, hasAsset, "small_text", activity.smallImageText);
-    json << "},\"timestamps\":{";
-    bool hasTimestamp = false;
-    if (activity.startTimestamp > 0) {
-        json << "\"start\":" << activity.startTimestamp;
-        hasTimestamp = true;
-    }
-    if (activity.endTimestamp > 0) {
-        if (hasTimestamp) {
-            json << ',';
-        }
-        json << "\"end\":" << activity.endTimestamp;
-    }
-    json << "},\"party\":{";
-    if (activity.partySize > 0 || activity.partyMax > 0) {
-        json << "\"size\":[" << activity.partySize << ',' << activity.partyMax << ']';
-    }
-    json << "},\"instance\":false}}}";
+    json << "\"instance\":false}}}";
     return json.str();
 }
 
@@ -195,10 +213,12 @@ private:
         }
         const std::string handshake = "{\"v\":1,\"client_id\":\"" + clientId + "\"}";
         if (!WriteFrameLocked(kHandshakeOpcode, handshake)) {
+            RecordFailedConnectionLocked();
             CloseLocked();
             return;
         }
         if (!ReadReadyLocked()) {
+            RecordFailedConnectionLocked();
             CloseLocked();
             return;
         }
@@ -213,14 +233,27 @@ private:
             return;
         }
         if (!WriteFrameLocked(kFrameOpcode, BuildActivityPayload(activity_))) {
+            RecordFailedConnectionLocked();
             CloseLocked();
         }
+    }
+
+    bool ConnectionRetryAllowedLocked() const {
+        return !lastFailedConnectionAttempt_ ||
+               std::chrono::steady_clock::now() - *lastFailedConnectionAttempt_ >= kConnectionRetryCooldown;
+    }
+
+    void RecordFailedConnectionLocked() {
+        lastFailedConnectionAttempt_ = std::chrono::steady_clock::now();
     }
 
 #if defined(_WIN32)
     bool ConnectLocked() {
         if (connected_) {
             return true;
+        }
+        if (!ConnectionRetryAllowedLocked()) {
+            return false;
         }
         for (unsigned int index = 0; index < 10; ++index) {
             const std::string name = "\\\\.\\pipe\\discord-ipc-" + std::to_string(index);
@@ -229,9 +262,11 @@ private:
                 DWORD mode = PIPE_READMODE_BYTE;
                 ::SetNamedPipeHandleState(handle_, &mode, nullptr, nullptr);
                 connected_ = true;
+                lastFailedConnectionAttempt_.reset();
                 return true;
             }
         }
+        RecordFailedConnectionLocked();
         return false;
     }
 
@@ -248,9 +283,25 @@ private:
     }
 
     bool ReadAllLocked(uint8_t* data, size_t size) {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(1);
         while (size != 0) {
+            if (std::chrono::steady_clock::now() >= deadline) {
+                return false;
+            }
+            DWORD available = 0;
+            if (!::PeekNamedPipe(handle_, nullptr, 0, nullptr, &available, nullptr)) {
+                return false;
+            }
+            if (available == 0) {
+                if (std::chrono::steady_clock::now() >= deadline) {
+                    return false;
+                }
+                ::Sleep(10);
+                continue;
+            }
             DWORD read = 0;
-            if (!::ReadFile(handle_, data, static_cast<DWORD>(size), &read, nullptr) || read == 0) {
+            const DWORD requested = static_cast<DWORD>(std::min<size_t>(size, available));
+            if (!::ReadFile(handle_, data, requested, &read, nullptr) || read == 0) {
                 return false;
             }
             data += read;
@@ -272,6 +323,9 @@ private:
     bool ConnectLocked() {
         if (connected_) {
             return true;
+        }
+        if (!ConnectionRetryAllowedLocked()) {
+            return false;
         }
         std::array<std::string, 5> roots{};
         size_t rootCount = 0;
@@ -307,11 +361,13 @@ private:
                     ::setsockopt(socketFd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
                     fd_ = socketFd;
                     connected_ = true;
+                    lastFailedConnectionAttempt_.reset();
                     return true;
                 }
                 ::close(socketFd);
             }
         }
+        RecordFailedConnectionLocked();
         return false;
     }
 
@@ -375,6 +431,7 @@ private:
     std::mutex mutex_;
     bool connected_ = false;
     bool customClient_ = false;
+    std::optional<std::chrono::steady_clock::time_point> lastFailedConnectionAttempt_;
     std::string basicClientId_;
     std::string clientId_;
     Activity basicActivity_;

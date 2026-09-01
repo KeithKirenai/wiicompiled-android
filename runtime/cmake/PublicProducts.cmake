@@ -25,6 +25,11 @@ if(EXISTS "${DATA_INIT_BLOB_ASM}")
 endif()
 list(REMOVE_DUPLICATES SOURCES)
 
+if(MKW_PLATFORM_MACOS)
+    find_library(MKW_IOKIT_FRAMEWORK IOKit REQUIRED)
+    find_library(MKW_COREFOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
+endif()
+
 function(mkw_apply_common_compile_options target)
     target_compile_options(${target} PRIVATE -O3 -ffast-math -w -pipe)
 endfunction()
@@ -76,10 +81,10 @@ target_compile_definitions(mkw_runtime_common PRIVATE
     _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
 target_link_libraries(mkw_runtime_common PRIVATE
     aurora::gx aurora::pad aurora::si aurora::vi aurora::mtx)
-target_link_libraries(mkw_runtime_common PRIVATE mkw::pugixml mkw::toml11 mkw::cryptopp)
-if(WIN32)
+target_link_libraries(mkw_runtime_common PRIVATE mkw_platform mkw::pugixml mkw::toml11 mkw::cryptopp)
+if(MKW_PLATFORM_WINDOWS)
     target_link_libraries(mkw_runtime_common PRIVATE shell32 windowsapp)
-else()
+elseif(MKW_PLATFORM_LINUX)
     # ${CMAKE_DL_LIBS} for music_attenuation.cpp's dlopen of libdbus-1 (MPRIS
     # media monitoring). Empty string on glibc >= 2.34 where dl* is in libc.
     target_link_libraries(mkw_runtime_common PRIVATE mkw::libco ${CMAKE_DL_LIBS})
@@ -127,16 +132,16 @@ set_target_properties(mkw_runtime_common PROPERTIES UNITY_BUILD ON UNITY_BUILD_M
 target_precompile_headers(mkw_runtime_common PRIVATE "${MKW_RUNTIME_SOURCE_DIR}/include/mkw_pch.h")
 mkw_apply_common_compile_options(mkw_runtime_common)
 
-# Host ISA guard. Everything in MKW_ALL_BUILD_TARGETS below is compiled with
-# -march=x86-64-v3; this object library deliberately is not, which
-# is the whole point of keeping it out of mkw_runtime_common. It runs a CPUID
-# check from a C initializer so an unsupported machine gets a readable error
-# instead of an illegal-instruction crash. Excluded from the unity build and the
-# precompiled header because both are produced with the owning target's flags.
-add_library(mkw_cpu_baseline OBJECT "${MKW_CPU_BASELINE_SOURCE}")
-target_compile_features(mkw_cpu_baseline PRIVATE cxx_std_17)
-set_target_properties(mkw_cpu_baseline PROPERTIES UNITY_BUILD OFF)
-target_compile_options(mkw_cpu_baseline PRIVATE -w)
+# Host ISA guard. Windows and Linux x86_64 product targets use x86-64-v3, so
+# this object deliberately keeps the plain baseline ISA and checks the CPU
+# before any AVX2/FMA code can execute. AArch64 has no equivalent optional ISA
+# floor to probe: NEON/FMA are architectural requirements.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64)$")
+    add_library(mkw_cpu_baseline OBJECT "${MKW_CPU_BASELINE_SOURCE}")
+    target_compile_features(mkw_cpu_baseline PRIVATE cxx_std_17)
+    set_target_properties(mkw_cpu_baseline PROPERTIES UNITY_BUILD OFF)
+    target_compile_options(mkw_cpu_baseline PRIVATE -w)
+endif()
 
 if(NOT MKW_BASE_COMMON_SHARDS)
     message(FATAL_ERROR "Translator build graph contains no shared base shards")
@@ -176,7 +181,9 @@ function(mkw_configure_product target)
     target_sources(${target} PRIVATE $<TARGET_OBJECTS:mkw_runtime_common>)
     # Startup CPU check. Must stay a separate object library so it keeps the
     # plain baseline ISA while everything around it is built for x86-64-v3.
-    target_sources(${target} PRIVATE $<TARGET_OBJECTS:mkw_cpu_baseline>)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64)$")
+        target_sources(${target} PRIVATE $<TARGET_OBJECTS:mkw_cpu_baseline>)
+    endif()
     target_include_directories(${target} PRIVATE
         "${MKW_RUNTIME_SOURCE_DIR}/include"
         "${MKW_RUNTIME_SOURCE_DIR}/src"
@@ -192,10 +199,14 @@ function(mkw_configure_product target)
     # include the same fat translated headers; bound them by the same pool.
     mkw_bound_translated_compiles(${target})
     target_link_libraries(${target} PRIVATE
-        mkw_base_shared mkw::pugixml mkw::toml11 mkw::cryptopp)
+        mkw_platform mkw_base_shared mkw::pugixml mkw::toml11 mkw::cryptopp)
 
     target_link_libraries(${target} PRIVATE
         aurora::gx aurora::pad aurora::si aurora::vi aurora::mtx)
+    if(MKW_PLATFORM_MACOS)
+        target_link_libraries(${target} PRIVATE
+            "${MKW_IOKIT_FRAMEWORK}" "${MKW_COREFOUNDATION_FRAMEWORK}")
+    endif()
     if(EXISTS "${MKW_AURORA_DIR}/cmake/AuroraCopyRuntimeDLLs.cmake")
         include("${MKW_AURORA_DIR}/cmake/AuroraCopyRuntimeDLLs.cmake")
         aurora_copy_runtime_dlls(${target})
@@ -210,12 +221,12 @@ function(mkw_configure_product target)
             $<TARGET_FILE:sqlite3> $<TARGET_FILE_DIR:${target}>)
     endif()
 
-    if(WIN32)
+    if(MKW_PLATFORM_WINDOWS)
         target_link_libraries(${target} PRIVATE
             dbghelp user32 winmm ws2_32 iphlpapi secur32 crypt32 windowsapp)
 
         set_target_properties(${target} PROPERTIES WIN32_EXECUTABLE TRUE)
-    else()
+    elseif(MKW_PLATFORM_LINUX)
         # mkw_runtime_common is an OBJECT library: WiiCompiled/RetroRewind only pull in its .o
         # files via $<TARGET_OBJECTS:>, which does not propagate mkw_runtime_common's own
         # target_link_libraries (object libraries don't carry usage requirements to a consumer
@@ -226,7 +237,7 @@ function(mkw_configure_product target)
         # objects (empty string on glibc >= 2.34, where dl* is in libc).
         target_link_libraries(${target} PRIVATE mkw::libco ${CMAKE_DL_LIBS})
     endif()
-    if(WIN32)
+    if(MKW_PLATFORM_WINDOWS)
         foreach(runtime_dll libc++.dll libunwind.dll)
             execute_process(
                 COMMAND "${CMAKE_CXX_COMPILER}" "--print-file-name=${runtime_dll}"
@@ -302,13 +313,10 @@ else()
     message(STATUS "RetroRewind target disabled (run translate-mod and emit-build-shards)")
 endif()
 
-# x86-64-v3 (SSE3/SSSE3/SSE4.1/FMA/AVX2/BMI2) is the baseline runtime/src/host_cpu_baseline.cpp
-# guards against - a fixed, portable floor since an x86_64 build may run on a different machine
-# than the one that built it. AArch64 has no such redistribution path here: every build this
-# project produces runs only on the machine that built it (local-build.sh, and the AppImage which
-# wraps it, always build from source on the target), so -mcpu=native is safe and strictly better -
-# real per-core tuning (scheduling, whatever NEON/atomic extensions that exact CPU actually has)
-# instead of the generic armv8-a baseline Clang would otherwise assume.
+# Windows and Linux x86_64 share the x86-64-v3 floor that the CPU baseline
+# object above checks. AArch64 builds are compiled locally for the host that
+# will run them, so both Linux and Apple Silicon use the compiler's native CPU
+# tuning rather than leaving target-specific performance on the table.
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64)$")
     set(MKW_BASELINE_ARCH_FLAG -march=x86-64-v3)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")

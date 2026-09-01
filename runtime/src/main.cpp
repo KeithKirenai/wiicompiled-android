@@ -23,6 +23,10 @@
 #include <unordered_map>
 #include <vector>
 
+#if !defined(_WIN32)
+#include <unistd.h>
+#endif
+
 #if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -38,7 +42,12 @@
 #include <dbghelp.h>
 #else
 #include <signal.h>
+#if defined(__x86_64__)
+// Only the x86 POSIX fault path inspects ucontext_t to recover the page-fault
+// write bit. macOS deprecates ucontext and requires _XOPEN_SOURCE just to
+// include the header, while the arm64 handler does not use it at all.
 #include <ucontext.h>
+#endif
 #include <unistd.h>
 #endif
 
@@ -1370,9 +1379,21 @@ int RuntimeMain(int argc, char** argv) {
             const char* configName;
             AuroraBackend backend;
         };
+#if defined(__APPLE__)
+        static constexpr std::array<GraphicsBackendEntry, 2> kGraphicsBackends{{
+            {"auto", BACKEND_AUTO}, {"metal", BACKEND_METAL},
+        }};
+// only vulkan for linux
+#elif defined(__linux__)
+            static constexpr std::array<GraphicsBackendEntry, 2> kGraphicsBackends{{
+            {"auto", BACKEND_AUTO}, {"vulkan", BACKEND_VULKAN},
+        }};
+#elif defined(_WIN32)
         static constexpr std::array<GraphicsBackendEntry, 3> kGraphicsBackends{{
             {"auto", BACKEND_AUTO}, {"d3d12", BACKEND_D3D12}, {"vulkan", BACKEND_VULKAN},
         }};
+
+#endif
         const auto backendDisplayName = [](AuroraBackend value) -> const char* {
             for (const auto& entry : kGraphicsBackends) {
                 if (entry.backend == value) {

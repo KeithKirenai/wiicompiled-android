@@ -6,6 +6,7 @@
 #include "aurora_events.h"
 #include "settings_overlay.h"
 #include "fiber_manager.h"
+#include "platform/host_platform.h"
 #include "runtime_log.h"
 
 #include <dolphin/vi.h>
@@ -20,17 +21,14 @@
 #include <mutex>
 #include <thread>
 
-#include <aurora/aurora.h>
-
 #if defined(_WIN32)
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <windows.h>
 #endif
+
+#include <aurora/aurora.h>
 
 // Forward declaration for OSWakeupThread - used to wake threads on VI retrace queue
 extern "C" void OSWakeupThread_HLE_801aaaa4(CpuContext* ctx);

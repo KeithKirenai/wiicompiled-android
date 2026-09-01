@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include <toml.hpp>
+#include "platform/host_platform.h"
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -141,7 +142,14 @@ inline bool IsSupportedResolutionMultiplier(float value) {
 // Must stay in step with the backend table in main.cpp, which is what actually
 // maps these to AuroraBackend.
 inline bool IsSupportedGraphicsApi(std::string_view value) {
+#if defined(__APPLE__)
+    static constexpr std::array<std::string_view, 2> values{"auto", "metal"};
+// only vulkan for linux
+#elif defined(__linux__)
+    static constexpr std::array<std::string_view, 2> values{"auto", "vulkan"};
+#elif defined(_WIN32)
     static constexpr std::array<std::string_view, 3> values{"auto", "d3d12", "vulkan"};
+#endif
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 
@@ -172,6 +180,8 @@ inline std::optional<std::filesystem::path> ExecutableDirectory() {
         }
         buffer.resize(buffer.size() * 2);
     }
+#elif defined(__APPLE__)
+    return RuntimePlatform::ExecutableDirectory();
 #else
     // /proc/self/exe is a Linux-specific magic symlink to the running executable; readlink()
     // does not NUL-terminate and silently truncates if the buffer is too small, so this grows
@@ -229,6 +239,8 @@ inline std::filesystem::path ApplicationDataDirectory() {
         CoTaskMemFree(rawPath);
         return directory;
     }
+#elif defined(__APPLE__)
+    return RuntimePlatform::ApplicationDataDirectory(kApplicationDirectoryName);
 #else
     // XDG Base Directory spec equivalent of FOLDERID_LocalAppData: $XDG_DATA_HOME if set and
     // non-empty, otherwise its default of $HOME/.local/share.

@@ -66,6 +66,8 @@ adapter must be switched to the WinUSB driver once (Zadig).
 - GPU: GTX 1650 / RX 6400 / Arc A310 or higher
 - CPU: Intel Core i5-8400 / AMD Ryzen 5 2600 (4c/6c, ~3.5GHz+) or higher
 - About 20 GB of free disk space during installation (Final game size ~5 GB)
+- macOS 14 (Sonoma) or later on Apple Silicon
+- On macOS, Apple Xcode Command Line Tools (Setup opens Apple's installer when they are missing)
 - A clean, unmodified **PAL `RMCP01`** disc image of Mario Kart Wii, dumped by you. ISO, GCM,
   GCZ, CISO, WBFS, WIA and RVZ are accepted.
 
@@ -85,6 +87,7 @@ For an easy experience, use [Wheel Wizard](https://github.com/TeamWheelWizard/Wh
 image under Settings, turn on **WiiCompiled (beta)**, and hit install from the Home page.
 Wheel Wizard downloads the setup tool from this repo and walks you through install, updates and
 launching. The backend itself is deliberately command-line only, Wheel Wizard is a wrapper around it.
+
 
 > [!CAUTION]
 > Only take builds from this repository's

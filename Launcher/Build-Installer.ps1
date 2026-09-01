@@ -171,8 +171,7 @@ Assert-File $translator 'Self-contained translator'
 
 # Resolved via the shared WiiCompiled.Setup.Common.Cli helper (also used by build-appimage.sh on
 # Linux) rather than a separate download/version-pin copy here: it downloads and caches the same way
-# NodToolProvider.cs always does (Launcher/artifacts/nodtool.exe), replacing the old manual
-# -DolphinToolPath handoff with an automated, pinned acquisition step.
+# NodToolProvider.cs always does (Launcher/artifacts/nodtool.exe)
 $nodToolCliProject = Join-Path $PSScriptRoot 'WiiCompiled.Setup.Common.Cli'
 $nodTool = (& dotnet run --project $nodToolCliProject -c Release -- --workspace $repoRoot | Select-Object -Last 1)
 if ($LASTEXITCODE -ne 0) { throw "nodtool resolution failed with exit code $LASTEXITCODE." }

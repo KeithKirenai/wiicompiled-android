@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -53,6 +54,25 @@ struct RuntimeUserConfig {
     std::optional<bool> audioMuted;
     std::optional<bool> audioMixWorker;
     std::optional<bool> attenuateMusicWhenMediaPlays;
+    // Real Wii Remotes (with or without Nunchuk / Classic Controller) and Wii U Pro
+    // Controllers paired over Bluetooth, driven by SDL's HIDAPI Wii driver. The driver
+    // is opt-in on SDL's side, so this decides whether the runtime turns it on.
+    std::optional<bool> wiiRemotes;
+    // Keep re-enumerating Bluetooth HID devices while no Wii controller is connected
+    // (Dolphin's "continuous scanning"), so a remote that dropped or was switched on
+    // after launch shows up without restarting.
+    std::optional<bool> wiiContinuousScan;
+    // Accelerometer zero-point correction for the Bluetooth Wii Remote, in g and in
+    // SDL's sensor frame (x right, y out of the button face, z towards the user).
+    // SDL's Wii driver falls back to a nominal zero point when its read of the
+    // remote's calibration block times out (common over Bluetooth), so this is
+    // measured in the overlay with the remote at rest.
+    std::optional<double> wiiAccelOffsetX;
+    std::optional<double> wiiAccelOffsetY;
+    std::optional<double> wiiAccelOffsetZ;
+    // Debugging aid: append every KPAD sample of the Bluetooth remote (raw and
+    // corrected accelerometer, buttons) to wii_accel_trace.csv next to Config.toml.
+    std::optional<bool> wiiAccelTrace;
     std::optional<bool> networkEnabled;
     std::optional<bool> discordPresenceEnabled;
     // The application ID of the WiiCompiled Discord application. This is only
@@ -375,6 +395,7 @@ inline void AppendOverlayRoots(RuntimeUserConfig& config, const std::string& roo
     }
 }
 
+// Reads every supported setting out of a parsed Config.toml document.
 inline RuntimeUserConfig ParseConfigDocument(const toml::value& document) {
     RuntimeUserConfig config;
 
@@ -440,6 +461,12 @@ inline RuntimeUserConfig ParseConfigDocument(const toml::value& document) {
     config.audioMixWorker = FindConfigValue<bool>(document, "audio", "mix_worker");
     config.attenuateMusicWhenMediaPlays =
         FindConfigValue<bool>(document, "audio", "attenuate_music_when_media_plays");
+    config.wiiRemotes = FindConfigValue<bool>(document, "controller", "wii_remotes");
+    config.wiiContinuousScan = FindConfigValue<bool>(document, "controller", "wii_continuous_scan");
+    config.wiiAccelOffsetX = FindConfigValue<double>(document, "controller", "wii_accel_offset_x");
+    config.wiiAccelOffsetY = FindConfigValue<double>(document, "controller", "wii_accel_offset_y");
+    config.wiiAccelOffsetZ = FindConfigValue<double>(document, "controller", "wii_accel_offset_z");
+    config.wiiAccelTrace = FindConfigValue<bool>(document, "controller", "wii_accel_trace");
     config.networkEnabled = FindConfigValue<bool>(document, "network", "enabled");
     config.discordPresenceEnabled = FindConfigValue<bool>(document, "discord", "enabled");
     config.discordClientId = FindConfigValue<std::string>(document, "discord", "client_id");
@@ -759,14 +786,75 @@ inline bool AudioMixWorkerEnabled(bool fallback = true) {
     return Get().audioMixWorker.value_or(fallback);
 }
 
+// Whether background music should duck automatically for other media playback.
 inline bool AttenuateMusicWhenMediaPlays(bool fallback = false) {
     return Get().attenuateMusicWhenMediaPlays.value_or(fallback);
 }
 
+// Bluetooth Wii Remotes / Wii U Pro Controllers. Read once before SDL's joystick
+// subsystem comes up, so a change only takes effect on the next launch.
+inline bool WiiRemotesEnabled(bool fallback = true) {
+    return Get().wiiRemotes.value_or(fallback);
+}
+
+// Persists the Bluetooth Wii Remote driver switch.
+inline bool SetWiiRemotesEnabled(bool value) {
+    Mutable().wiiRemotes = value;
+    return WriteSetting("controller", "wii_remotes", value ? "true" : "false");
+}
+
+// Whether to keep rescanning Bluetooth while no Wii controller is connected.
+inline bool WiiContinuousScanEnabled(bool fallback = true) {
+    return Get().wiiContinuousScan.value_or(fallback);
+}
+
+// Persists the continuous scanning switch.
+inline bool SetWiiContinuousScanEnabled(bool value) {
+    Mutable().wiiContinuousScan = value;
+    return WriteSetting("controller", "wii_continuous_scan", value ? "true" : "false");
+}
+
+// Wii Remote accelerometer zero-point correction (g, SDL sensor frame); all zero
+// when the remote has not been calibrated.
+inline std::array<double, 3> WiiAccelOffset() {
+    const RuntimeUserConfig& config = Get();
+    return {config.wiiAccelOffsetX.value_or(0.0), config.wiiAccelOffsetY.value_or(0.0),
+            config.wiiAccelOffsetZ.value_or(0.0)};
+}
+
+// Whether to write the per-frame accelerometer trace (off unless asked for).
+inline bool WiiAccelTraceEnabled(bool fallback = false) {
+    return Get().wiiAccelTrace.value_or(fallback);
+}
+
+// True while a non-zero correction is stored ("Clear calibration" writes zeros).
+inline bool HasWiiAccelOffset() {
+    const std::array<double, 3> offset = WiiAccelOffset();
+    return offset[0] != 0.0 || offset[1] != 0.0 || offset[2] != 0.0;
+}
+
+// Persists the accelerometer correction measured by the overlay's calibration.
+inline bool SetWiiAccelOffset(const std::array<double, 3>& offset) {
+    Mutable().wiiAccelOffsetX = offset[0];
+    Mutable().wiiAccelOffsetY = offset[1];
+    Mutable().wiiAccelOffsetZ = offset[2];
+    bool ok = true;
+    const char* keys[3] = {"wii_accel_offset_x", "wii_accel_offset_y", "wii_accel_offset_z"};
+    for (size_t i = 0; i < 3; ++i) {
+        // Always a float literal, so a whole-number offset does not come back as a TOML integer.
+        std::ostringstream formatted;
+        formatted << std::fixed << std::setprecision(4) << offset[i];
+        ok = WriteSetting("controller", keys[i], formatted.str()) && ok;
+    }
+    return ok;
+}
+
+// Target frame rate for frame interpolation, or 0 to disable it.
 inline uint32_t FrameInterpolationFps(uint32_t fallback = 0) {
     return Get().frameInterpolationFps.value_or(fallback);
 }
 
+// Whether to skip draws whose graphics pipeline has not finished compiling yet.
 inline bool SkipUnreadyPipelines(bool fallback = true) {
     return Get().skipUnreadyPipelines.value_or(fallback);
 }

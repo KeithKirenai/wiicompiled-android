@@ -123,7 +123,10 @@ jobs:
           check Launcher/Build-Installer.ps1 "ProductVersion = '$version'"
           exit $status
 
-      - uses: actions/download-artifact@v7
+      # The build jobs upload with `archive: false`, which stores each installer as a raw file
+      # rather than a zip (and names the artifact after the file). Only download-artifact v8 and
+      # later understand such direct uploads; v7 tries to unzip everything and fails on them.
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
           merge-multiple: true
@@ -134,14 +137,12 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          ls -l artifacts
-          assets=(
-            artifacts/WiiCompiled-Setup.exe
-            artifacts/WiiCompiled-Setup-x86_64.AppImage
-            artifacts/WiiCompiled-Setup-aarch64.AppImage
-          )
-          for asset in "${assets[@]}"; do
-            [ -s "$asset" ] || { echo "::error::missing release asset $asset"; exit 1; }
+          ls -lR artifacts
+          assets=()
+          for name in WiiCompiled-Setup.exe WiiCompiled-Setup-x86_64.AppImage WiiCompiled-Setup-aarch64.AppImage; do
+            found="$(find artifacts -type f -name "$name" | head -n 1)"
+            [ -n "$found" ] && [ -s "$found" ] || { echo "::error::missing release asset $name"; exit 1; }
+            assets+=("$found")
           done
           # A re-run of a tag whose release already exists only refreshes the assets.
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then

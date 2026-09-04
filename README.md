@@ -1,235 +1,148 @@
+# WiiCompiled — Android Port
 
-# WiiCompiled
+This repository is an **Android port of [WiiCompiled](https://github.com/patchzyy/Wiicompiled)**,
+the native static-recompilation project that plays **Mario Kart Wii** with no emulator,
+interpreter, or JIT in the loop. The port is **AI-assisted**, and both the engine and the
+mobile control layer come from two upstream projects; see [Credits & Licenses](#credits--licenses).
 
-A native PC port of Mario Kart Wii, made with static recompilation.
-
-There's no emulator in the loop, no interpreter, no JIT, no PowerPC
-anywhere at runtime.
+> [!NOTE]
+> This is a work-in-progress Android port, not the upstream desktop project. It **boots and renders**
+> on an Android device, but it is still **experimental and slow** — performance work is ongoing.
 
 > [!IMPORTANT]
 > There is no Nintendo code, no assets and no game data anywhere in this project or its releases.
-> You need your own legally dumped copy of the PAL version of the game. Setup only ships the
-> toolchain, the translation runs on your machine against your disc image, and nothing ever gets
-> uploaded.
-
-[What is a github, I just want to play](https://github.com/TeamWheelWizard/WheelWizard/releases/latest)
+> You need your own legally dumped copy of the **PAL (`RMCP01`)** version of the game. Only your
+> own `.wbfs` / `.iso` image is loaded, extraction runs on your device, and nothing is uploaded.
 
 ---
 
-## What it does
+## What this is
 
-**Unlocked framerate with interpolation.** 
-The original game is hard-locked to 60 fps. The runtime can generate interpolated frames in between, so on a
-120/144 Hz monitor things genuinely look smoother.
+WiiCompiled compiles the entire PowerPC game to native AArch64 code ahead of time. Nothing
+emulates a Wii CPU or GPU at runtime. This fork takes that engine and brings it up on Android:
 
-> [!WARNING]
-> Interpolation is experimental right now and will show artifacts in specific scenarios.
+- **Native AArch64** recompiled game running on `arm64-v8a` devices.
+- **Aurora + Dawn (Vulkan)** based rendering onto an Android `SurfaceView`.
+- An **Android Gradle app** (`com.wiicompiled.mkw`) with a disc-import and game-launch frontend.
+- **On-screen touch controls** (accelerate / drift / item zones) and **accelerometer tilt steering**.
+- Cooperative AArch64 coroutines for guest OS thread scheduling (`co_switch_android.S`).
 
-**Any aspect ratio you want.** 
-Drag the window bigger, wider, whatever, the camera adjusts
-live.
+## The changes made (the Android port work)
 
-**Native rendering via aurora.** 
-The graphics layer is built on
-[aurora](https://github.com/encounter/aurora). Aurora is a source-level GameCube & Wii compatibility layer.
+The upstream engine is desktop Windows/macOS. This fork adds the missing Android platform:
 
-**High internal resolution.** 
-Play at several times the console's resolution.
+- `android/` — a complete Gradle app using Kotlin for the UI and the NDK for the game runtime:
+  - `MainActivity` — Storage Access Framework disc picker; imports and verifies your `.wbfs`/`.iso`
+    into the app's private data directory, then enables launch.
+  - `GameActivity` — fullscreen immersive surface, multitouch dispatcher, and accelerometer sensor
+    feed into the native engine.
+  - `app/src/main/cpp/` — JNI bridge (`libmkw_android.so`), Android touch input adapter,
+    disc extraction bridge, and the Android render-loop / Vulkan wiring.
+- `ledger/AGENTS.md` — full third-party license ledger and mandatory attributions.
+- AArch64 fiber switching for guest OSThreads (Android assembly port of the desktop switcher), a
+  `memfd` syscall fallback for older Android kernels, and Android-specific input/audio paths
+  adapted from the mobile work in the upstream projects.
 
-**Music ducking.** 
-Start playing something else, Spotify, a YouTube video, and
-the game automatically mutes its own music until the other audio stops. Optional, if you'd
-rather it didn't. All audio that shows in your display media controls on your windows pc fall under this.
+The game logic, translation pipeline, and rendering core remain exactly the upstream engine —
+Android only transports it.
 
-**An in-game settings bar.** 
-Press **F10** while the game window has focus:
-- Internal resolution
-- FPS counter
-- Controller assignment for all four ports
-- Full per-controller button mapping
-- Volume, instant mute, and the music ducking toggle
+## Status
 
-Everything you change is saved to `Config.toml` on the spot and restored next launch.
+What works today, verified on a physical Android 15 device (`arm64-v8a`) via adb:
 
-**Real controller support.** 
-Controllers are fed to the game as a GameCube controller.
-Mappings are positional (`south`, `east`, `west`, `north`) rather than Xbox-labelled, so the
-same config makes sense on Xbox, PlayStation, Nintendo and generic SDL pads alike, and extra
-inputs like paddles, touchpads and share buttons show up when the hardware reports them.
-The official Wii U / Switch GameCube adapter (WUP-028) works too; as with Dolphin, on Windows the
-adapter must be switched to the WinUSB driver once (Zadig).
+- App installs and launches.
+- `RMCP01.wbfs` / `.iso` import flow.
+- Game **boots** and renders through Vulkan.
+- Touch and tilt input reach the game.
 
-**Real Wii Remotes over Bluetooth.**
-Pair a Wii Remote with Windows (Settings > Bluetooth > Add device, press 1+2 or SYNC, leave the
-PIN empty) and the game reads it as an actual Wii Remote through KPAD: Wii Remote icons and
-prompts, Wii Wheel tilt steering, wheelies and tricks all come from the game's own motion code.
-Nunchuk and Classic Controller are real Wii extensions too: the game gets the Nunchuk's stick,
-C/Z and accelerometer, and the Classic Controller through `KPADGetUnifiedWpadStatus` with its own
-layout and icons, so its buttons do what the game says they do and no mapping is involved. Plug an
-extension in or pull it out mid-game and the game switches control scheme like on the console
-(the runtime patches SDL's Wii driver, which otherwise loses the remote for good on an extension
-change). Only the Wii U Pro Controller, which has no Wii-era equivalent, is fed to the game as a
-GameCube pad with Nintendo's layout. If a remote drops out or was switched on after launch, the
-runtime keeps rescanning Bluetooth until it comes back (F10 > Controller settings > Wii Remotes). SDL's read of
-the remote's factory accelerometer calibration often times out over Bluetooth (`console.log`
-then says "Using fallback accelerometer calibration") and it falls back to a nominal zero point,
-so the same menu has a one-button calibration (remote flat, buttons up) that removes the small
-tilt offset some remotes show.
+What is left:
 
-Known limitations of the Wii Remote path:
-- No IR pointer yet: menus are navigated with the D-pad and A (the game treats the remote as
-  pointing away from the screen).
-- Battery level is not reported to the game and the remote's speaker is not implemented.
-- Only the Wii Remote's own accelerometer is calibrated; the Nunchuk's uses SDL's fixed zero point.
-- The Classic Controller's L/R triggers reach the game as digital (full pull on click): SDL does not
-  expose their analog travel.
-- Turn the Wii Remote support off in that menu if you use a Mayflash DolphinBar, which already
-  presents the remote as a regular gamepad.
+- **Performance** — internal-resolution / pipeline tuning so full races run at acceptable speed.
+- Complete race flow, audio tuning, and controller/HUD polish.
+- The port is tracked in the commit history as staged checkpoints (`docs:`, `feat(android):`).
 
 ## Requirements
 
-- Windows 10 or 11, 64-bit
-- GPU: GTX 1650 / RX 6400 / Arc A310 or higher
-- CPU: Intel Core i5-8400 / AMD Ryzen 5 2600 (4c/6c, ~3.5GHz+) or higher
-- About 20 GB of free disk space during installation (Final game size ~5 GB)
-- macOS 14 (Sonoma) or later on Apple Silicon
-- On macOS, Apple Xcode Command Line Tools (Setup opens Apple's installer when they are missing)
-- A clean, unmodified **PAL `RMCP01`** disc image of Mario Kart Wii, dumped by you. ISO, GCM,
-  GCZ, CISO, WBFS, WIA and RVZ are accepted.
+- 64-bit Android device, **`arm64-v8a`** (Android 9+ / API 28 or newer).
+- Vulkan-capable GPU.
+- Your own legal, unmodified **PAL `RMCP01`** Mario Kart Wii disc image `.wbfs` or `.iso`.
 
 > [!NOTE]
-> GPU/CPU minimums are set by driver support and D3D12/Vulkan feature requirements, not by the game's actual demands.
+> Only the clean PAL revision is supported, matching upstream. Other regions and patched
+> executables are rejected.
 
-Only the clean PAL revision will work. Anything else (other
-regions, patched executables) is rejected outright.
+## How to install
 
-> [!NOTE]
-> Nobody here will tell you where to get the game. Dumping your own disc is on you, and links to
-> game files won't be provided or tolerated.
+Prebuilt APKs are not shipped yet (work in progress). To build yourself:
 
-## Installing
-
-For an easy experience, use [Wheel Wizard](https://github.com/TeamWheelWizard/WheelWizard). Pick your clean PAL `RMCP01`
-image under Settings, turn on **WiiCompiled (beta)**, and hit install from the Home page.
-Wheel Wizard downloads the setup tool from this repo and walks you through install, updates and
-launching. The backend itself is deliberately command-line only, Wheel Wizard is a wrapper around it.
-
-
-> [!CAUTION]
-> Only take builds from this repository's
-> [Releases](https://github.com/patchzyy/Wiicompiled/releases) page. If someone's sharing an
-> installer through Discord or some random download site, don't touch it!!
-
-## A note on related projects
-
-WiiCompiled, Wheel Wizard, Retro rewind and other related projects are developed
-**independently** and each has its **own** contribution rules and all have their own
-rules. What applies here does not automatically apply there,
-and vice versa. Check each project's own CONTRIBUTING and README files.
-
-## Retro Rewind
-
-[Retro Rewind](https://wiki.tockdom.com/wiki/Retro_Rewind), ZPL's Mario Kart Wii mod distribution,
-can be built as its **own static profile**: instead of applying `Code.pul` as runtime patches,
-the Kamek/Pulsar code is statically translated together with the base game into a separate native
-executable.
-
-Wheel Wizard drives this too.
-
-## Building from source
-
-Owning the game is still required even if you compile everything yourself.
-
-You'll need: .NET 8 SDK, CMake, Ninja, and LLVM/Clang (the shipped build uses LLVM-MinGW targeting
-`x86-64-v3`).
-
-Build the translator:
+You need the Android SDK, Android NDK 28+ (`28.2.13676358` used during development), Android
+Studio or a command line with `JAVA_HOME` configured, and the game.
 
 ```powershell
-dotnet build translator/Translator.sln -c Release
+# From the android/ directory, with the SDK installed
+.\gradlew.bat assembleDebug
 ```
 
-The default test suite needs no binaries and no host C++ compiler, so you can hack on the
-translator without any game data around.
+Then install and run on your connected device:
 
-For everything beyond that, feeding in your own `main.dol`/`StaticR.rel`, running the
-translation, generating the manifest and build graph, and compiling. see [`translator/README.md`](translator/README.md).
+```powershell
+adb install -r android\app\build\outputs\apk\debug\app-debug.apk
+adb shell am start -n com.wiicompiled.mkw/.MainActivity
+```
+
+In the app:
+
+1. Tap **select disc…** and pick your `RMCP01.wbfs` or `.iso`.
+2. Wait for the import/verification to finish (game data is extracted into the app's private
+   storage).
+3. Tap **start**. The game loads and renders through Vulkan; steer with the screen or by tilting
+   the device.
+
+> [!CAUTION]
+> Only build from this repository. Anyone sharing an installer through Discord or a random
+> download site should not be trusted — you would have no idea what it contains.
 
 ## FAQ
 
 **Is this an emulator?**
-No. Everything is compiled to native code before you ever press play. At runtime there's nothing
-emulating a Wii CPU or GPU.
+No. Same as upstream: the game is compiled to native code before you press play.
 
 **Do you provide the game?**
-No. Don't ask. Nothing in this repo or any release contains Nintendo code or assets.
+No. Don't ask. Nothing in this repo or any build contains Nintendo code or assets.
 
-**Why does setup take so long?**
-Because we **don't** ship the translated binary, most other recomp projects do, but we
-don't want to risk it right now, setup has to run a static recompiler over the whole game
-and then throw a C++ compiler at the result. It's a **one-time cost** on your machine.
+**Why is it slow right now?**
+Because it's an early Android bring-up. Rendering and internal resolution are not tuned for mobile
+GPUs yet. This is the main thing being worked on.
 
-**Which game version works?**
-Clean PAL `RMCP01`. Other regions and modified executables are **rejected**. Translating
-them against the wrong manifest would give you a subtly broken game that's miserable to debug for us.
+**Why is there an AGENTS.md?**
+It is the license ledger for this port. It records every third-party component, its license, its
+copyright holder, and the mandatory attribution text (for example the FreeType notice and the
+Dolphin DiscIO attribution). If you ship this project, it must stay intact.
 
-**Can I recompile other GameCube/Wii games with it?**
-The translator itself handles DOLs and RELs generically, see
-`projects/examples/generic-dol.yml`. The catch is that a *playable* port also needs a runtime:
-audio, input, GX, everything the game touches.
+## Credits & Licenses
 
-**The game crashed / stopped with an error.**
-Errors are deliberately loud instead of quietly swallowed. Send a report along with the run log
-from `%LOCALAPPDATA%\WiiCompiled\Logs`.
+This port exists only because of two upstream projects, both fully attributed here:
 
-**Will you fix original bugs?**
-Not in the base game, behavior identical to real hardware is the goal. Only report things where this port differs
-from the original game. As for Retro Rewind, some base-game behavior **is** patched, so if it differs from the
-base game, that's normal. If Retro Rewind behavior differs between Dolphin/Wii and WiiCompiled, open an issue on GitHub.
+- **WiiCompiled** — [patchzyy/Wiicompiled](https://github.com/patchzyy/Wiicompiled)
+  - The entire static-recompilation engine: translator, runtime, Aurora/Dawn rendering, audio,
+    and disc loading. **GPL-3.0.**
+- **KartPad** — [chrissotraidis/kartpad](https://github.com/chrissotraidis/kartpad)
+  - The mobile work this port adapts: touch HUD/control architecture, motion steering, DiscIO
+    integration, and Apple platform bindings that informed the Android platform layer.
+  - Source-available community software / GPL-3.0 aggregate.
 
-**How accurate are the physics?**
-100% - this is proven by in-game ghosts. Since ghosts are replay files based on inputs rather
-than tracked positions, matching ghosts prove the physics match across Dolphin/Wii/WiiCompiled.
+Plus the same core dependencies the upstream runtime ships and the upstream
+[README](https://github.com/patchzyy/Wiicompiled) already credits: **aurora** (MIT),
+**Dawn** (BSD-3), **Dolphin Emulator** (GPL-2.0-or-later, DiscIO + WiiConnect24 data +
+DSP coef ROM), **SDL**, **Retro Rewind**, and the static-recompilation community.
 
-**Is it done?**
-Not fully. The game is in a state where everything should be playable and the physics do match
-100% with the original game, but compatibility, rendering, networking and performance are all
-actively being worked on. If you do find an issue, we strongly encourage you to open one on
-GitHub so we can take a look at it.
-
-## AI usage
-AI coding tools were used during development of this project. 
-All translated output is verified against real hardware behavior and most importantly, physics accuracy is proven synced across Wii, Dolphin, and WiiCompiled (see FAQ). 
-
-## Credits
-
-- **[aurora](https://github.com/encounter/aurora)** - the GX rendering/windowing backend this
-  project's whole graphics layer sits on. MIT licensed.
-- **[Dawn](https://dawn.googlesource.com/dawn)** - Google's WebGPU implementation, powering
-  aurora's Direct3D, Vulkan and OpenGL backends.
-- **[Dolphin Emulator](https://github.com/dolphin-emu/dolphin)** - an invaluable reference for Wii
-  hardware behavior during development, plus the source of the free DSP coefficient ROM and the
-  unmodified default WiiConnect24 bootstrap tree bundled with the runtime.
-- **[Retro Rewind](https://wiki.tockdom.com/wiki/Retro_Rewind)** by ZPL and team - the mod
-  distribution this project supports.
-- **[Wheel Wizard](https://github.com/TeamWheelWizard/WheelWizard)** - the mod manager this
-  project integrates with as a launch backend.
-- Everyone in the static recompilation community.
-
-Bundled third-party components and their licenses live in
-[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
-
+The complete ledger — every component, its license, its copyright holder, and the required
+notices — is in **[`AGENTS.md`](AGENTS.md)**.
 
 ## License
 
-WiiCompiled is free software: you can redistribute it and/or modify it under the terms of the
-[GNU General Public License, version 3](LICENSE) as published by the Free Software Foundation.
-
-WiiCompiled is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
-even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-General Public License for more details.
-
-Any mkwii distribution making use of WiiCompiled must be licensed under GPL v3.0.
+This project is licensed under the **GNU General Public License v3.0** (GPL-3.0), same as
+upstream WiiCompiled. See [`LICENSE`](LICENSE).
 
 Not affiliated with, endorsed by, or associated with Nintendo. Mario Kart Wii is a trademark of
 Nintendo. No Nintendo intellectual property is contained in, distributed with, or obtainable

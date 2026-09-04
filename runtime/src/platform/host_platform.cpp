@@ -46,6 +46,16 @@ std::optional<std::filesystem::path> ExecutableDirectory() noexcept {
     std::error_code ec;
     const auto resolved = std::filesystem::weakly_canonical(path, ec);
     return (ec ? std::filesystem::path(path) : resolved).parent_path();
+#elif defined(__linux__) || defined(__ANDROID__)
+    char buffer[1024];
+    const ssize_t len = ::readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+    if (len > 0) {
+        buffer[len] = '\0';
+        std::error_code ec;
+        const auto resolved = std::filesystem::weakly_canonical(buffer, ec);
+        return (ec ? std::filesystem::path(buffer) : resolved).parent_path();
+    }
+    return std::nullopt;
 #else
     return std::nullopt;
 #endif
@@ -65,6 +75,19 @@ std::filesystem::path ApplicationDataDirectory(std::string_view applicationName)
     }
     if (const passwd* user = getpwuid(getuid()); user && user->pw_dir && *user->pw_dir) {
         return std::filesystem::path(user->pw_dir) / "Library" / "Application Support" / applicationName;
+    }
+#elif defined(__ANDROID__)
+    // Standard app private files directory in internal storage
+    if (const char* internalDir = std::getenv("INTERNAL_STORAGE"); internalDir && *internalDir) {
+        return std::filesystem::path(internalDir);
+    }
+    return std::filesystem::path("/data/data/com.wiicompiled.mkw/files");
+#elif defined(__linux__)
+    if (const char* xdgData = std::getenv("XDG_DATA_HOME"); xdgData && *xdgData) {
+        return std::filesystem::path(xdgData) / applicationName;
+    }
+    if (const char* home = std::getenv("HOME"); home && *home) {
+        return std::filesystem::path(home) / ".local" / "share" / applicationName;
     }
 #endif
     return std::filesystem::current_path() / applicationName;

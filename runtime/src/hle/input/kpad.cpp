@@ -1,6 +1,9 @@
 #include "hle_stubs.h"
 #include "memory.h"
 #include "wii_remote_input.h"
+#if defined(__ANDROID__)
+#include "android_touch_input.h"
+#endif
 
 #include <algorithm>
 #include <array>
@@ -205,14 +208,39 @@ void WriteUnifiedStatus(uint32_t addr, const WiiRemoteInput::KpadSample* sample)
 
 } // namespace
 
-// KPADRead: fills KPADStatus[0] for `chan` from the Bluetooth remote, returns the entry count.
+// KPADRead: fills KPADStatus[0] for `chan` from the Bluetooth remote or Android touch input, returns the entry count.
 extern "C" int32_t KPAD__Read_HLE(uint32_t chan, uint32_t statusPtr, uint32_t count)
 {
     if (chan >= g_channels.size() || statusPtr == 0 || count == 0) {
         return 0;
     }
     WiiRemoteInput::KpadSample sample;
-    const bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
+    bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
+#if defined(__ANDROID__)
+    if (!have && chan == 0) {
+        auto touch = AndroidInput::GetTouchState();
+        if (touch.touchActive) {
+            have = true;
+            sample.hasClassic = true;
+            sample.clHold = touch.buttons;
+            // Left stick normalized to -1.0 .. 1.0
+            sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
+            sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
+            sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
+            sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
+            sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
+            sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
+            // Map Classic A/B to Core A/B so UI menus respond
+            if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800; // WPAD_BUTTON_A
+            if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400; // WPAD_BUTTON_B
+            if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010; // WPAD_BUTTON_PLUS
+            if (touch.buttons & AndroidInput::kBtnDpadUp) sample.hold |= 0x0008;
+            if (touch.buttons & AndroidInput::kBtnDpadDown) sample.hold |= 0x0004;
+            if (touch.buttons & AndroidInput::kBtnDpadLeft) sample.hold |= 0x0001;
+            if (touch.buttons & AndroidInput::kBtnDpadRight) sample.hold |= 0x0002;
+        }
+    }
+#endif
     try {
         return WriteStatus(chan, statusPtr, have ? &sample : nullptr);
     } catch (const Memory::AccessViolation&) {
@@ -222,11 +250,7 @@ extern "C" int32_t KPAD__Read_HLE(uint32_t chan, uint32_t statusPtr, uint32_t co
 PPC_NATIVE_OVERRIDE(80197380, KPAD__Read_HLE, int32_t, (uint32_t chan, uint32_t statusPtr, uint32_t count),
          (chan, statusPtr, count));
 
-// KPADGetUnifiedWpadStatus: the raw WPAD status behind KPADStatus. The game
-// reads the Classic Controller's buttons, sticks and triggers from here. The
-// SDK fills `count` entries with the channel's recent samples (the game asks for
-// as many as it asked KPADRead for and looks at entry 0); with one sample per
-// frame here, every entry gets the current one.
+// KPADGetUnifiedWpadStatus: the raw WPAD status behind KPADStatus.
 extern "C" int32_t KPAD__GetUnifiedWpadStatus_HLE(uint32_t chan, uint32_t statusPtr, uint32_t count)
 {
     constexpr uint32_t kMaxEntries = 16; // KPAD_MAX_READ_BUFS
@@ -234,7 +258,26 @@ extern "C" int32_t KPAD__GetUnifiedWpadStatus_HLE(uint32_t chan, uint32_t status
         return 0;
     }
     WiiRemoteInput::KpadSample sample;
-    const bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
+    bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
+#if defined(__ANDROID__)
+    if (!have && chan == 0) {
+        auto touch = AndroidInput::GetTouchState();
+        if (touch.touchActive) {
+            have = true;
+            sample.hasClassic = true;
+            sample.clHold = touch.buttons;
+            sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
+            sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
+            sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
+            sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
+            sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
+            sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
+            if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800;
+            if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400;
+            if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010;
+        }
+    }
+#endif
     try {
         const uint32_t entries = std::min(count, kMaxEntries);
         for (uint32_t i = 0; i < entries; ++i) {

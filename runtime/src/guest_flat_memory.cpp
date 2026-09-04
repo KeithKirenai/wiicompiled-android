@@ -33,6 +33,18 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#if defined(__ANDROID__)
+#include <sys/syscall.h>
+#ifndef MFD_CLOEXEC
+#define MFD_CLOEXEC 0x0001U
+#endif
+#ifndef __NR_memfd_create
+#define __NR_memfd_create 279
+#endif
+static inline int memfd_create(const char* name, unsigned int flags) {
+    return syscall(__NR_memfd_create, name, flags);
+}
+#endif
 #endif
 
 namespace GuestFlat {

@@ -1,10 +1,10 @@
-﻿cmake_minimum_required(VERSION 3.22.1)
+cmake_minimum_required(VERSION 3.22.1)
 project(mkw_android LANGUAGES C CXX ASM)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-get_filename_component(MKW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../../Wiicompiled" ABSOLUTE)
+get_filename_component(MKW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(MKW_RUNTIME_DIR "${MKW_ROOT}/runtime")
 
 include_directories(

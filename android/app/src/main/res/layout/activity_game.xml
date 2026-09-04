@@ -1,0 +1,137 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- Game Rendering Surface -->
+    <SurfaceView
+        android:id="@+id/gameSurfaceView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Top HUD Status Bar -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/hud_panel"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/hudFpsText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FPS: --"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:layout_marginEnd="16dp" />
+
+        <TextView
+            android:id="@+id/hudStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WiiCompiled Engine Running"
+            android:textColor="#66BB6A"
+            android:textSize="13sp"
+            android:layout_marginEnd="16dp" />
+
+        <TextView
+            android:id="@+id/hudTiltText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tilt: 0.0°"
+            android:textColor="#90CAF9"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- Top Left: Item Button (L / Trigger) -->
+    <Button
+        android:id="@+id/btnItem"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/btn_round_l"
+        android:text="ITEM\n(L)"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+
+    <!-- Top Right: Pause / Plus Button (+) -->
+    <Button
+        android:id="@+id/btnPause"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="24dp"
+        android:layout_marginTop="20dp"
+        android:background="@drawable/btn_round_ctrl"
+        android:text="+"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <!-- Bottom Left: Steering D-Pad / Analog Virtual Area -->
+    <RelativeLayout
+        android:id="@+id/steeringArea"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="20dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/btn_round_ctrl">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="STEER\n◄  ►\n(or Tilt)"
+            android:textAlignment="center"
+            android:textColor="#CCFFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <!-- Bottom Right Controls: A (Gas) and B (Drift) -->
+    <RelativeLayout
+        android:layout_width="220dp"
+        android:layout_height="200dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp">
+
+        <!-- B Button: Drift / Hop / Brake -->
+        <Button
+            android:id="@+id/btnDrift"
+            android:layout_width="76dp"
+            android:layout_height="76dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:background="@drawable/btn_round_b"
+            android:text="DRIFT\n(B)"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- A Button: Accelerate / Gas -->
+        <Button
+            android:id="@+id/btnGas"
+            android:layout_width="92dp"
+            android:layout_height="92dp"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:background="@drawable/btn_round_a"
+            android:text="GAS\n(A)"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+</FrameLayout>

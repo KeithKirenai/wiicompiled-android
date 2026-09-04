@@ -682,7 +682,7 @@ bool initialize(AuroraBackend auroraBackend) {
       "enable_immediate_error_handling",
         /* clang-format on */
     };
-#ifdef NDEBUG
+#if defined(NDEBUG) || defined(ANDROID)
     enableToggles.push_back("skip_validation");
     enableToggles.push_back("disable_robustness");
 #endif

@@ -74,8 +74,7 @@ void render(const DrawData& data, const wgpu::RenderPassEncoder& pass, DrawEncod
   // An interpolated presentation slot re-encodes the identical draw with only this range replaced; overriding here avoids copying the whole DrawData per draw per slot.
   const gfx::Range& uniformRange = uniformRangeOverride != nullptr ? *uniformRangeOverride : data.uniformRange;
   if (uniformRange.offset != state.boundUniformOffset) {
-    const std::array offsets{uniformRange.offset};
-    pass.SetBindGroup(1, gfx::g_uniformBindGroup, offsets.size(), offsets.data());
+    wgpuRenderPassEncoderSetBindGroup(pass.Get(), 1, gfx::g_uniformBindGroup.Get(), 1, &uniformRange.offset);
     state.boundUniformOffset = uniformRange.offset;
   }
   // Resolved when the draw was recorded; see GXBindGroups.
@@ -84,16 +83,17 @@ void render(const DrawData& data, const wgpu::RenderPassEncoder& pass, DrawEncod
     wgpuRenderPassEncoderSetBindGroup(pass.Get(), 2, data.bindGroups.resolvedTextureBindGroup, 0, nullptr);
     state.boundTextureBindGroup = data.bindGroups.resolvedTextureBindGroup;
   }
-  if (data.dstAlpha != UINT32_MAX) {
+  if (data.dstAlpha != UINT32_MAX && data.dstAlpha != state.boundDstAlpha) {
     const wgpu::Color color{0.f, 0.f, 0.f, data.dstAlpha / 255.f};
     pass.SetBlendConstant(&color);
+    state.boundDstAlpha = data.dstAlpha;
   }
   if (!state.indexBufferBound) {
     // Bound once for the pass; draws select their range with firstIndex below.
     pass.SetIndexBuffer(gfx::g_indexBuffer, wgpu::IndexFormat::Uint16, 0, wgpu::kWholeSize);
     state.indexBufferBound = true;
   }
-  pass.DrawIndexed(data.indexCount, data.instanceCount,
-                   static_cast<uint32_t>(data.idxRange.offset / sizeof(uint16_t)));
+  wgpuRenderPassEncoderDrawIndexed(pass.Get(), data.indexCount, data.instanceCount,
+                                   static_cast<uint32_t>(data.idxRange.offset / sizeof(uint16_t)), 0, 0);
 }
 } // namespace aurora::gx

@@ -2,6 +2,7 @@
 #include "gx_stream_common.h"
 #include "gx_cp_decode.h"
 #include "isa/big_endian.h"
+#include "memory_access.h"
 
 // Opcode constants and the stream helpers this file shares with gx_dl.cpp /
 // gx_vertex.cpp; see gx_stream_common.h.
@@ -116,8 +117,13 @@ static void DecodeColorFromArray(uint32_t addr, GXCompType type, GXCompCnt cnt, 
     const uint32_t byteCount =
         (type == GX_RGBX8) ? 3u : ColorByteSize(type, cnt);
     uint8_t bytes[4] = {0, 0, 0, 0};
-    for (uint32_t i = 0; i < byteCount && i < 4u; ++i) {
-        bytes[i] = Memory::Read8(addr + i);
+    uint8_t* ptr = nullptr;
+    if (MemoryInline::TryGetPointerFast(addr, byteCount, ptr)) {
+        std::memcpy(bytes, ptr, byteCount);
+    } else {
+        for (uint32_t i = 0; i < byteCount && i < 4u; ++i) {
+            bytes[i] = Memory::Read8(addr + i);
+        }
     }
     DecodeColorBytes(bytes, type, cnt, out);
 }
@@ -157,24 +163,27 @@ void SubmitIndexedAttribute(GXAttr attr, uint32_t index) {
     float comps[9]{};
     u32 rawComps[9]{};
     switch (attr) {
-    case GX_VA_POS: {
-        const int count = static_cast<int>(AttrCompCount(GX_VA_POS, fmt, 0u));
+    case GX_VA_POS:
+    case GX_VA_NRM:
+    case GX_VA_TEX0: case GX_VA_TEX1: case GX_VA_TEX2: case GX_VA_TEX3:
+    case GX_VA_TEX4: case GX_VA_TEX5: case GX_VA_TEX6: case GX_VA_TEX7: {
+        const int count = static_cast<int>(AttrCompCount(attr, fmt, 0u));
         const int step = GetCompSizeBytes(fmt.type);
-        uint32_t addr = baseAddr;
-        for (int i = 0; i < count; ++i, addr += step) {
-            comps[i] = ReadArrayComp(addr, fmt.type, fmt.frac);
-            rawComps[i] = ReadArrayRawComp(addr, fmt.type);
-        }
-        SubmitAttribute(attr, comps, fmt, rawComps);
-        break;
-    }
-    case GX_VA_NRM: {
-        const int count = static_cast<int>(AttrCompCount(GX_VA_NRM, fmt, 0u));
-        const int step = GetCompSizeBytes(fmt.type);
-        uint32_t addr = baseAddr;
-        for (int i = 0; i < count; ++i, addr += step) {
-            comps[i] = ReadArrayComp(addr, fmt.type, fmt.frac);
-            rawComps[i] = ReadArrayRawComp(addr, fmt.type);
+        const size_t totalBytes = static_cast<size_t>(count * step);
+        uint8_t* ptr = nullptr;
+        if (MemoryInline::TryGetPointerFast(baseAddr, totalBytes, ptr)) {
+            for (int i = 0; i < count; ++i, ptr += step) {
+                const u32 raw = ReadBECompRaw(ptr, fmt.type);
+                rawComps[i] = raw;
+                comps[i] = ConvertCompToFloat(raw, fmt.type, fmt.frac);
+            }
+        } else {
+            uint32_t addr = baseAddr;
+            for (int i = 0; i < count; ++i, addr += step) {
+                const u32 raw = ReadArrayRawComp(addr, fmt.type);
+                rawComps[i] = raw;
+                comps[i] = ConvertCompToFloat(raw, fmt.type, fmt.frac);
+            }
         }
         SubmitAttribute(attr, comps, fmt, rawComps);
         break;
@@ -188,20 +197,6 @@ void SubmitIndexedAttribute(GXAttr attr, uint32_t index) {
         } else {
             GXColor4u8(color.r, color.g, color.b, color.a);
         }
-        break;
-    }
-    case GX_VA_TEX0: case GX_VA_TEX1: case GX_VA_TEX2: case GX_VA_TEX3:
-    case GX_VA_TEX4: case GX_VA_TEX5: case GX_VA_TEX6: case GX_VA_TEX7: {
-        // Every GX_VA_TEXn shares one component layout, so the constant here is
-        // exact for whichever of them `attr` is.
-        const int count = static_cast<int>(AttrCompCount(GX_VA_TEX0, fmt, 0u));
-        const int step = GetCompSizeBytes(fmt.type);
-        uint32_t addr = baseAddr;
-        for (int i = 0; i < count; ++i, addr += step) {
-            comps[i] = ReadArrayComp(addr, fmt.type, fmt.frac);
-            rawComps[i] = ReadArrayRawComp(addr, fmt.type);
-        }
-        SubmitAttribute(attr, comps, fmt, rawComps);
         break;
     }
     default:

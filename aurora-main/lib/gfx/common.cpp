@@ -1388,6 +1388,10 @@ static void render_pass_impl(const wgpu::RenderPassEncoder& pass, const std::vec
   pass.SetBindGroup(0, g_staticBindGroup);
   pass.SetBindGroup(2, gx::g_emptyTextureBindGroup);
 
+  Viewport currentViewport{-1.f, -1.f, -1.f, -1.f, -1.f, -1.f};
+  uint32_t currentScissorX = UINT32_MAX, currentScissorY = UINT32_MAX;
+  uint32_t currentScissorW = UINT32_MAX, currentScissorH = UINT32_MAX;
+
   for (const auto& cmd : renderPasses[idx].commands) {
 #ifdef AURORA_GFX_DEBUG_GROUPS
     {
@@ -1410,11 +1414,14 @@ static void render_pass_impl(const wgpu::RenderPassEncoder& pass, const std::vec
     switch (cmd.type) {
     case CommandType::SetViewport: {
       const auto& vp = cmd.data.setViewport;
-      // WebGPU requires 0 <= minDepth <= maxDepth <= 1, and the guest's (near, far) order is already
-      // reproduced in clip space. Passing the raw swapped pair diverged per backend in release builds.
-      const float minDepth = std::clamp(std::min(vp.znear, vp.zfar), 0.0f, 1.0f);
-      const float maxDepth = std::clamp(std::max(vp.znear, vp.zfar), 0.0f, 1.0f);
-      pass.SetViewport(vp.left, vp.top, vp.width, vp.height, minDepth, maxDepth);
+      if (vp != currentViewport) {
+        // WebGPU requires 0 <= minDepth <= maxDepth <= 1, and the guest's (near, far) order is already
+        // reproduced in clip space. Passing the raw swapped pair diverged per backend in release builds.
+        const float minDepth = std::clamp(std::min(vp.znear, vp.zfar), 0.0f, 1.0f);
+        const float maxDepth = std::clamp(std::max(vp.znear, vp.zfar), 0.0f, 1.0f);
+        pass.SetViewport(vp.left, vp.top, vp.width, vp.height, minDepth, maxDepth);
+        currentViewport = vp;
+      }
     } break;
     case CommandType::SetScissor: {
       const auto& sc = cmd.data.setScissor;
@@ -1425,8 +1432,17 @@ static void render_pass_impl(const wgpu::RenderPassEncoder& pass, const std::vec
           std::clamp(sc.x + sc.width, left, static_cast<int32_t>(size.width));
       const auto bottom =
           std::clamp(sc.y + sc.height, top, static_cast<int32_t>(size.height));
-      pass.SetScissorRect(static_cast<uint32_t>(left), static_cast<uint32_t>(top),
-                          static_cast<uint32_t>(right - left), static_cast<uint32_t>(bottom - top));
+      const uint32_t scX = static_cast<uint32_t>(left);
+      const uint32_t scY = static_cast<uint32_t>(top);
+      const uint32_t scW = static_cast<uint32_t>(right - left);
+      const uint32_t scH = static_cast<uint32_t>(bottom - top);
+      if (scX != currentScissorX || scY != currentScissorY || scW != currentScissorW || scH != currentScissorH) {
+        pass.SetScissorRect(scX, scY, scW, scH);
+        currentScissorX = scX;
+        currentScissorY = scY;
+        currentScissorW = scW;
+        currentScissorH = scH;
+      }
     } break;
     case CommandType::Draw: {
       const auto& draw = cmd.data.draw;

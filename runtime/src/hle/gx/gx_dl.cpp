@@ -76,17 +76,12 @@ static inline uint32_t ReadLytColor(uint32_t colorAddr, int index) {
 
 static inline uint32_t ReadModulatedLytColor(uint32_t colorAddr, int index, uint32_t alpha) {
     const uint32_t addr = colorAddr + static_cast<uint32_t>(index * 4);
-    const uint8_t r = Memory::Read8(addr);
-    const uint8_t g = Memory::Read8(addr + 1);
-    const uint8_t b = Memory::Read8(addr + 2);
-    uint8_t a = Memory::Read8(addr + 3);
+    const uint32_t color = Memory::Read32(addr);
+    uint8_t a = static_cast<uint8_t>(color & 0xFFu);
     if ((alpha & 0xFFu) != 0xFFu) {
         a = ScaleLytAlpha(a, alpha);
     }
-    return (static_cast<uint32_t>(r) << 24) |
-           (static_cast<uint32_t>(g) << 16) |
-           (static_cast<uint32_t>(b) << 8) |
-           static_cast<uint32_t>(a);
+    return (color & 0xFFFFFF00u) | static_cast<uint32_t>(a);
 }
 
 static inline void AppendLytTexCoords(uint8_t* packet, uint32_t& pos, uint32_t texCoordAddr,

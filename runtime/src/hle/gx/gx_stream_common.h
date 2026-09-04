@@ -286,8 +286,9 @@ inline void SubmitIndexedNormalNBT3(const uint32_t indices[3], const VtxAttrFmt&
         uint32_t addr = arr.base + indices[group] * arr.stride;
         for (uint32_t component = 0; component < 3; ++component, addr += step) {
             const uint32_t out = group * 3u + component;
-            comps[out] = ReadArrayComp(addr, fmt.type, fmt.frac);
-            rawComps[out] = ReadArrayRawComp(addr, fmt.type);
+            const u32 raw = ReadArrayRawComp(addr, fmt.type);
+            rawComps[out] = raw;
+            comps[out] = ConvertCompToFloat(raw, fmt.type, fmt.frac);
         }
     }
     SubmitAttribute(GX_VA_NRM, comps, fmt, rawComps);

@@ -86,6 +86,10 @@ namespace {
 // Defined below, beside the fatal-log machinery.
 std::string FormatHostStackTrace(unsigned framesToSkip = 0);
 
+#if defined(__ANDROID__)
+extern "C" void AndroidOnFrameWait();
+#endif
+
 void ServiceGuestTimingDuringAuroraFrameWait() {
     // Aurora can block inside FIFO drains before control returns to GX HLE, for as long as a
     // whole display period. Keep VI retraces, alarms and audio moving at wall-clock cadence here
@@ -93,6 +97,9 @@ void ServiceGuestTimingDuringAuroraFrameWait() {
     VI_HLE_ProcessRetracesDeferred(8);
     OS_HLE_ProcessAlarmsDeferred(8);
     Audio_HLE_PollDeferred();
+#if defined(__ANDROID__)
+    AndroidOnFrameWait();
+#endif
 }
 
 #if defined(_WIN32)

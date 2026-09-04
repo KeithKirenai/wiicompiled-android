@@ -6,6 +6,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.MotionEvent
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -31,6 +33,19 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
 
+    // HUD performance polling
+    private val hudHandler = Handler(Looper.getMainLooper())
+    private val hudRunnable: Runnable = object : Runnable {
+        override fun run() {
+            try {
+                hudFpsText.text = nativeGetPerfStats()
+            } catch (e: Throwable) {
+                // Native may not be ready yet; ignore
+            }
+            hudHandler.postDelayed(this, 500)
+        }
+    }
+
     companion object {
         const val BTN_A = 0
         const val BTN_B = 1
@@ -55,6 +70,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private external fun nativeSetStick(stickX: Float, stickY: Float)
     private external fun nativeTiltEvent(angle: Float)
     private external fun nativeTouchEvent(action: Int, x: Float, y: Float, pointerId: Int)
+    private external fun nativeGetPerfStats(): String
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +82,11 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             android.util.Log.w("WiiCompiled", "SDL reflection in onCreate: ${e.message}")
         }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        val sustainedPerf = intent.getBooleanExtra("SUSTAINED_PERF", true)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && sustainedPerf) {
+            window.setSustainedPerformanceMode(true)
+        }
 
         // Fullscreen immersive mode
         window.decorView.systemUiVisibility = (
@@ -160,11 +181,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
+        hudHandler.post(hudRunnable)
     }
 
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
+        hudHandler.removeCallbacks(hudRunnable)
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {

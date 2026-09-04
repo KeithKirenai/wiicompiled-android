@@ -9,8 +9,11 @@
 #include <chrono>
 #include <cmath>
 #include <algorithm>
+#include <deque>
+#include <fstream>
 
 #include <unistd.h>
+#include <sys/stat.h>
 #include <mutex>
 
 #include "android_touch_input.h"
@@ -24,6 +27,47 @@ static ANativeWindow* g_nativeWindow = nullptr;
 extern "C" void* g_mkwAndroidNativeWindow = nullptr;
 static std::thread g_renderThread;
 static std::atomic<bool> g_renderRunning{false};
+
+// ---------------------------------------------------------------------------
+// Lightweight frame-timing profiler
+// Tracks the last 60 frame timestamps to compute rolling FPS and frame time.
+// Called from the render thread after each presented frame.
+// ---------------------------------------------------------------------------
+namespace PerfStats {
+    static std::mutex g_mutex;
+    static std::deque<std::chrono::steady_clock::time_point> g_frameTimes;
+    constexpr int kWindow = 60;
+
+    static float g_fps = 0.f;
+    static float g_frameTimeMs = 0.f;
+
+    void recordFrame() {
+        auto now = std::chrono::steady_clock::now();
+        std::lock_guard<std::mutex> lock(g_mutex);
+        g_frameTimes.push_back(now);
+        if ((int)g_frameTimes.size() > kWindow) {
+            g_frameTimes.pop_front();
+        }
+        if (g_frameTimes.size() >= 2) {
+            double totalMs = std::chrono::duration<double, std::milli>(
+                g_frameTimes.back() - g_frameTimes.front()).count();
+            double frames = (double)(g_frameTimes.size() - 1);
+            g_frameTimeMs = (float)(totalMs / frames);
+            g_fps = (float)(frames / (totalMs / 1000.0));
+        }
+    }
+
+    void getStats(float& fps, float& frameTimeMs) {
+        std::lock_guard<std::mutex> lock(g_mutex);
+        fps = g_fps;
+        frameTimeMs = g_frameTimeMs;
+    }
+} // namespace PerfStats
+
+// Forward declaration of pipeline queued count from aurora
+namespace aurora::gfx {
+uint32_t queued_pipeline_count() noexcept;
+} // namespace aurora::gfx
 
 namespace aurora::window {
 void set_surface_ready(bool ready) noexcept;
@@ -57,7 +101,27 @@ static void StartLogcatRedirect() {
     });
 }
 
+// Aurora frame-worker-wait callback: called by the render thread every time
+// Aurora has submitted a frame and is waiting for the async worker.
+// We record it as a presented frame for FPS / frame-time tracking.
+extern "C" void AndroidOnFrameWait() {
+    PerfStats::recordFrame();
+
+    // Periodic logcat dump (every ~5 seconds at 60 fps = 300 frames)
+    static int s_frameCount = 0;
+    if (++s_frameCount >= 300) {
+        s_frameCount = 0;
+        float fps = 0.f, ftMs = 0.f;
+        PerfStats::getStats(fps, ftMs);
+        uint32_t queued = 0;
+        try { queued = aurora::gfx::queued_pipeline_count(); } catch (...) {}
+        LOGI("[Profile] FPS=%.1f  FrameTime=%.2fms  QueuedShaders=%u", fps, ftMs, queued);
+    }
+}
+
 extern int RuntimeMain(int argc, char** argv);
+
+#include <sys/resource.h>
 
 static void GameRenderWorker() {
     LOGI("GameRenderWorker started - invoking WiiCompiled RuntimeMain");
@@ -65,6 +129,9 @@ static void GameRenderWorker() {
         LOGE("GameRenderWorker started without native window");
         return;
     }
+
+    // Elevate game thread priority to prevent starvation by Android background tasks
+    setpriority(PRIO_PROCESS, 0, -16);
 
     g_mkwAndroidNativeWindow = g_nativeWindow;
 
@@ -92,6 +159,50 @@ Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstr
     setenv("INTERNAL_STORAGE", pathStr, 1);
     setenv("XDG_DATA_HOME", pathStr, 1);
     setenv("HOME", pathStr, 1);
+
+    // Write an Android-optimized Config.toml on first launch.
+    // skip_unready_pipelines: skip shader stalls during gameplay.
+    // disable_copy_filter: faster EFB copies.
+    // resolution_multiplier 1.0: native Wii resolution on mobile.
+    std::string wiicompiledDir = std::string(pathStr) + "/WiiCompiled";
+    std::string configPath = wiicompiledDir + "/Config.toml";
+    // mkdir -p the dir
+    ::mkdir(wiicompiledDir.c_str(), 0755);
+    std::ifstream checkExist(configPath);
+    if (!checkExist.good()) {
+        std::ofstream cfg(configPath);
+        if (cfg) {
+            cfg << "# WiiCompiled Android configuration (auto-generated)\n"
+                   "\n"
+                   "[video]\n"
+                   "widescreen = true\n"
+                   "resolution_multiplier = 1.0\n"
+                   "frame_interpolation_fps = 0\n"
+                   "display_mode = \"windowed\"\n"
+                   "graphics_api = \"auto\"\n"
+                   "skip_unready_pipelines = true\n"
+                   "disable_copy_filter = false\n"
+                   "show_fps = false\n"
+                   "texture_replacements = false\n"
+                   "texture_dumps = false\n"
+                   "\n"
+                   "[audio]\n"
+                   "volume = 1.0\n"
+                   "music_volume = 1.0\n"
+                   "sound_effects_volume = 1.0\n"
+                   "ui_volume = 1.0\n"
+                   "voices_volume = 1.0\n"
+                   "muted = false\n"
+                   "mix_worker = true\n"
+                   "\n"
+                   "[network]\n"
+                   "enabled = false\n"
+                   "\n"
+                   "[discord]\n"
+                   "enabled = false\n";
+            LOGI("Wrote Android Config.toml to %s", configPath.c_str());
+        }
+    }
     env->ReleaseStringUTFChars(internalPath, pathStr);
 }
 
@@ -238,6 +349,25 @@ Java_com_wiicompiled_mkw_MainActivity_nativeExtractDisc(JNIEnv* env, jobject thi
         LOGE("Extraction failed: %s", result.errorMessage.c_str());
     }
     return result.success ? JNI_TRUE : JNI_FALSE;
+}
+
+// Returns a performance stats string for the Android HUD.
+// Format: "FPS: 59.8  |  16.7ms  |  Shaders: 0"
+JNIEXPORT jstring JNICALL
+Java_com_wiicompiled_mkw_GameActivity_nativeGetPerfStats(JNIEnv* env, jobject thiz) {
+    float fps = 0.f, ftMs = 0.f;
+    PerfStats::getStats(fps, ftMs);
+    uint32_t queued = 0;
+    try { queued = aurora::gfx::queued_pipeline_count(); } catch (...) {}
+
+    char buf[128];
+    if (fps < 1.f) {
+        snprintf(buf, sizeof(buf), "FPS: --");
+    } else {
+        snprintf(buf, sizeof(buf), "FPS: %.0f  |  %.1fms  |  Shaders: %u",
+                 fps, ftMs, queued);
+    }
+    return env->NewStringUTF(buf);
 }
 
 } // extern "C"

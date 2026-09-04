@@ -70,3 +70,13 @@ project.lock.json
 *.log
 output.txt
 
+# Android build outputs
+.gradle/
+android/**/build/
+android/**/.cxx/
+local.properties
+*.apk
+*.aab
+
+# Extracted disc files
+extracted/

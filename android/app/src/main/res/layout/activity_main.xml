@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp"
+    android:background="#121212">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="WiiCompiled Android"
+        android:textColor="#FFFFFF"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Checking game data..."
+        android:textColor="#B0B0B0"
+        android:textSize="16sp"
+        android:textAlignment="center"
+        android:layout_marginBottom="24dp" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="gone"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/selectDiscBtn"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:text="Select Disc (.wbfs / .iso)"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/launchBtn"
+        android:layout_width="220dp"
+        android:layout_height="wrap_content"
+        android:text="Start Game"
+        android:enabled="false" />
+
+</LinearLayout>

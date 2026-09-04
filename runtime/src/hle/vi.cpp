@@ -579,7 +579,9 @@ void VI_HLE_PresentFrame(bool presentedXfb, bool paceToRetrace) {
 
     aurora_end_frame();
     if (paceThisFrame) {
-        PaceToRetraceBoundary(paceDeadline);
+        // We do not synchronously block the producer thread here with PaceToRetraceBoundary,
+        // because guest game loops self-pace via VIWaitForRetrace / OSSleepThread.
+        // Synchronously sleeping here caused a double-wait (16.6ms here + 16.6ms in VIWaitForRetrace = 33.3ms / 30 FPS).
         std::lock_guard<std::mutex> lock(g_viMutex);
         s_lastPacedRetraceCount = g_vi.retraceCount;
     }

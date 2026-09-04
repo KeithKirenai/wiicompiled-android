@@ -121,10 +121,7 @@ extern "C" void GX__CopyDisp_8016fc38(uint32_t da, uint32_t c) {
     // phase, which strictly subsumes the drain this call would perform.
     ++g_gxFrameCount;
     VI_HLE_SetXfbReady(da);
-    // Present immediately so post-copy draws don't leak into this frame. Join at the DONE phase
-    // (not the cheaper SEALED phase GXDrawDone waits for) because ImGui's draw lists, owned by
-    // Aurora's render worker, replay during encode; aurora_end_frame would join here anyway.
-    aurora_wait_for_frame_worker();
+    // Present immediately so post-copy draws don't leak into this frame.
     settings_overlay::Draw();
     // Seal, pace to the VI retrace boundary (Aurora renders the sealed frame
     // during the wait), and pre-warm the next frame.

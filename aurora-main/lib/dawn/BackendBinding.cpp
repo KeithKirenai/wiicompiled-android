@@ -6,6 +6,10 @@
 #include <SDL3/SDL_video.h>
 #endif
 
+#if defined(SDL_PLATFORM_ANDROID)
+extern "C" void* g_mkwAndroidNativeWindow;
+#endif
+
 namespace aurora::webgpu::utils {
 std::shared_ptr<wgpu::ChainedStruct> SetupWindowAndGetSurfaceDescriptorCocoa(SDL_Window* window);
 
@@ -18,6 +22,9 @@ std::shared_ptr<wgpu::ChainedStruct> SetupWindowAndGetSurfaceDescriptor(SDL_Wind
   std::shared_ptr<wgpu::SurfaceSourceAndroidNativeWindow> desc =
       std::make_shared<wgpu::SurfaceSourceAndroidNativeWindow>();
   desc->window = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
+  if (!desc->window) {
+    desc->window = g_mkwAndroidNativeWindow;
+  }
   return std::move(desc);
 #elif defined(SDL_PLATFORM_WIN32)
   std::shared_ptr<wgpu::SurfaceSourceWindowsHWND> desc = std::make_shared<wgpu::SurfaceSourceWindowsHWND>();

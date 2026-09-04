@@ -509,7 +509,7 @@ int64_t ConsumeAudioPollDeltaMicros()
     // kMaxBlocksPerTick per pass. Never return early on a zero delta: two scheduler passes
     // can land in the same microsecond and the backlog still needs servicing.
     constexpr int64_t kMaxPollDeltaMicros = 100'000;
-    return std::min(elapsed, kMaxPollDeltaMicros);
+    return std::min<int64_t>(elapsed, kMaxPollDeltaMicros);
 }
 
 } // namespace

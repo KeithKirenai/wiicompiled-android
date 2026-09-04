@@ -1,4 +1,4 @@
-﻿package com.wiicompiled.mkw
+package com.wiicompiled.mkw
 
 import android.content.Context
 import android.hardware.Sensor
@@ -38,6 +38,12 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         const val BTN_START = 3
 
         init {
+            try {
+                val sdlClass = Class.forName("org.libsdl.app.SDL")
+                sdlClass.getMethod("initialize").invoke(null)
+            } catch (e: Throwable) {
+                android.util.Log.w("WiiCompiled", "SDL.initialize reflection: ${e.message}")
+            }
             System.loadLibrary("mkw_android")
         }
     }
@@ -52,6 +58,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            val sdlClass = Class.forName("org.libsdl.app.SDL")
+            sdlClass.getMethod("setContext", android.app.Activity::class.java).invoke(null, this)
+            sdlClass.getMethod("setupJNI").invoke(null)
+        } catch (e: Throwable) {
+            android.util.Log.w("WiiCompiled", "SDL reflection in onCreate: ${e.message}")
+        }
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         // Fullscreen immersive mode
@@ -78,6 +91,19 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         steeringArea = findViewById(R.id.steeringArea)
 
         surfaceView.holder.addCallback(this)
+        surfaceView.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    nativeSetButton(BTN_A, true)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    nativeSetButton(BTN_A, false)
+                    true
+                }
+                else -> false
+            }
+        }
 
         setupButtonTouch(btnGas, BTN_A)
         setupButtonTouch(btnDrift, BTN_B)
@@ -116,7 +142,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
                     val halfW = v.width / 2.0f
                     val halfH = v.height / 2.0f
                     val normX = ((event.x - halfW) / halfW).coerceIn(-1.0f, 1.0f)
-                    val normY = ((event.y - halfH) / halfH).coerceIn(-1.0f, 1.0f)
+                    val normY = -((event.y - halfH) / halfH).coerceIn(-1.0f, 1.0f)
                     nativeSetStick(normX, normY)
                     true
                 }

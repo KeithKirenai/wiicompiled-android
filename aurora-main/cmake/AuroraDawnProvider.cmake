@@ -50,6 +50,8 @@ if (_aurora_dawn_provider STREQUAL "auto")
     set(_has_package TRUE)
   elseif (APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|x86_64)$")
     set(_has_package TRUE)
+  elseif (CMAKE_SYSTEM_NAME STREQUAL "Android" AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64)$")
+    set(_has_package TRUE)
   endif ()
 
   if (_has_package)
@@ -150,6 +152,9 @@ elseif (_aurora_dawn_provider STREQUAL "package")
         set(_dawn_arch "arm64")
       endif ()
     endif ()
+    if (_dawn_system STREQUAL "android" AND _dawn_arch STREQUAL "arm64")
+      set(_dawn_arch "aarch64")
+    endif ()
     set(AURORA_DAWN_PACKAGE_URL
       "https://github.com/encounter/dawn-build/releases/download/${AURORA_DAWN_VERSION}/dawn-${_dawn_system}-${_dawn_arch}.tar.gz")
 
@@ -160,6 +165,11 @@ elseif (_aurora_dawn_provider STREQUAL "package")
         AND _dawn_system STREQUAL "windows" AND _dawn_arch STREQUAL "amd64")
       set(AURORA_DAWN_PACKAGE_URL_HASH
         "SHA256=7785373d569b3b0237918ec9c523239f7d0667857c5ea8242e3cdfde95e6aeab")
+    elseif (NOT AURORA_DAWN_PACKAGE_URL_HASH
+        AND AURORA_DAWN_VERSION STREQUAL "v20260603.191052"
+        AND _dawn_system STREQUAL "android" AND _dawn_arch STREQUAL "aarch64")
+      set(AURORA_DAWN_PACKAGE_URL_HASH
+        "SHA256=27d910dee1201fd1e5b6ac567f0ba2306ebf2135e9f40b6929976c365d38b09b")
     endif ()
   endif ()
   message(STATUS "aurora: Fetching prebuilt Dawn package from ${AURORA_DAWN_PACKAGE_URL}")
@@ -206,7 +216,8 @@ elseif (_aurora_dawn_provider STREQUAL "package")
   )
     if (EXISTS "${_cmake_path}/DawnConfig.cmake")
       set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL ON)
-      find_package(Dawn REQUIRED CONFIG PATHS "${_cmake_path}" NO_DEFAULT_PATH)
+      set(Dawn_DIR "${_cmake_path}" CACHE PATH "" FORCE)
+      find_package(Dawn REQUIRED CONFIG PATHS "${_cmake_path}" "${_dawn_pkg_dir}" NO_DEFAULT_PATH)
       set(CMAKE_FIND_PACKAGE_TARGETS_GLOBAL OFF)
       set(_dawn_cmake_found TRUE)
       break()
@@ -218,6 +229,14 @@ elseif (_aurora_dawn_provider STREQUAL "package")
       "Dawn package does not contain DawnConfig.cmake.\n"
       "Searched: ${_dawn_pkg_dir}/{lib,lib64,cmake}/cmake/Dawn/\n"
       "The package must be a Dawn install tree built with DAWN_ENABLE_INSTALL=ON.")
+  endif ()
+
+  if (TARGET dawn::webgpu_dawn)
+    get_target_property(_dawn_libs dawn::webgpu_dawn INTERFACE_LINK_LIBRARIES)
+    if (_dawn_libs)
+      string(REGEX REPLACE "[^;]*/liblog\\.so" "log" _dawn_libs "${_dawn_libs}")
+      set_target_properties(dawn::webgpu_dawn PROPERTIES INTERFACE_LINK_LIBRARIES "${_dawn_libs}")
+    endif ()
   endif ()
 
   _aurora_dawn_set_platform_backends()

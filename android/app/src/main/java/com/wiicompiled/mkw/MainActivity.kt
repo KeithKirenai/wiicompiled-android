@@ -1,4 +1,4 @@
-﻿package com.wiicompiled.mkw
+package com.wiicompiled.mkw
 
 import android.app.Activity
 import android.content.Intent
@@ -34,16 +34,7 @@ class MainActivity : AppCompatActivity() {
         selectDiscBtn = findViewById(R.id.selectDiscBtn)
         launchBtn = findViewById(R.id.launchBtn)
 
-        val gameDataDir = File(filesDir, "game_data")
-        val mainDol = File(gameDataDir, "main.dol")
-
-        if (mainDol.exists()) {
-            statusText.text = "Game Data Verified (RMCP01)\nReady to launch."
-            launchBtn.isEnabled = true
-        } else {
-            statusText.text = "No game data found.\nPlease select your legally obtained Mario Kart Wii PAL (RMCP01) .wbfs or .iso image."
-            launchBtn.isEnabled = false
-        }
+        checkPermissionsAndData()
 
         selectDiscBtn.setOnClickListener {
             selectDiscLauncher.launch(arrayOf("*/*"))
@@ -52,6 +43,40 @@ class MainActivity : AppCompatActivity() {
         launchBtn.setOnClickListener {
             val intent = Intent(this, GameActivity::class.java)
             startActivity(intent)
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        checkPermissionsAndData()
+    }
+
+    private fun checkPermissionsAndData() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (!android.os.Environment.isExternalStorageManager()) {
+                try {
+                    val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    intent.data = Uri.parse("package:$packageName")
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    try {
+                        val allIntent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                        startActivity(allIntent)
+                    } catch (_: Exception) {}
+                }
+            }
+        }
+
+        val sdcardData = File("/sdcard/Download/wiicompiled_data/sys/main.dol")
+        val gameDataDir = File(filesDir, "game_data/sys/main.dol")
+        val gameDataDirOld = File(filesDir, "game_data/main.dol")
+
+        if (sdcardData.exists() || gameDataDir.exists() || gameDataDirOld.exists()) {
+            statusText.text = "Game Data Verified (RMCP01)\nReady to launch."
+            launchBtn.isEnabled = true
+        } else {
+            statusText.text = "No game data found.\nPlease select your legally obtained Mario Kart Wii PAL (RMCP01) .wbfs or .iso image."
+            launchBtn.isEnabled = false
         }
     }
 

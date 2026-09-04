@@ -42,6 +42,10 @@
 #include <dbghelp.h>
 #else
 #include <signal.h>
+#if defined(__ANDROID__) || defined(__linux__)
+#include <unwind.h>
+#include <dlfcn.h>
+#endif
 #if defined(__x86_64__)
 // Only the x86 POSIX fault path inspects ucontext_t to recover the page-fault
 // write bit. macOS deprecates ucontext and requires _XOPEN_SOURCE just to
@@ -555,6 +559,25 @@ void ShutdownProcessTranscript() {
     state.enabled = false;
 }
 
+#if defined(__ANDROID__) || defined(__linux__)
+struct HostBacktraceState {
+    void** current;
+    void** end;
+};
+
+static _Unwind_Reason_Code HostUnwindCallback(struct _Unwind_Context* context, void* arg) {
+    auto* state = static_cast<HostBacktraceState*>(arg);
+    uintptr_t pc = _Unwind_GetIP(context);
+    if (pc) {
+        if (state->current == state->end) {
+            return _URC_END_OF_STACK;
+        }
+        *state->current++ = reinterpret_cast<void*>(pc);
+    }
+    return _URC_NO_REASON;
+}
+#endif
+
 // The one host stack walker. Every caller - the CRT report hook, the fatal log
 // and the stderr crash dump - goes through this, so the log and the console see
 // exactly the same frames, including the TranslatedFunctionRegistry fallback for
@@ -659,6 +682,31 @@ std::string FormatHostStackTrace(unsigned framesToSkip) {
         out << ")\n";
     }
     return out.str();
+#elif defined(__ANDROID__) || defined(__linux__)
+    constexpr size_t kMaxDepth = 64;
+    void* buffer[kMaxDepth];
+    HostBacktraceState state{buffer, buffer + kMaxDepth};
+    _Unwind_Backtrace(HostUnwindCallback, &state);
+    size_t count = state.current - buffer;
+
+    std::ostringstream out;
+    out << "[runtime] host stack trace (" << count << " frames):\n";
+    for (size_t idx = framesToSkip; idx < count; ++idx) {
+        void* addr = buffer[idx];
+        Dl_info info;
+        if (dladdr(addr, &info) && info.dli_sname) {
+            out << "  [" << (idx - framesToSkip) << "] "
+                << (info.dli_fname ? info.dli_fname : "?") << "!" << info.dli_sname
+                << " + 0x" << std::hex << (reinterpret_cast<uintptr_t>(addr) - reinterpret_cast<uintptr_t>(info.dli_saddr))
+                << " (0x" << addr << ")\n" << std::dec;
+        } else if (dladdr(addr, &info) && info.dli_fname) {
+            out << "  [" << (idx - framesToSkip) << "] "
+                << info.dli_fname << " (0x" << std::hex << addr << ")\n" << std::dec;
+        } else {
+            out << "  [" << (idx - framesToSkip) << "] 0x" << std::hex << addr << "\n" << std::dec;
+        }
+    }
+    return out.str();
 #else
     (void)framesToSkip;
     return {};
@@ -713,6 +761,8 @@ void WriteFatalLogImpl(std::string_view reason, std::string_view extraDetails = 
         SystemBridge::WriteGuestMemorySnapshot(out, runDirectory / "mem1.bin");
     }
 
+    out << FormatHostStackTrace(1) << std::endl;
+
     out.flush();
     RT_LOG(RT_TAG_RUNTIME) << "crash artifacts written to "
                            << RuntimeConfigFile::PathToUtf8(runDirectory) << std::endl;
@@ -728,7 +778,6 @@ void SetRuntimeExitCodeImpl(int code) {
 namespace {
 
 void DumpHostStackTrace() {
-#if defined(_WIN32)
     static std::atomic_flag s_inProgress = ATOMIC_FLAG_INIT;
     if (s_inProgress.test_and_set()) {
         return;
@@ -737,10 +786,6 @@ void DumpHostStackTrace() {
     std::fputs(trace.c_str(), stderr);
     std::fflush(stderr);
     s_inProgress.clear();
-#else
-    RT_LOGF(RT_TAG_RUNTIME, "Host stack trace unavailable on this platform\n");
-    std::fflush(stderr);
-#endif
 }
 
 } // namespace
@@ -1214,11 +1259,13 @@ void AbortSignalHandler(int signum) {
 
     // Skip detailed dump if already reported by another handler
     if (g_fatalErrorReported.load(std::memory_order_acquire)) {
+        DumpHostStackTrace();
         std::fflush(stderr);
         std::fflush(stdout);
         std::_Exit(EXIT_FAILURE);
     }
 
+    DumpHostStackTrace();
     WriteFatalLogImpl("sigabrt");
 
     std::fflush(stderr);
@@ -1509,7 +1556,9 @@ int RuntimeMain(int argc, char** argv) {
     }
 }
 
+#if !defined(ANDROID) && !defined(__ANDROID__)
 int main(int argc, char** argv) {
     return RuntimeMain(argc, argv);
 }
+#endif
 extern "C" bool g_dynamicAspectRatioEnabled = false;

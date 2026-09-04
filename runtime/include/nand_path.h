@@ -64,6 +64,16 @@ inline std::optional<std::filesystem::path> BootstrapPayloadPath() {
         }
     }
 
+#if defined(__ANDROID__)
+    const auto appDir = RuntimeConfigFile::ApplicationDataDirectory();
+    if (ExistingDirectory(appDir / "wii_bootstrap" / "shared2" / "wc24")) {
+        return appDir / "wii_bootstrap";
+    }
+    if (ExistingDirectory("/sdcard/Download/wiicompiled_data/wii_bootstrap/shared2/wc24")) {
+        return "/sdcard/Download/wiicompiled_data/wii_bootstrap";
+    }
+#endif
+
     // This makes developer-tree launches work without changing their release layout.
     for (auto base = std::filesystem::current_path(); !base.empty();) {
         const auto candidate = base / "runtime" / "assets" / "wii";

@@ -6,36 +6,115 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 get_filename_component(MKW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(MKW_RUNTIME_DIR "${MKW_ROOT}/runtime")
+set(MKW_AURORA_DIR "${MKW_ROOT}/aurora-main")
+
+set(MKW_GENERATED_DIR "${MKW_ROOT}/generated")
+
+set(DAWN_ENABLE_D3D11 OFF CACHE BOOL "" FORCE)
+set(DAWN_ENABLE_D3D12 OFF CACHE BOOL "" FORCE)
+set(DAWN_ENABLE_VULKAN ON CACHE BOOL "" FORCE)
+set(DAWN_ENABLE_METAL OFF CACHE BOOL "" FORCE)
+set(TINT_BUILD_HLSL_WRITER OFF CACHE BOOL "" FORCE)
+set(DAWN_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
+set(DAWN_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(AURORA_DAWN_PROVIDER "package" CACHE STRING "" FORCE)
+set(AURORA_DAWN_LINKAGE "static" CACHE STRING "" FORCE)
+set(AURORA_SDL3_PROVIDER "vendor" CACHE STRING "" FORCE)
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TEST OFF CACHE BOOL "" FORCE)
+
+add_subdirectory("${MKW_AURORA_DIR}" "${CMAKE_BINARY_DIR}/aurora-build" EXCLUDE_FROM_ALL)
 
 include_directories(
     "${MKW_RUNTIME_DIR}/include"
     "${MKW_RUNTIME_DIR}/src"
     "${MKW_ROOT}"
+    "${MKW_AURORA_DIR}/include"
+    "${MKW_RUNTIME_DIR}/third_party"
+    "${MKW_RUNTIME_DIR}/third_party/pugixml"
+    "${MKW_RUNTIME_DIR}/third_party/toml11"
+    "${MKW_RUNTIME_DIR}/third_party/cryptopp"
 )
 
-# Core platform, coroutines, touch input, and disc extraction sources
-set(ANDROID_SOURCES
+# 1. Crypto++ (for Wii ES cryptography)
+set(MKW_CRYPTOPP_INTERFACE_DEFINITIONS CRYPTOPP_DISABLE_ASM CRYPTOPP_NO_GLOBAL_BYTE)
+file(GLOB MKW_CRYPTOPP_SOURCES CONFIGURE_DEPENDS
+    "${MKW_RUNTIME_DIR}/third_party/cryptopp/*.cpp")
+list(FILTER MKW_CRYPTOPP_SOURCES EXCLUDE REGEX
+    "/(adhoc|bench[123]|datatest|dlltest|fipsalgt|fipstest|pch|regtest[1234]|simple|test|validat[0-9]+)\\.cpp$")
+list(FILTER MKW_CRYPTOPP_SOURCES EXCLUDE REGEX
+    "(_avx|_ppc|_simd|_sse)\\.cpp$")
+add_library(mkw_cryptopp STATIC ${MKW_CRYPTOPP_SOURCES})
+target_include_directories(mkw_cryptopp SYSTEM PUBLIC "${MKW_RUNTIME_DIR}/third_party")
+target_compile_features(mkw_cryptopp PUBLIC cxx_std_17)
+target_compile_definitions(mkw_cryptopp PUBLIC ${MKW_CRYPTOPP_INTERFACE_DEFINITIONS})
+target_compile_options(mkw_cryptopp PRIVATE -w)
+set_target_properties(mkw_cryptopp PROPERTIES UNITY_BUILD OFF)
+
+# 2. Translated Shards (72 shards for Mario Kart Wii)
+include("${MKW_GENERATED_DIR}/build_shards/shards.cmake")
+
+add_library(mkw_base_shared STATIC ${MKW_BASE_COMMON_SHARDS})
+target_include_directories(mkw_base_shared PRIVATE
+    "${MKW_RUNTIME_DIR}/include"
+    "${MKW_RUNTIME_DIR}/src"
+    "${MKW_ROOT}"
+    "${MKW_AURORA_DIR}/include"
+)
+target_compile_definitions(mkw_base_shared PRIVATE TARGET_PC NOMINMAX ANDROID)
+target_compile_features(mkw_base_shared PRIVATE cxx_std_20)
+target_compile_options(mkw_base_shared PRIVATE -O2 -fno-fast-math -ffp-contract=off -fno-slp-vectorize -w -pipe)
+
+# 3. Runtime & Platform Sources
+file(GLOB_RECURSE RUNTIME_SOURCES CONFIGURE_DEPENDS "${MKW_RUNTIME_DIR}/src/*.cpp")
+list(REMOVE_ITEM RUNTIME_SOURCES
+    "${MKW_RUNTIME_DIR}/src/guest_flat_memory_macos.cpp"
+    "${MKW_RUNTIME_DIR}/src/product/retro_rewind_product.cpp"
+    "${MKW_RUNTIME_DIR}/src/host_cpu_baseline.cpp"
+)
+
+set(ANDROID_APP_SOURCES
     android_main.cpp
-    "${MKW_RUNTIME_DIR}/src/android_touch_input.cpp"
-    "${MKW_RUNTIME_DIR}/src/android_disc_extractor.cpp"
-    "${MKW_RUNTIME_DIR}/src/platform/host_platform.cpp"
-    "${MKW_RUNTIME_DIR}/src/host_context.cpp"
     "${MKW_RUNTIME_DIR}/src/platform/android/co_switch_android.S"
     "${MKW_RUNTIME_DIR}/third_party/pugixml/pugixml.cpp"
+    "${MKW_GENERATED_DIR}/data_sections_init.cpp"
+    "${MKW_GENERATED_DIR}/data_sections_init_blobs.S"
+    "${MKW_GENERATED_DIR}/guest_symbol_table.cpp"
+    ${MKW_BASE_REGISTRATION_SOURCES}
+    ${RUNTIME_SOURCES}
 )
+list(REMOVE_DUPLICATES ANDROID_APP_SOURCES)
 
 add_library(mkw_android SHARED
-    ${ANDROID_SOURCES}
+    ${ANDROID_APP_SOURCES}
 )
 
 target_compile_definitions(mkw_android PRIVATE
     ANDROID
     NOMINMAX
     TARGET_PC
+    SDL_MAIN_HANDLED
+    _DISABLE_STRING_ANNOTATION
+    _DISABLE_VECTOR_ANNOTATION
+)
+
+# PPC semantic helpers must not use fast-math
+set_source_files_properties(
+    "${MKW_RUNTIME_DIR}/src/ppc_helpers.cpp"
+    "${MKW_RUNTIME_DIR}/src/fpu_helpers.cpp"
+    PROPERTIES COMPILE_OPTIONS "-fno-fast-math;-ffp-contract=off"
 )
 
 target_link_libraries(mkw_android PRIVATE
     android
     log
     vulkan
+    aurora::gx
+    aurora::pad
+    aurora::si
+    aurora::vi
+    aurora::mtx
+    mkw_base_shared
+    mkw_cryptopp
 )

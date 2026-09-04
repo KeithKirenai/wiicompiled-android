@@ -920,7 +920,21 @@ inline std::filesystem::path ResolveRelativeToConfig(const std::string& value) {
 // The extracted DATA directory. Empty when nothing is configured.
 inline std::filesystem::path ResolvedDvdRoot() {
     const std::string configured = DvdRoot();
-    return configured.empty() ? std::filesystem::path{} : ResolveRelativeToConfig(configured);
+    if (!configured.empty()) {
+        return ResolveRelativeToConfig(configured);
+    }
+#if defined(__ANDROID__)
+    const auto appDir = ApplicationDataDirectory();
+    if (std::filesystem::exists(appDir / "game_data" / "files")) {
+        return appDir / "game_data";
+    }
+    if (std::filesystem::exists("/sdcard/Download/wiicompiled_data/files")) {
+        return "/sdcard/Download/wiicompiled_data";
+    }
+    return appDir / "game_data";
+#else
+    return {};
+#endif
 }
 
 /// The canonical Retro Rewind installation the frontend owns, or "" when none is recorded.

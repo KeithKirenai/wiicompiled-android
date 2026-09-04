@@ -39,6 +39,16 @@ std::filesystem::path FindDspCoefficientRom() {
         }
     }
 
+#if defined(__ANDROID__)
+    const auto appDir = RuntimeConfigFile::ApplicationDataDirectory();
+    if (std::filesystem::is_regular_file(appDir / "dsp_coef.bin")) {
+        return appDir / "dsp_coef.bin";
+    }
+    if (std::filesystem::is_regular_file("/sdcard/Download/wiicompiled_data/dsp_coef.bin")) {
+        return "/sdcard/Download/wiicompiled_data/dsp_coef.bin";
+    }
+#endif
+
     for (auto base = std::filesystem::current_path(); !base.empty();) {
         const auto sourceTreeAsset = base / "runtime" / "assets" / "dsp" / "dsp_coef.bin";
         if (std::filesystem::is_regular_file(sourceTreeAsset)) {

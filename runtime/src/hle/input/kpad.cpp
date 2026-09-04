@@ -218,27 +218,29 @@ extern "C" int32_t KPAD__Read_HLE(uint32_t chan, uint32_t statusPtr, uint32_t co
     bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
 #if defined(__ANDROID__)
     if (!have && chan == 0) {
+        have = true;
         auto touch = AndroidInput::GetTouchState();
-        if (touch.touchActive) {
-            have = true;
-            sample.hasClassic = true;
-            sample.clHold = touch.buttons;
-            // Left stick normalized to -1.0 .. 1.0
-            sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
-            sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
-            sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
-            sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
-            sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
-            sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
-            // Map Classic A/B to Core A/B so UI menus respond
-            if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800; // WPAD_BUTTON_A
-            if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400; // WPAD_BUTTON_B
-            if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010; // WPAD_BUTTON_PLUS
-            if (touch.buttons & AndroidInput::kBtnDpadUp) sample.hold |= 0x0008;
-            if (touch.buttons & AndroidInput::kBtnDpadDown) sample.hold |= 0x0004;
-            if (touch.buttons & AndroidInput::kBtnDpadLeft) sample.hold |= 0x0001;
-            if (touch.buttons & AndroidInput::kBtnDpadRight) sample.hold |= 0x0002;
-        }
+        sample.hasClassic = true;
+        sample.clHold = touch.buttons;
+        // Left stick normalized to -1.0 .. 1.0
+        sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
+        sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
+        sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
+        sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
+        sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
+        sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
+        // Map Classic A/B to Core A/B and 1/2 so all UI menus and driving modes respond
+        if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800 | 0x0001; // WPAD_BUTTON_A | WPAD_BUTTON_2
+        if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400 | 0x0002; // WPAD_BUTTON_B | WPAD_BUTTON_1
+        if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010; // WPAD_BUTTON_PLUS
+        if (touch.buttons & AndroidInput::kBtnDpadUp) sample.hold |= 0x0008;
+        if (touch.buttons & AndroidInput::kBtnDpadDown) sample.hold |= 0x0004;
+        if (touch.buttons & AndroidInput::kBtnDpadLeft) sample.hold |= 0x0001;
+        if (touch.buttons & AndroidInput::kBtnDpadRight) sample.hold |= 0x0002;
+
+        sample.acc[0] = std::sin(touch.tiltAngle);
+        sample.acc[1] = std::cos(touch.tiltAngle);
+        sample.acc[2] = 0.0f;
     }
 #endif
     try {
@@ -261,21 +263,26 @@ extern "C" int32_t KPAD__GetUnifiedWpadStatus_HLE(uint32_t chan, uint32_t status
     bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
 #if defined(__ANDROID__)
     if (!have && chan == 0) {
+        have = true;
         auto touch = AndroidInput::GetTouchState();
-        if (touch.touchActive) {
-            have = true;
-            sample.hasClassic = true;
-            sample.clHold = touch.buttons;
-            sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
-            sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
-            sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
-            sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
-            sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
-            sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
-            if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800;
-            if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400;
-            if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010;
-        }
+        sample.hasClassic = true;
+        sample.clHold = touch.buttons;
+        sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
+        sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
+        sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
+        sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
+        sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
+        sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
+        if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800 | 0x0001;
+        if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400 | 0x0002;
+        if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010;
+        if (touch.buttons & AndroidInput::kBtnDpadUp) sample.hold |= 0x0008;
+        if (touch.buttons & AndroidInput::kBtnDpadDown) sample.hold |= 0x0004;
+        if (touch.buttons & AndroidInput::kBtnDpadLeft) sample.hold |= 0x0001;
+        if (touch.buttons & AndroidInput::kBtnDpadRight) sample.hold |= 0x0002;
+        sample.acc[0] = std::sin(touch.tiltAngle);
+        sample.acc[1] = std::cos(touch.tiltAngle);
+        sample.acc[2] = 0.0f;
     }
 #endif
     try {

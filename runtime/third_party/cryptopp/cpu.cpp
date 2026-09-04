@@ -70,7 +70,12 @@ unsigned long int getauxval(unsigned long int) { return 0; }
 // setenv-android.sh will copy the header and source file
 // into PWD and the makefile will build it in place.
 #if defined(__ANDROID__)
-# include "cpu-features.h"
+# if defined(__has_include) && __has_include("cpu-features.h")
+#  include "cpu-features.h"
+# else
+#  undef __ANDROID__
+#  define __ANDROID_RESTORE__ 1
+# endif
 #endif
 
 #ifdef CRYPTOPP_GNU_STYLE_INLINE_ASSEMBLY
@@ -1470,3 +1475,7 @@ public:
 ANONYMOUS_NAMESPACE_END
 
 #endif  // CRYPTOPP_IMPORTS
+
+#if defined(__ANDROID_RESTORE__)
+# define __ANDROID__ 1
+#endif

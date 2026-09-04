@@ -134,6 +134,14 @@ extern "C" int32_t WPADProbe_HLE(uint32_t chan, uint32_t typePtr)
         }
         return kStatusOk;
     }
+#if defined(__ANDROID__)
+    if (chan == 0) {
+        if (typePtr != 0) {
+            Memory::Write32(typePtr, 2u); // WPAD_DEV_CLASSIC
+        }
+        return kStatusOk;
+    }
+#endif
     if (typePtr != 0) {
         Memory::Write32(typePtr, WpadContract::kExtensionCore);
     }

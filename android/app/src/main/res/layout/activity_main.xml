@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -113,40 +113,41 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
+                android:orientation="vertical"
                 android:layout_marginBottom="14dp">
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
 
                     <TextView
-                        android:layout_width="wrap_content"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
+                        android:layout_weight="1"
                         android:text="Resolution Scale"
                         android:textColor="#E0E0E6"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
-                    <TextView
+                    <Spinner
+                        android:id="@+id/spinnerResolution"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="1.0x native Wii (640x528) recommended for mobile"
-                        android:textColor="#88889C"
-                        android:textSize="11sp" />
+                        android:backgroundTint="#FF5722" />
                 </LinearLayout>
 
-                <Spinner
-                    android:id="@+id/spinnerResolution"
-                    android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:backgroundTint="#FF5722" />
+                    android:text="1.0x native Wii (640x528) recommended for mobile"
+                    android:textColor="#88889C"
+                    android:textSize="11sp"
+                    android:layout_marginTop="2dp" />
             </LinearLayout>
 
-            <!-- Copy Filter (Scanline removal) -->
+            <!-- Disable Copy Filter -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -163,7 +164,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Smooth Copy Filter"
+                        android:text="Disable Copy Filter"
                         android:textColor="#E0E0E6"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -171,16 +172,16 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Eliminates horizontal scan lines on track &amp; characters"
+                        android:text="Improves performance at the cost of interlaced scanlines across 3D scenes"
                         android:textColor="#88889C"
                         android:textSize="11sp" />
                 </LinearLayout>
 
                 <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switchCopyFilter"
+                    android:id="@+id/switchDisableCopyFilter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:checked="true" />
+                    android:checked="false" />
             </LinearLayout>
 
             <!-- Sustained Performance Mode -->

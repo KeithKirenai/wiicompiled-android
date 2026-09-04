@@ -1,4 +1,4 @@
-﻿package com.wiicompiled.mkw
+package com.wiicompiled.mkw
 
 import android.app.Activity
 import android.content.Context
@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var launchBtn: Button
 
     private lateinit var spinnerResolution: Spinner
-    private lateinit var switchCopyFilter: SwitchCompat
+    private lateinit var switchDisableCopyFilter: SwitchCompat
     private lateinit var switchSustainedPerf: SwitchCompat
     private lateinit var switchAudioMixer: SwitchCompat
 
@@ -47,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         launchBtn = findViewById(R.id.launchBtn)
 
         spinnerResolution = findViewById(R.id.spinnerResolution)
-        switchCopyFilter = findViewById(R.id.switchCopyFilter)
+        switchDisableCopyFilter = findViewById(R.id.switchDisableCopyFilter)
         switchSustainedPerf = findViewById(R.id.switchSustainedPerf)
         switchAudioMixer = findViewById(R.id.switchAudioMixer)
 
@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
         val savedResIdx = prefs.getInt("resolution_idx", 0)
         spinnerResolution.setSelection(savedResIdx.coerceIn(0, resOptions.size - 1))
 
-        switchCopyFilter.isChecked = prefs.getBoolean("copy_filter", true)
+        switchDisableCopyFilter.isChecked = prefs.getBoolean("disable_copy_filter", false)
         switchSustainedPerf.isChecked = prefs.getBoolean("sustained_perf", true)
         switchAudioMixer.isChecked = prefs.getBoolean("audio_mixer", true)
     }
@@ -85,66 +85,60 @@ class MainActivity : AppCompatActivity() {
     private fun saveConfigOptions() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
         val resIdx = spinnerResolution.selectedItemPosition
-        val copyFilter = switchCopyFilter.isChecked
+        val disableCopyFilter = switchDisableCopyFilter.isChecked
         val sustainedPerf = switchSustainedPerf.isChecked
         val audioMixer = switchAudioMixer.isChecked
 
         prefs.edit()
             .putInt("resolution_idx", resIdx)
-            .putBoolean("copy_filter", copyFilter)
+            .putBoolean("disable_copy_filter", disableCopyFilter)
             .putBoolean("sustained_perf", sustainedPerf)
             .putBoolean("audio_mixer", audioMixer)
             .apply()
 
         val multiplier = when (resIdx) {
-            1 -> 1.5f
-            2 -> 2.0f
-            else -> 1.0f
+            1 -> "1.5"
+            2 -> "2.0"
+            else -> "1.0"
         }
 
-        updateConfigFile(multiplier, copyFilter, audioMixer)
+        updateConfigFile(multiplier, disableCopyFilter, audioMixer)
     }
 
-    private fun updateConfigFile(resolutionMultiplier: Float, copyFilter: Boolean, audioMixer: Boolean) {
+    private fun updateConfigFile(resolutionMultiplier: String, disableCopyFilter: Boolean, audioMixer: Boolean) {
         val configDir = File(filesDir, "WiiCompiled")
         if (!configDir.exists()) {
             configDir.mkdirs()
         }
         val configFile = File(configDir, "Config.toml")
         try {
-            val content = """
-# WiiCompiled Android configuration (configured via launcher)
-
-[video]
-widescreen = true
-resolution_multiplier = 
-frame_interpolation_fps = 0
-display_mode = "windowed"
-graphics_api = "auto"
-skip_unready_pipelines = true
-disable_copy_filter = 
-show_fps = false
-texture_replacements = false
-texture_dumps = false
-
-[audio]
-volume = 1.0
-music_volume = 1.0
-sound_effects_volume = 1.0
-ui_volume = 1.0
-voices_volume = 1.0
-muted = false
-mix_worker = 
-
-[network]
-enabled = false
-
-[discord]
-enabled = false
-""".trimIndent()
+            val content = "# WiiCompiled Android configuration (configured via launcher)\n\n" +
+                "[video]\n" +
+                "widescreen = true\n" +
+                "resolution_multiplier = " + resolutionMultiplier + "\n" +
+                "frame_interpolation_fps = 0\n" +
+                "display_mode = \"windowed\"\n" +
+                "graphics_api = \"auto\"\n" +
+                "skip_unready_pipelines = true\n" +
+                "disable_copy_filter = " + (if (disableCopyFilter) "true" else "false") + "\n" +
+                "show_fps = false\n" +
+                "texture_replacements = false\n" +
+                "texture_dumps = false\n\n" +
+                "[audio]\n" +
+                "volume = 1.0\n" +
+                "music_volume = 1.0\n" +
+                "sound_effects_volume = 1.0\n" +
+                "ui_volume = 1.0\n" +
+                "voices_volume = 1.0\n" +
+                "muted = false\n" +
+                "mix_worker = " + (if (audioMixer) "true" else "false") + "\n\n" +
+                "[network]\n" +
+                "enabled = false\n\n" +
+                "[discord]\n" +
+                "enabled = false\n"
             configFile.writeText(content)
         } catch (e: Exception) {
-            android.util.Log.e("WiiCompiled", "Failed to update Config.toml: ")
+            android.util.Log.e("WiiCompiled", "Failed to update Config.toml: " + e.message)
         }
     }
 

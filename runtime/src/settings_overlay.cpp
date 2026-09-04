@@ -802,11 +802,15 @@ void DrawFpsOverlay() {
         return;
     }
 
+    const AuroraStats* stats = aurora_get_stats();
     const ImGuiIO& io = ImGui::GetIO();
-    constexpr float kMargin = 10.0f;
+    constexpr float kMargin = 8.0f;
     const float top = g_topBarVisible ? ImGui::GetFrameHeight() + kMargin : kMargin;
-    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - kMargin, top), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-    ImGui::SetNextWindowBgAlpha(0.55f);
+    // Position horizontally centered at the top of the display
+    ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, top), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+    ImGui::SetNextWindowBgAlpha(0.65f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 5.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
     constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_AlwaysAutoResize |
                                          ImGuiWindowFlags_NoDecoration |
                                          ImGuiWindowFlags_NoFocusOnAppearing |
@@ -814,24 +818,58 @@ void DrawFpsOverlay() {
                                          ImGuiWindowFlags_NoMove |
                                          ImGuiWindowFlags_NoNav |
                                          ImGuiWindowFlags_NoSavedSettings;
-    if (ImGui::Begin("FPS Overlay", nullptr, kFlags)) {
+    if (ImGui::Begin("Profiler Overlay", nullptr, kFlags)) {
         if (presentTiming.sampleCount == 0) {
-            ImGui::TextUnformatted("FPS: --");
+            ImGui::TextUnformatted("FPS: --  |  Measuring...");
         } else {
-            // Present timing includes the additional frames produced by
-            // interpolation, so this remains the actual displayed FPS.
-            ImGui::Text("FPS: %.1f", presentTiming.framesPerSecond);
-            // Replay-unsafe frames hold the presented cadence with duplicated
-            // slots, so the counter alone reads 180 while the motion on screen
-            // is 60 Hz. Surface the divergence instead of hiding it.
-            if (presentTiming.effectiveFramesPerSecond <
-                presentTiming.framesPerSecond * 0.95) {
-                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f), "Motion: %.1f",
-                                   presentTiming.effectiveFramesPerSecond);
+            // Main frame rate and frame time
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "FPS: %.1f", presentTiming.framesPerSecond);
+            ImGui::SameLine();
+            ImGui::Text(" (%.1fms)", presentTiming.averageFrameTimeMs);
+
+            // True motion detection (when frame interpolation diverges)
+            if (presentTiming.effectiveFramesPerSecond < presentTiming.framesPerSecond * 0.95) {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.75f, 0.25f, 1.0f), "| Motion: %.1f", presentTiming.effectiveFramesPerSecond);
+            }
+
+            if (stats) {
+                // Graphics dispatch & CPU submission bottleneck metrics
+                ImGui::SameLine();
+                ImGui::TextDisabled("|");
+                ImGui::SameLine();
+                ImGui::Text("Draws: %u", stats->drawCallCount);
+
+                if (stats->mergedDrawCallCount > 0) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("(+%u merged)", stats->mergedDrawCallCount);
+                }
+
+                // Bandwidth metrics: Geometry + Texture upload
+                const float vertKb = static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f;
+                const float texKb = static_cast<float>(stats->lastTextureUploadSize) / 1024.0f;
+                ImGui::SameLine();
+                ImGui::TextDisabled("|");
+                ImGui::SameLine();
+                ImGui::Text("Geom: %.0fKB", vertKb);
+
+                if (texKb > 1.0f) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine();
+                    ImGui::Text("TexUpload: %.0fKB", texKb);
+                }
+
+                // Shader compilation bottleneck indicator
+                if (stats->queuedPipelines > 0) {
+                    ImGui::SameLine();
+                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "| Compiling: %u", stats->queuedPipelines);
+                }
             }
         }
     }
     ImGui::End();
+    ImGui::PopStyleVar(2);
 }
 
 void DrawShaderCompilationStatus() {

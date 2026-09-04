@@ -20,10 +20,6 @@ import androidx.appcompat.app.AppCompatActivity
 class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventListener {
 
     private lateinit var surfaceView: SurfaceView
-    private lateinit var hudFpsText: TextView
-    private lateinit var hudStatusText: TextView
-    private lateinit var hudTiltText: TextView
-
     private lateinit var btnGas: Button
     private lateinit var btnDrift: Button
     private lateinit var btnItem: Button
@@ -32,19 +28,6 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
-
-    // HUD performance polling
-    private val hudHandler = Handler(Looper.getMainLooper())
-    private val hudRunnable: Runnable = object : Runnable {
-        override fun run() {
-            try {
-                hudFpsText.text = nativeGetPerfStats()
-            } catch (e: Throwable) {
-                // Native may not be ready yet; ignore
-            }
-            hudHandler.postDelayed(this, 500)
-        }
-    }
 
     companion object {
         const val BTN_A = 0
@@ -101,9 +84,6 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         setContentView(R.layout.activity_game)
 
         surfaceView = findViewById(R.id.gameSurfaceView)
-        hudFpsText = findViewById(R.id.hudFpsText)
-        hudStatusText = findViewById(R.id.hudStatusText)
-        hudTiltText = findViewById(R.id.hudTiltText)
 
         btnGas = findViewById(R.id.btnGas)
         btnDrift = findViewById(R.id.btnDrift)
@@ -181,13 +161,11 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
-        hudHandler.post(hudRunnable)
     }
 
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
-        hudHandler.removeCallbacks(hudRunnable)
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
@@ -205,7 +183,6 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             // Steering tilt calculated from Y/X axis in landscape
             val tiltAngle = (event.values[1] / 9.8f).coerceIn(-1.0f, 1.0f)
             nativeTiltEvent(tiltAngle)
-            hudTiltText.text = String.format("Tilt: %.1f°", tiltAngle * 45f)
         }
     }
 

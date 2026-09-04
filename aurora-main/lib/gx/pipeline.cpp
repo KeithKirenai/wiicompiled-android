@@ -73,8 +73,11 @@ void render(const DrawData& data, const wgpu::RenderPassEncoder& pass, DrawEncod
 
   // An interpolated presentation slot re-encodes the identical draw with only this range replaced; overriding here avoids copying the whole DrawData per draw per slot.
   const gfx::Range& uniformRange = uniformRangeOverride != nullptr ? *uniformRangeOverride : data.uniformRange;
-  const std::array offsets{uniformRange.offset};
-  pass.SetBindGroup(1, gfx::g_uniformBindGroup, offsets.size(), offsets.data());
+  if (uniformRange.offset != state.boundUniformOffset) {
+    const std::array offsets{uniformRange.offset};
+    pass.SetBindGroup(1, gfx::g_uniformBindGroup, offsets.size(), offsets.data());
+    state.boundUniformOffset = uniformRange.offset;
+  }
   // Resolved when the draw was recorded; see GXBindGroups.
   if (data.bindGroups.resolvedTextureBindGroup != nullptr &&
       data.bindGroups.resolvedTextureBindGroup != state.boundTextureBindGroup) {

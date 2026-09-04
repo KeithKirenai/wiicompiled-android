@@ -68,6 +68,8 @@ struct DrawEncodeState {
   gfx::PipelineRef currentPipeline = UINTPTR_MAX;
   // The bind group currently occupying slot 2.
   WGPUBindGroup boundTextureBindGroup = nullptr;
+  // The current uniform dynamic offset bound to slot 1.
+  uint32_t boundUniformOffset = UINT32_MAX;
   // The pass-wide index buffer binding is established lazily by the first indexed draw; every draw then addresses it with firstIndex instead of a per-draw SetIndexBuffer.
   bool indexBufferBound = false;
 };

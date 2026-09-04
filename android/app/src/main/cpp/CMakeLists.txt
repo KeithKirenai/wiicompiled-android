@@ -97,7 +97,9 @@ target_compile_definitions(mkw_android PRIVATE
     SDL_MAIN_HANDLED
     _DISABLE_STRING_ANNOTATION
     _DISABLE_VECTOR_ANNOTATION
+    NDEBUG
 )
+target_compile_options(mkw_android PRIVATE -O3 -pipe)
 
 # PPC semantic helpers must not use fast-math
 set_source_files_properties(

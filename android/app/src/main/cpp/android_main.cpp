@@ -122,6 +122,7 @@ extern "C" void AndroidOnFrameWait() {
 extern int RuntimeMain(int argc, char** argv);
 
 #include <sys/resource.h>
+#include <sched.h>
 
 static void GameRenderWorker() {
     LOGI("GameRenderWorker started - invoking WiiCompiled RuntimeMain");
@@ -130,8 +131,24 @@ static void GameRenderWorker() {
         return;
     }
 
-    // Elevate game thread priority to prevent starvation by Android background tasks
-    setpriority(PRIO_PROCESS, 0, -16);
+    // Elevate game thread priority to highest non-realtime priority
+    setpriority(PRIO_PROCESS, 0, -19);
+
+    // Pin game execution thread to big/prime cores (cores 4, 5, 6, 7 on Snapdragon 7 Gen 1)
+    // Cores 0-3 are Cortex-A510 little cores (1.36-1.8 GHz)
+    // Cores 4-6 are Cortex-A710 performance cores (2.05-2.36 GHz)
+    // Core 7 is Cortex-A710 prime core (2.17-2.40 GHz)
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(4, &cpuset);
+    CPU_SET(5, &cpuset);
+    CPU_SET(6, &cpuset);
+    CPU_SET(7, &cpuset);
+    if (sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0) {
+        LOGI("Failed to pin to big cores 4-7, trying any online CPU");
+    } else {
+        LOGI("Successfully pinned GameRenderWorker thread to Big/Prime cores 4-7");
+    }
 
     g_mkwAndroidNativeWindow = g_nativeWindow;
 

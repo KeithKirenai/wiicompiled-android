@@ -1602,7 +1602,9 @@ bool run_frame_worker_cycle(gfx::SealedFrame& sealedFrame) noexcept {
   {
     std::lock_guard gpuLock(g_rendererGpuMutex);
     seal_frame_locked(sealedFrame, ctx);
-    overlapEncode = ctx.interpolationActive;
+    // Allow overlapping asynchronous GPU encoding on all frames so the producer thread
+    // can proceed to drain and record the next frame in parallel without blocking for presentation.
+    overlapEncode = true;
     if (!overlapEncode) {
       presentationJobs = encode_sealed_frame(sealedFrame, ctx);
     }

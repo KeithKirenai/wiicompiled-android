@@ -102,58 +102,73 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         btnPause = findViewById(R.id.btnPause)
         steeringArea = findViewById(R.id.steeringArea)
 
+        val touchOverlayContainer = findViewById<View>(R.id.touchOverlayContainer)
+
         // Universal hardware scaling for mobile GPUs:
         // Configures the SurfaceView buffer resolution so lower-end GPUs don't choke on 1080p/1440p panels,
         // letting the device's hardware display processor (DPU) scale the surface with zero GPU overhead.
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
         val resIdx = prefs.getInt("resolution_idx", 0)
+        val touchControlsEnabled = prefs.getBoolean("touch_controls", true)
+        val tiltControlsEnabled = prefs.getBoolean("tilt_controls", true)
+
+        touchOverlayContainer.visibility = if (touchControlsEnabled) View.VISIBLE else View.GONE
+        android.util.Log.i("WiiCompiled", "Controls configured: touch=$touchControlsEnabled, tilt=$tiltControlsEnabled")
+
         val metrics = resources.displayMetrics
         val screenW = metrics.widthPixels
         val screenH = metrics.heightPixels
         val aspect = if (screenH > 0) screenW.toFloat() / screenH.toFloat() else (16f / 9f)
 
         when (resIdx) {
-            0 -> { // Performance (540p)
-                val targetH = 540
+            0 -> { // Native (480p/528p)
+                val targetH = 528
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
-                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (540p Performance)")
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (Native 528p)")
             }
-            1 -> { // Native (720p)
-                val targetH = 720
+            1 -> { // HD (720p/792p)
+                val targetH = 792
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
-                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (720p Native)")
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (HD 792p)")
             }
-            else -> { // HD / FHD full panel resolution
+            else -> { // FHD / Full panel resolution
                 surfaceView.holder.setSizeFromLayout()
                 android.util.Log.i("WiiCompiled", "Full panel resolution configured: ${screenW}x${screenH}")
             }
         }
 
         surfaceView.holder.addCallback(this)
-        surfaceView.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    nativeSetButton(BTN_A, true)
-                    true
+        if (touchControlsEnabled) {
+            surfaceView.setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        nativeSetButton(BTN_A, true)
+                        true
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        nativeSetButton(BTN_A, false)
+                        true
+                    }
+                    else -> false
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    nativeSetButton(BTN_A, false)
-                    true
-                }
-                else -> false
             }
+            setupButtonTouch(btnGas, BTN_A)
+            setupButtonTouch(btnDrift, BTN_B)
+            setupButtonTouch(btnItem, BTN_L)
+            setupButtonTouch(btnPause, BTN_START)
+            setupSteeringTouch(steeringArea)
+        } else {
+            surfaceView.setOnTouchListener(null)
         }
 
-        setupButtonTouch(btnGas, BTN_A)
-        setupButtonTouch(btnDrift, BTN_B)
-        setupButtonTouch(btnItem, BTN_L)
-        setupButtonTouch(btnPause, BTN_START)
-        setupSteeringTouch(steeringArea)
-
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        if (tiltControlsEnabled) {
+            accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        } else {
+            accelerometer = null
+        }
 
         // Seed dsp_coef.bin from assets
         try {

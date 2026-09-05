@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var switchDisableBloom: SwitchCompat
     private lateinit var switchSustainedPerf: SwitchCompat
     private lateinit var switchAudioMixer: SwitchCompat
+    private lateinit var switchTouchControls: SwitchCompat
+    private lateinit var switchTiltControls: SwitchCompat
 
     private var isExtracting = false
 
@@ -57,6 +59,8 @@ class MainActivity : AppCompatActivity() {
         switchDisableBloom = findViewById(R.id.switchDisableBloom)
         switchSustainedPerf = findViewById(R.id.switchSustainedPerf)
         switchAudioMixer = findViewById(R.id.switchAudioMixer)
+        switchTouchControls = findViewById(R.id.switchTouchControls)
+        switchTiltControls = findViewById(R.id.switchTiltControls)
 
         setupConfigOptions()
         checkPermissionsAndData()
@@ -85,10 +89,9 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
 
         val resOptions = arrayOf(
-            "0.75x (Performance 540p)",
-            "1.0x (Native 720p)",
-            "1.5x (HD 960x792)",
-            "2.0x (FHD 1080p)"
+            "1.0x (Native 480p/528p)",
+            "1.5x (HD 720p/792p)",
+            "2.0x (FHD 960p/1056p)"
         )
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, resOptions)
         spinnerResolution.adapter = adapter
@@ -100,6 +103,8 @@ class MainActivity : AppCompatActivity() {
         switchDisableBloom.isChecked = prefs.getBoolean("disable_bloom", true)
         switchSustainedPerf.isChecked = prefs.getBoolean("sustained_perf", true)
         switchAudioMixer.isChecked = prefs.getBoolean("audio_mixer", true)
+        switchTouchControls.isChecked = prefs.getBoolean("touch_controls", true)
+        switchTiltControls.isChecked = prefs.getBoolean("tilt_controls", true)
     }
 
     private fun saveConfigOptions() {
@@ -109,6 +114,8 @@ class MainActivity : AppCompatActivity() {
         val disableBloom = switchDisableBloom.isChecked
         val sustainedPerf = switchSustainedPerf.isChecked
         val audioMixer = switchAudioMixer.isChecked
+        val touchControls = switchTouchControls.isChecked
+        val tiltControls = switchTiltControls.isChecked
 
         prefs.edit()
             .putInt("resolution_idx", resIdx)
@@ -116,13 +123,14 @@ class MainActivity : AppCompatActivity() {
             .putBoolean("disable_bloom", disableBloom)
             .putBoolean("sustained_perf", sustainedPerf)
             .putBoolean("audio_mixer", audioMixer)
+            .putBoolean("touch_controls", touchControls)
+            .putBoolean("tilt_controls", tiltControls)
             .apply()
 
         val multiplier = when (resIdx) {
-            0 -> "0.75"
-            1 -> "1.0"
-            2 -> "1.5"
-            3 -> "2.0"
+            0 -> "1.0"
+            1 -> "1.5"
+            2 -> "2.0"
             else -> "1.0"
         }
 

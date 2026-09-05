@@ -140,27 +140,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         }
 
         surfaceView.holder.addCallback(this)
+        surfaceView.setOnTouchListener(null)
         if (touchControlsEnabled) {
-            surfaceView.setOnTouchListener { _, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        nativeSetButton(BTN_A, true)
-                        true
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        nativeSetButton(BTN_A, false)
-                        true
-                    }
-                    else -> false
-                }
-            }
             setupButtonTouch(btnGas, BTN_A)
             setupButtonTouch(btnDrift, BTN_B)
             setupButtonTouch(btnItem, BTN_L)
             setupButtonTouch(btnPause, BTN_START)
             setupSteeringTouch(steeringArea)
-        } else {
-            surfaceView.setOnTouchListener(null)
         }
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager

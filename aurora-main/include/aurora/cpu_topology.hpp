@@ -12,6 +12,8 @@
 #include <sched.h>
 #include <sys/syscall.h>
 #include <sys/resource.h>
+#endif
+#if defined(__ANDROID__)
 #include <android/log.h>
 #endif
 
@@ -111,9 +113,14 @@ inline Topology detect_topology() {
     for (int c : topo.littleCores) littleStr += std::to_string(c) + " ";
     for (int c : topo.bigCores) bigStr += std::to_string(c) + " ";
     for (int c : topo.primeCores) primeStr += std::to_string(c) + " ";
+#if defined(__ANDROID__)
     __android_log_print(ANDROID_LOG_INFO, "WiiCompiled-CPU",
         "Dynamic Topology: Total=%d | Little=[%s] | Big=[%s] | Prime=[%s]",
         topo.totalCores, littleStr.c_str(), bigStr.c_str(), primeStr.c_str());
+#else
+    fprintf(stderr, "Dynamic Topology: Total=%d | Little=[%s] | Big=[%s] | Prime=[%s]\n",
+        topo.totalCores, littleStr.c_str(), bigStr.c_str(), primeStr.c_str());
+#endif
 #else
     topo.totalCores = std::max<int>(1, std::thread::hardware_concurrency());
     for (int i = 0; i < topo.totalCores; ++i) {

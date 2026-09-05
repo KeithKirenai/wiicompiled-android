@@ -125,6 +125,9 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         touchOverlayContainer.visibility = if (touchControlsEnabled) View.VISIBLE else View.GONE
         android.util.Log.i("WiiCompiled", "Controls configured: touch=$touchControlsEnabled, tilt=$tiltControlsEnabled")
 
+        customKeyMap = ControllerConfig.getMapping(this)
+        android.util.Log.i("WiiCompiled", "Loaded ${customKeyMap.size} custom controller mappings")
+
         val metrics = resources.displayMetrics
         val screenW = metrics.widthPixels
         val screenH = metrics.heightPixels
@@ -285,6 +288,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     override fun onResume() {
         super.onResume()
+        customKeyMap = ControllerConfig.getMapping(this)
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
@@ -396,7 +400,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         return super.onGenericMotionEvent(event)
     }
 
+    private var customKeyMap: Map<Int, Int> = emptyMap()
+
     private fun mapKeyCodeToButton(keyCode: Int): Int? {
+        // First check user's custom controller configuration
+        customKeyMap[keyCode]?.let { return it }
+
+        // Default mapping fallback
         return when (keyCode) {
             // Xbox A / DualShock Cross / Nintendo B
             android.view.KeyEvent.KEYCODE_BUTTON_A -> BTN_A

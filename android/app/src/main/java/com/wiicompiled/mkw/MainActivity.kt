@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity() {
         selectDiscBtn = findViewById(R.id.selectDiscBtn)
         launchBtn = findViewById(R.id.launchBtn)
         exportLogsBtn = findViewById(R.id.exportLogsBtn)
+        val btnRemapper = findViewById<Button>(R.id.btnRemapper)
 
         spinnerResolution = findViewById(R.id.spinnerResolution)
         switchDisableCopyFilter = findViewById(R.id.switchDisableCopyFilter)
@@ -76,6 +77,10 @@ class MainActivity : AppCompatActivity() {
 
         launchBtn.setOnClickListener {
             launchGame()
+        }
+
+        btnRemapper.setOnClickListener {
+            startActivity(Intent(this, RemapperActivity::class.java))
         }
 
         exportLogsBtn.setOnClickListener {

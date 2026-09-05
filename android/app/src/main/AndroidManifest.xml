@@ -37,6 +37,13 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation">
         </activity>
 
+        <activity
+            android:name=".RemapperActivity"
+            android:exported="true"
+            android:label="Controller Settings"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

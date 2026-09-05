@@ -80,11 +80,10 @@ local.properties
 
 # Extracted disc files
 extracted/
-# Extracted disc files
-extracted/
+# Device screenshots and captures from automation scripts
+/screenshot_*.png
+/screenshot_*.jpg
+/screenshot_*.jpeg
+/screen_*.png
+/screen_opt*.png
 
-# Device screenshots and captures
-*.png
-*.jpg
-*.jpeg
-!aurora-main/assets/aurora.png

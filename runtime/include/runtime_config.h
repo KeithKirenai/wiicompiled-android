@@ -838,7 +838,11 @@ inline bool AttenuateMusicWhenMediaPlays(bool fallback = false) {
 
 // Bluetooth Wii Remotes / Wii U Pro Controllers. Read once before SDL's joystick
 // subsystem comes up, so a change only takes effect on the next launch.
+#ifdef __ANDROID__
+inline bool WiiRemotesEnabled(bool fallback = false) {
+#else
 inline bool WiiRemotesEnabled(bool fallback = true) {
+#endif
     return Get().wiiRemotes.value_or(fallback);
 }
 

@@ -1478,7 +1478,7 @@ int RuntimeMain(int argc, char** argv) {
         // SDL only reads its Wii driver hint when the joystick subsystem starts, which
         // aurora_initialize does; a Bluetooth Wii Remote paired before launch must be
         // visible on that first scan.
-        WiiRemoteInput::ConfigureSdlHints(RuntimeConfigFile::WiiRemotesEnabled(true));
+        WiiRemoteInput::ConfigureSdlHints(RuntimeConfigFile::WiiRemotesEnabled());
 
         const AuroraInfo auroraInfo = aurora_initialize(0, nullptr, &auroraConfig);
         if (requestedBackend != BACKEND_AUTO && auroraInfo.backend != requestedBackend) {

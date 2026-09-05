@@ -439,7 +439,8 @@ class MainActivity : AppCompatActivity() {
                 "muted = " + (if (audioMuted) "true" else "false") + "\n" +
                 "mix_worker = " + (if (audioMixer) "true" else "false") + "\n\n" +
                 "[controller]\n" +
-                "rumble = " + (if (rumble) "true" else "false") + "\n\n" +
+                "rumble = " + (if (rumble) "true" else "false") + "\n" +
+                "wii_remotes = false\n\n" +
                 "[network]\n" +
                 "enabled = " + (if (networkEnabled) "true" else "false") + "\n\n" +
                 "[discord]\n" +

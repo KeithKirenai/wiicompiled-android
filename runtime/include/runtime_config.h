@@ -261,6 +261,14 @@ inline std::filesystem::path ApplicationDataDirectory() {
     }
 #elif defined(__APPLE__)
     return RuntimePlatform::ApplicationDataDirectory(kApplicationDirectoryName);
+#elif defined(__ANDROID__)
+    if (const char* internal = std::getenv("INTERNAL_STORAGE"); internal && *internal) {
+        return std::filesystem::path(internal) / kApplicationDirectoryName;
+    }
+    if (const char* home = std::getenv("HOME"); home && *home) {
+        return std::filesystem::path(home) / kApplicationDirectoryName;
+    }
+    return std::filesystem::current_path() / kApplicationDirectoryName;
 #else
     // XDG Base Directory spec equivalent of FOLDERID_LocalAppData: $XDG_DATA_HOME if set and
     // non-empty, otherwise its default of $HOME/.local/share.
@@ -921,17 +929,41 @@ inline std::filesystem::path ResolveRelativeToConfig(const std::string& value) {
 inline std::filesystem::path ResolvedDvdRoot() {
     const std::string configured = DvdRoot();
     if (!configured.empty()) {
-        return ResolveRelativeToConfig(configured);
+        const auto resolved = ResolveRelativeToConfig(configured);
+        if (std::filesystem::exists(resolved / "files")) {
+            return resolved;
+        }
+        if (std::filesystem::exists(std::filesystem::path(configured) / "files")) {
+            return configured;
+        }
     }
 #if defined(__ANDROID__)
     const auto appDir = ApplicationDataDirectory();
     if (std::filesystem::exists(appDir / "game_data" / "files")) {
         return appDir / "game_data";
     }
+    if (std::filesystem::exists(appDir.parent_path() / "game_data" / "files")) {
+        return appDir.parent_path() / "game_data";
+    }
+    if (const char* internal = std::getenv("INTERNAL_STORAGE"); internal && *internal) {
+        const auto p = std::filesystem::path(internal) / "game_data";
+        if (std::filesystem::exists(p / "files")) {
+            return p;
+        }
+    }
+    if (const char* home = std::getenv("HOME"); home && *home) {
+        const auto p = std::filesystem::path(home) / "game_data";
+        if (std::filesystem::exists(p / "files")) {
+            return p;
+        }
+    }
     if (std::filesystem::exists("/sdcard/Download/wiicompiled_data/files")) {
         return "/sdcard/Download/wiicompiled_data";
     }
-    return appDir / "game_data";
+    if (std::filesystem::exists("/sdcard/Download/MarioKartWii [RMCP01]/DATA/files")) {
+        return "/sdcard/Download/MarioKartWii [RMCP01]/DATA";
+    }
+    return appDir.parent_path() / "game_data";
 #else
     return {};
 #endif

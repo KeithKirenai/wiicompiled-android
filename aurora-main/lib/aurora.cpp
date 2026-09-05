@@ -1,4 +1,5 @@
 #include <aurora/aurora.h>
+#include <aurora/cpu_topology.hpp>
 
 #ifdef AURORA_ENABLE_GX
 #include "gfx/common.hpp"
@@ -24,6 +25,13 @@
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#endif
+
+#if defined(__ANDROID__)
+#include <sched.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 #endif
 
 #include <atomic>
@@ -294,6 +302,10 @@ bool run_frame_worker_cycle(gfx::SealedFrame& sealedFrame) noexcept;
 #endif
 
 void frame_worker_main() noexcept {
+  // --- Android: dynamically pin this worker to performance cores ---
+#if defined(__ANDROID__)
+  aurora::cpu::pin_to_performance_cores(-18);
+#endif
   {
     std::lock_guard lock(g_frameWorker.mutex);
     g_frameWorker.threadId = std::this_thread::get_id();

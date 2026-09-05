@@ -519,7 +519,10 @@ void GXCopyTex(void* dest, GXBool clear) {
   if (aurora::gx::render_target_has_alpha(g_gxState.pixelFmt)) {
     clearState.clearAlpha = clear && alphaUpdate;
   }
-  const auto copyFilter = combined_copy_filter_coefficients(g_gxState.copyFilterVFilter);
+  auto copyFilter = combined_copy_filter_coefficients(g_gxState.copyFilterVFilter);
+  if (aurora::g_config.disableCopyFilter) {
+    copyFilter = {0, copyFilter[0] + copyFilter[1] + copyFilter[2], 0};
+  }
   // Skip only recurring color copies so one-shot copies are never lost.
   const bool producedConsecutively = handle.revision != 0 && currentFrame - handle.lastProducedFrame <= 1;
   const bool persistentCopy = !aurora::gx::is_depth_format(texCopyFmt) && !producedConsecutively;

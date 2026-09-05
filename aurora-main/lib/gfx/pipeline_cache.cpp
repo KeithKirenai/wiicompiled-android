@@ -1,4 +1,5 @@
 #include "pipeline_cache.hpp"
+#include <aurora/cpu_topology.hpp>
 
 #include "clear.hpp"
 #include "../gx/pipeline.hpp"
@@ -22,6 +23,13 @@
 #include <absl/container/flat_hash_set.h>
 #include <fmt/format.h>
 #include <tracy/Tracy.hpp>
+
+#if defined(__ANDROID__)
+#include <sched.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 
 namespace aurora::gfx {
 static Module Log("aurora::gfx::pipeline_cache");
@@ -994,6 +1002,10 @@ static void compile_pending_pipeline(PendingPipeline pending) {
 static void pipeline_worker() {
 #ifdef TRACY_ENABLE
   tracy::SetThreadName("Pipeline compilation thread");
+#endif
+
+#if defined(__ANDROID__)
+  aurora::cpu::pin_to_efficiency_cores(5);
 #endif
 
   while (true) {

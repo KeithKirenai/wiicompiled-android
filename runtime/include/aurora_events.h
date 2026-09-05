@@ -41,12 +41,14 @@ inline void Flush(bool force = false) {
     if (!force && std::chrono::steady_clock::now() - changedAt < kSaveDelay) {
         return;
     }
+#if !defined(__ANDROID__)
     if (sizeDirty && width != 0 && height != 0) {
         RuntimeConfigFile::SetWindowSize(width, height);
     }
     if (positionDirty) {
         RuntimeConfigFile::SetWindowPosition(x, y);
     }
+#endif
     sizeDirty = false;
     positionDirty = false;
 }

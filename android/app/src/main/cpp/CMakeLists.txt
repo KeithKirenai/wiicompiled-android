@@ -3,6 +3,8 @@ project(mkw_android LANGUAGES C CXX ASM)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_definitions(NDEBUG)
+add_compile_options(-O3 -pipe)
 
 get_filename_component(MKW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../../../.." ABSOLUTE)
 set(MKW_RUNTIME_DIR "${MKW_ROOT}/runtime")
@@ -64,7 +66,7 @@ target_include_directories(mkw_base_shared PRIVATE
 )
 target_compile_definitions(mkw_base_shared PRIVATE TARGET_PC NOMINMAX ANDROID)
 target_compile_features(mkw_base_shared PRIVATE cxx_std_20)
-target_compile_options(mkw_base_shared PRIVATE -O2 -fno-fast-math -ffp-contract=off -fno-slp-vectorize -w -pipe)
+target_compile_options(mkw_base_shared PRIVATE -O3 -fno-fast-math -ffp-contract=off -w -pipe)
 
 # 3. Runtime & Platform Sources
 file(GLOB_RECURSE RUNTIME_SOURCES CONFIGURE_DEPENDS "${MKW_RUNTIME_DIR}/src/*.cpp")

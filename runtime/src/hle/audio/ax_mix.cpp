@@ -10,6 +10,14 @@
 #include "ppc_runtime.h"
 #include "runtime_config.h"
 #include "runtime_log.h"
+#include <aurora/cpu_topology.hpp>
+
+#if defined(__ANDROID__)
+#include <sched.h>
+#include <sys/resource.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <array>
@@ -43,6 +51,23 @@ std::filesystem::path FindDspCoefficientRom() {
     const auto appDir = RuntimeConfigFile::ApplicationDataDirectory();
     if (std::filesystem::is_regular_file(appDir / "dsp_coef.bin")) {
         return appDir / "dsp_coef.bin";
+    }
+    if (std::filesystem::is_regular_file(appDir.parent_path() / "dsp_coef.bin")) {
+        return appDir.parent_path() / "dsp_coef.bin";
+    }
+    if (const char* internal = std::getenv("INTERNAL_STORAGE"); internal && *internal) {
+        if (std::filesystem::is_regular_file(std::filesystem::path(internal) / "dsp_coef.bin")) {
+            return std::filesystem::path(internal) / "dsp_coef.bin";
+        }
+    }
+    if (const char* home = std::getenv("HOME"); home && *home) {
+        if (std::filesystem::is_regular_file(std::filesystem::path(home) / "dsp_coef.bin")) {
+            return std::filesystem::path(home) / "dsp_coef.bin";
+        }
+    }
+    const auto dvdRoot = RuntimeConfigFile::ResolvedDvdRoot();
+    if (!dvdRoot.empty() && std::filesystem::is_regular_file(dvdRoot / "dsp_coef.bin")) {
+        return dvdRoot / "dsp_coef.bin";
     }
     if (std::filesystem::is_regular_file("/sdcard/Download/wiicompiled_data/dsp_coef.bin")) {
         return "/sdcard/Download/wiicompiled_data/dsp_coef.bin";
@@ -1368,6 +1393,10 @@ private:
     }
 
     void MixWorkerMain() {
+        // --- Android: dynamically pin audio worker to audio/mid cores ---
+#if defined(__ANDROID__)
+        aurora::cpu::pin_to_audio_cores(-10);
+#endif
         t_onMixWorker = true;
         for (;;) {
             {

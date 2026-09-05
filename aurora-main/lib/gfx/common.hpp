@@ -134,8 +134,10 @@ public:
   [[nodiscard]] size_t size() const noexcept { return m_length; }
   [[nodiscard]] bool empty() const noexcept { return m_length == 0; }
 
-  void append(const void* data, size_t size) {
-    resize(m_length + size, false);
+  inline void append(const void* data, size_t size) {
+    if (m_length + size > m_capacity) [[unlikely]] {
+      resize(m_length + size, false);
+    }
     memcpy(m_data + m_length, data, size);
     m_length += size;
   }
@@ -152,8 +154,10 @@ public:
 
   // Extend the buffer without clearing the new bytes. Only for callers that overwrite the whole
   // region: the mapped staging buffers are megabytes of write-combine memory.
-  void append_uninitialized(size_t size) {
-    resize(m_length + size, false);
+  inline void append_uninitialized(size_t size) {
+    if (m_length + size > m_capacity) [[unlikely]] {
+      resize(m_length + size, false);
+    }
     m_length += size;
   }
 

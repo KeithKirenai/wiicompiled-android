@@ -22,6 +22,10 @@
 #include <optional>
 #include <vector>
 
+#if defined(__ARM_NEON) || defined(__aarch64__)
+#include <arm_neon.h>
+#endif
+
 namespace aurora::gx::fifo {
 static Module Log("aurora::gx::fifo");
 
@@ -1996,21 +2000,32 @@ static const CachedIndexTemplate& cached_index_template(GXPrimitive prim, u16 vt
   return entry;
 }
 
-static IndexBuffer handle_draw_idx_buf;
-
-static ArrayRef<u16> offset_index_template(const CachedIndexTemplate& indexTemplate,
-                                           u16 vtxStart) {
-  // Grow-only: resizing down and back up made every merge zero-fill the buffer before the transform immediately overwrote it.
+static gfx::Range push_offset_indices(const CachedIndexTemplate& indexTemplate,
+                                       u16 vtxStart) {
   const size_t count = indexTemplate.indices.size();
-  if (handle_draw_idx_buf.size() < count) {
-    handle_draw_idx_buf.resize(count);
-  }
+  auto [buf, range] = gfx::map_indices(count * sizeof(u16));
   const u16* src = indexTemplate.indices.data();
-  u16* dst = handle_draw_idx_buf.data();
-  for (size_t i = 0; i < count; ++i) {
+  u16* dst = reinterpret_cast<u16*>(buf.data());
+
+  size_t i = 0;
+#if defined(__ARM_NEON) || defined(__aarch64__)
+  const uint16x8_t vOffset = vdupq_n_u16(vtxStart);
+  for (; i + 16 <= count; i += 16) {
+    uint16x8_t a = vld1q_u16(src + i);
+    uint16x8_t b = vld1q_u16(src + i + 8);
+    vst1q_u16(dst + i, vaddq_u16(a, vOffset));
+    vst1q_u16(dst + i + 8, vaddq_u16(b, vOffset));
+  }
+  if (i + 8 <= count) {
+    uint16x8_t a = vld1q_u16(src + i);
+    vst1q_u16(dst + i, vaddq_u16(a, vOffset));
+    i += 8;
+  }
+#endif
+  for (; i < count; ++i) {
     dst[i] = static_cast<u16>(src[i] + vtxStart);
   }
-  return {dst, count};
+  return range;
 }
 
 struct CachedPipelineState {
@@ -2163,9 +2178,8 @@ static bool handle_draw(u8 cmd, const u8* data, u32& pos, u32 size, bool bigEndi
     if (lastDraw != nullptr && prim != GX_LINES && prim != GX_LINESTRIP && prim != GX_POINTS &&
         lastDraw->instanceCount == 1) LIKELY {
       const auto& indexTemplate = cached_index_template(prim, vtxCount);
-      const auto indices = offset_index_template(indexTemplate, lastDraw->vtxCount);
       const u32 numIndices = indexTemplate.indexCount;
-      const gfx::Range idxRange = gfx::push_indices(indices);
+      const gfx::Range idxRange = push_offset_indices(indexTemplate, lastDraw->vtxCount);
       CHECK(lastDraw->vertRange.offset + lastDraw->vertRange.size == vertRange.offset,
             "Non-consecutive vertex ranges ({} < {})", lastDraw->vertRange.offset + lastDraw->vertRange.size,
             vertRange.offset);

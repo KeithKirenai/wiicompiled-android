@@ -1565,7 +1565,7 @@ std::pair<ByteBuffer, Range> map_verts(size_t length) {
   return {ByteBuffer{g_verts.data() + range.offset, range.size}, range};
 }
 std::pair<ByteBuffer, Range> map_indices(size_t length) {
-  const auto range = map(g_indices, length, 4);
+  const auto range = map(g_indices, length, 0);
   return {ByteBuffer{g_indices.data() + range.offset, range.size}, range};
 }
 std::pair<ByteBuffer, Range> map_uniform(size_t length) {

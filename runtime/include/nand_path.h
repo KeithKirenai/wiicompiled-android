@@ -69,6 +69,15 @@ inline std::optional<std::filesystem::path> BootstrapPayloadPath() {
     if (ExistingDirectory(appDir / "wii_bootstrap" / "shared2" / "wc24")) {
         return appDir / "wii_bootstrap";
     }
+    if (ExistingDirectory(appDir.parent_path() / "wii_bootstrap" / "shared2" / "wc24")) {
+        return appDir.parent_path() / "wii_bootstrap";
+    }
+    if (const char* internal = std::getenv("INTERNAL_STORAGE"); internal && *internal) {
+        const auto p = std::filesystem::path(internal) / "wii_bootstrap";
+        if (ExistingDirectory(p / "shared2" / "wc24")) {
+            return p;
+        }
+    }
     if (ExistingDirectory("/sdcard/Download/wiicompiled_data/wii_bootstrap/shared2/wc24")) {
         return "/sdcard/Download/wiicompiled_data/wii_bootstrap";
     }
@@ -125,18 +134,17 @@ constexpr std::string_view kBootstrapFiles[] = {
 // Add first-run WC24 files only when the NAND has none yet.
 inline bool SeedMissingBootstrapFiles(const std::filesystem::path& root) {
     const auto payload = BootstrapPayloadPath();
-    if (!payload) {
-        return false;
-    }
     std::error_code ec;
     for (const std::string_view file : kBootstrapFiles) {
         const std::filesystem::path relativePath{std::string(file)};
         ec.clear();
-        if (!CopyBootstrapFile(*payload, root, relativePath, ec)) {
-            RT_LOG(RT_TAG_NAND) << "could not create "
-                                << RuntimeConfigFile::PathToUtf8(root / relativePath)
-                                << std::endl;
-            return false;
+        if (payload && CopyBootstrapFile(*payload, root, relativePath, ec)) {
+            continue;
+        }
+        const auto dest = root / relativePath;
+        if (!std::filesystem::exists(dest, ec)) {
+            std::filesystem::create_directories(dest.parent_path(), ec);
+            std::ofstream dummy(dest, std::ios::binary);
         }
     }
     return true;

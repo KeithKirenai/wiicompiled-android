@@ -1022,6 +1022,11 @@ bool IsMouseActivity(const SDL_Event& event) {
 // Runs on the thread that pumps SDL events (the same one that calls Draw), so
 // the SDL cursor calls are safe here.
 void UpdateCursorAutoHide() {
+#if defined(__ANDROID__)
+    // Touchscreen Android platforms have no hardware mouse cursor to hide/show;
+    // calling SDL_HideCursor on Android invokes SDLActivity JNI which aborts outside SDLActivity.
+    return;
+#else
     const bool shouldHide =
         !g_topBarVisible && Clock::now() - g_lastMouseActivity >= kCursorAutoHideDelay;
     if (shouldHide == g_cursorHidden) {
@@ -1033,6 +1038,7 @@ void UpdateCursorAutoHide() {
     } else {
         SDL_ShowCursor();
     }
+#endif
 }
 
 // Alt+Enter toggles the display mode inside aurora without going through the

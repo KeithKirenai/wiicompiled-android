@@ -23,8 +23,8 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags("-std=c++20", "-fexceptions", "-frtti")
-                arguments("-DANDROID_STL=c++_shared")
+                cppFlags("-std=c++20", "-fexceptions", "-frtti", "-O3", "-DNDEBUG")
+                arguments("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release")
             }
         }
     }
@@ -32,6 +32,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

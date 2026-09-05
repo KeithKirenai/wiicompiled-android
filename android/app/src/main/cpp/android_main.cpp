@@ -18,6 +18,8 @@
 
 #include "android_touch_input.h"
 #include "android_disc_extractor.h"
+#include <aurora/gfx.h>
+#include <aurora/cpu_topology.hpp>
 
 #define LOG_TAG "WiiCompiled_NDK"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -131,24 +133,9 @@ static void GameRenderWorker() {
         return;
     }
 
-    // Elevate game thread priority to highest non-realtime priority
-    setpriority(PRIO_PROCESS, 0, -19);
-
-    // Pin game execution thread to big/prime cores (cores 4, 5, 6, 7 on Snapdragon 7 Gen 1)
-    // Cores 0-3 are Cortex-A510 little cores (1.36-1.8 GHz)
-    // Cores 4-6 are Cortex-A710 performance cores (2.05-2.36 GHz)
-    // Core 7 is Cortex-A710 prime core (2.17-2.40 GHz)
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(4, &cpuset);
-    CPU_SET(5, &cpuset);
-    CPU_SET(6, &cpuset);
-    CPU_SET(7, &cpuset);
-    if (sched_setaffinity(0, sizeof(cpuset), &cpuset) != 0) {
-        LOGI("Failed to pin to big cores 4-7, trying any online CPU");
-    } else {
-        LOGI("Successfully pinned GameRenderWorker thread to Big/Prime cores 4-7");
-    }
+    // Dynamically pin game execution thread to performance/prime cores and elevate priority
+    aurora::cpu::pin_to_performance_cores(-19);
+    LOGI("GameRenderWorker thread pinned via dynamic CPU topology");
 
     g_mkwAndroidNativeWindow = g_nativeWindow;
 
@@ -177,28 +164,26 @@ Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstr
     setenv("XDG_DATA_HOME", pathStr, 1);
     setenv("HOME", pathStr, 1);
 
-    // Write an Android-optimized Config.toml on first launch.
-    // skip_unready_pipelines: skip shader stalls during gameplay.
-    // disable_copy_filter: faster EFB copies.
-    // resolution_multiplier 1.0: native Wii resolution on mobile.
+    // Write an Android-optimized Config.toml only if none exists yet.
     std::string wiicompiledDir = std::string(pathStr) + "/WiiCompiled";
     std::string configPath = wiicompiledDir + "/Config.toml";
-    // mkdir -p the dir
     ::mkdir(wiicompiledDir.c_str(), 0755);
-    std::ifstream checkExist(configPath);
-    if (!checkExist.good()) {
+    if (!std::filesystem::exists(configPath)) {
         std::ofstream cfg(configPath);
         if (cfg) {
-            cfg << "# WiiCompiled Android configuration (auto-generated)\n"
+            cfg << "# WiiCompiled Android configuration (optimized)\n"
+                   "\n"
+                   "[paths]\n"
+                   "dvd_root = \"" << pathStr << "/game_data\"\n"
                    "\n"
                    "[video]\n"
                    "widescreen = true\n"
                    "resolution_multiplier = 1.0\n"
                    "frame_interpolation_fps = 0\n"
                    "display_mode = \"windowed\"\n"
-                   "graphics_api = \"auto\"\n"
+                   "graphics_api = \"vulkan\"\n"
                    "skip_unready_pipelines = true\n"
-                   "disable_copy_filter = false\n"
+                   "disable_copy_filter = true\n"
                    "show_fps = false\n"
                    "texture_replacements = false\n"
                    "texture_dumps = false\n"
@@ -217,9 +202,12 @@ Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstr
                    "\n"
                    "[discord]\n"
                    "enabled = false\n";
-            LOGI("Wrote Android Config.toml to %s", configPath.c_str());
+            LOGI("Wrote initial Android Config.toml to %s", configPath.c_str());
         }
+    } else {
+        LOGI("Found existing Config.toml at %s (preserving launcher settings)", configPath.c_str());
     }
+    aurora_set_disable_copy_filter(true);
     env->ReleaseStringUTFChars(internalPath, pathStr);
 }
 

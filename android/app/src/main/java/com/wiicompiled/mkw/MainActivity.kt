@@ -1,24 +1,26 @@
 package com.wiicompiled.mkw
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import com.wiicompiled.mkw.extractor.WiiDiscExtractor
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var statusTitle: TextView
     private lateinit var statusText: TextView
     private lateinit var statusIndicator: View
     private lateinit var progressBar: ProgressBar
@@ -27,8 +29,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var spinnerResolution: Spinner
     private lateinit var switchDisableCopyFilter: SwitchCompat
+    private lateinit var switchDisableBloom: SwitchCompat
     private lateinit var switchSustainedPerf: SwitchCompat
     private lateinit var switchAudioMixer: SwitchCompat
+
+    private var isExtracting = false
 
     private val selectDiscLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
         if (uri != null) {
@@ -40,6 +45,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        statusTitle = findViewById(R.id.statusTitle)
         statusText = findViewById(R.id.statusText)
         statusIndicator = findViewById(R.id.statusIndicator)
         progressBar = findViewById(R.id.progressBar)
@@ -48,6 +54,7 @@ class MainActivity : AppCompatActivity() {
 
         spinnerResolution = findViewById(R.id.spinnerResolution)
         switchDisableCopyFilter = findViewById(R.id.switchDisableCopyFilter)
+        switchDisableBloom = findViewById(R.id.switchDisableBloom)
         switchSustainedPerf = findViewById(R.id.switchSustainedPerf)
         switchAudioMixer = findViewById(R.id.switchAudioMixer)
 
@@ -55,29 +62,42 @@ class MainActivity : AppCompatActivity() {
         checkPermissionsAndData()
 
         selectDiscBtn.setOnClickListener {
-            selectDiscLauncher.launch(arrayOf("*/*"))
+            if (!isExtracting) {
+                // Opens the system document picker allowing the user to select either a .wbfs or .iso
+                selectDiscLauncher.launch(arrayOf("*/*"))
+            }
         }
 
         launchBtn.setOnClickListener {
-            saveConfigOptions()
-            val intent = Intent(this, GameActivity::class.java).apply {
-                putExtra("SUSTAINED_PERF", switchSustainedPerf.isChecked)
-            }
-            startActivity(intent)
+            launchGame()
         }
+    }
+
+    private fun launchGame() {
+        saveConfigOptions()
+        val intent = Intent(this, GameActivity::class.java).apply {
+            putExtra("SUSTAINED_PERF", switchSustainedPerf.isChecked)
+        }
+        startActivity(intent)
     }
 
     private fun setupConfigOptions() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
 
-        val resOptions = arrayOf("1.0x (Native 640x528)", "1.5x (HD 960x792)", "2.0x (FHD 1280x1056)")
+        val resOptions = arrayOf(
+            "0.75x (Performance 540p)",
+            "1.0x (Native 720p)",
+            "1.5x (HD 960x792)",
+            "2.0x (FHD 1080p)"
+        )
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, resOptions)
         spinnerResolution.adapter = adapter
 
         val savedResIdx = prefs.getInt("resolution_idx", 0)
         spinnerResolution.setSelection(savedResIdx.coerceIn(0, resOptions.size - 1))
 
-        switchDisableCopyFilter.isChecked = prefs.getBoolean("disable_copy_filter", false)
+        switchDisableCopyFilter.isChecked = prefs.getBoolean("disable_copy_filter", true)
+        switchDisableBloom.isChecked = prefs.getBoolean("disable_bloom", true)
         switchSustainedPerf.isChecked = prefs.getBoolean("sustained_perf", true)
         switchAudioMixer.isChecked = prefs.getBoolean("audio_mixer", true)
     }
@@ -86,41 +106,56 @@ class MainActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
         val resIdx = spinnerResolution.selectedItemPosition
         val disableCopyFilter = switchDisableCopyFilter.isChecked
+        val disableBloom = switchDisableBloom.isChecked
         val sustainedPerf = switchSustainedPerf.isChecked
         val audioMixer = switchAudioMixer.isChecked
 
         prefs.edit()
             .putInt("resolution_idx", resIdx)
             .putBoolean("disable_copy_filter", disableCopyFilter)
+            .putBoolean("disable_bloom", disableBloom)
             .putBoolean("sustained_perf", sustainedPerf)
             .putBoolean("audio_mixer", audioMixer)
             .apply()
 
         val multiplier = when (resIdx) {
-            1 -> "1.5"
-            2 -> "2.0"
+            0 -> "0.75"
+            1 -> "1.0"
+            2 -> "1.5"
+            3 -> "2.0"
             else -> "1.0"
         }
 
-        updateConfigFile(multiplier, disableCopyFilter, audioMixer)
+        updateConfigFile(multiplier, disableCopyFilter, disableBloom, audioMixer)
     }
 
-    private fun updateConfigFile(resolutionMultiplier: String, disableCopyFilter: Boolean, audioMixer: Boolean) {
+    private fun updateConfigFile(
+        resolutionMultiplier: String,
+        disableCopyFilter: Boolean,
+        disableBloom: Boolean,
+        audioMixer: Boolean,
+        customDvdRoot: String? = null
+    ) {
         val configDir = File(filesDir, "WiiCompiled")
         if (!configDir.exists()) {
             configDir.mkdirs()
         }
         val configFile = File(configDir, "Config.toml")
+        val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
+        val dvdRoot = customDvdRoot ?: prefs.getString("dvd_root", null)
+
         try {
             val content = "# WiiCompiled Android configuration (configured via launcher)\n\n" +
+                (if (!dvdRoot.isNullOrEmpty()) "[paths]\ndvd_root = \"$dvdRoot\"\n\n" else "") +
                 "[video]\n" +
                 "widescreen = true\n" +
                 "resolution_multiplier = " + resolutionMultiplier + "\n" +
                 "frame_interpolation_fps = 0\n" +
                 "display_mode = \"windowed\"\n" +
-                "graphics_api = \"auto\"\n" +
+                "graphics_api = \"vulkan\"\n" +
                 "skip_unready_pipelines = true\n" +
                 "disable_copy_filter = " + (if (disableCopyFilter) "true" else "false") + "\n" +
+                "disabled_post_processing_paths = " + (if (disableBloom) "16" else "0") + "\n" +
                 "show_fps = false\n" +
                 "texture_replacements = false\n" +
                 "texture_dumps = false\n\n" +
@@ -144,7 +179,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        checkPermissionsAndData()
+        if (!isExtracting) {
+            checkPermissionsAndData()
+        }
     }
 
     private fun checkPermissionsAndData() {
@@ -163,45 +200,138 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val sdcardData = File("/sdcard/Download/wiicompiled_data/sys/main.dol")
-        val gameDataDir = File(filesDir, "game_data/sys/main.dol")
-        val gameDataDirOld = File(filesDir, "game_data/main.dol")
+        val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
+        val configuredRoot = prefs.getString("dvd_root", null)?.let { File(it) }
 
-        if (sdcardData.exists() || gameDataDir.exists() || gameDataDirOld.exists()) {
-            statusText.text = "Game Data Verified (RMCP01)\nAll assets intact. Ready to race!"
+        val isConfiguredValid = configuredRoot != null &&
+                File(configuredRoot, "sys/main.dol").exists() &&
+                File(configuredRoot, "files").isDirectory &&
+                (File(configuredRoot, "files").list()?.isNotEmpty() == true)
+
+        val sdcardSys = File("/sdcard/Download/wiicompiled_data/sys/main.dol")
+        val sdcardFiles = File("/sdcard/Download/wiicompiled_data/files")
+        val internalSys = File(filesDir, "game_data/sys/main.dol")
+        val internalFiles = File(filesDir, "game_data/files")
+
+        val hasSdcardData = sdcardSys.exists() && sdcardFiles.isDirectory && (sdcardFiles.list()?.isNotEmpty() == true)
+        val hasInternalData = internalSys.exists() && internalFiles.isDirectory && (internalFiles.list()?.isNotEmpty() == true)
+
+        if (isConfiguredValid || hasSdcardData || hasInternalData) {
+            val activeDir = when {
+                isConfiguredValid -> configuredRoot!!.absolutePath
+                hasSdcardData -> "/sdcard/Download/wiicompiled_data"
+                else -> File(filesDir, "game_data").absolutePath
+            }
+            statusTitle.text = "Ready to race"
+            statusTitle.setTextColor(0xFF4CAF50.toInt())
+            statusText.text = "Game Data Verified (RMCP01)\n$activeDir"
             statusIndicator.setBackgroundColor(0xFF4CAF50.toInt())
             launchBtn.isEnabled = true
+            selectDiscBtn.text = "SELECT DIFFERENT DISC (.WBFS / .ISO)"
         } else {
-            statusText.text = "No game assets found.\nPlease select your legally obtained Mario Kart Wii PAL (RMCP01) .wbfs or .iso disc image."
+            statusTitle.text = "Game Assets Missing"
+            statusTitle.setTextColor(0xFFFF9800.toInt())
             statusIndicator.setBackgroundColor(0xFFFF9800.toInt())
             launchBtn.isEnabled = false
+            statusText.text = "No game assets found.\nPlease select your Mario Kart Wii PAL (RMCP01) .wbfs or .iso disc image."
+            selectDiscBtn.text = "SELECT DISC (.WBFS / .ISO)"
+        }
+    }
+
+    private fun getExtractionTargetDirectory(): File {
+        val downloadDir = File("/sdcard/Download")
+        return if (downloadDir.exists() && downloadDir.canWrite()) {
+            File(downloadDir, "wiicompiled_data")
+        } else {
+            File(filesDir, "game_data")
         }
     }
 
     private fun processDiscUri(uri: Uri) {
-        statusText.text = "Importing and verifying disc container..."
+        if (isExtracting) return
+        isExtracting = true
+
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        progressBar.isIndeterminate = false
+        progressBar.max = 100
+        progressBar.progress = 0
         progressBar.visibility = ProgressBar.VISIBLE
         selectDiscBtn.isEnabled = false
+        launchBtn.isEnabled = false
+
+        statusTitle.text = "Installing Game Assets..."
+        statusTitle.setTextColor(0xFF2196F3.toInt())
+        statusIndicator.setBackgroundColor(0xFF2196F3.toInt())
+        statusText.text = "Opening disc image (.wbfs / .iso)..."
+
+        val targetDir = getExtractionTargetDirectory()
 
         Thread {
             try {
-                val gameDataDir = File(filesDir, "game_data")
-                gameDataDir.mkdirs()
-                File(gameDataDir, "main.dol").createNewFile()
+                val source = WiiDiscExtractor.openDiscSource(this, uri)
+                source.use { discSource ->
+                    val result = WiiDiscExtractor.extract(
+                        source = discSource,
+                        destDirectory = targetDir,
+                        isCancelled = { isFinishing || isDestroyed }
+                    ) { status, percent ->
+                        runOnUiThread {
+                            progressBar.progress = percent
+                            statusText.text = "$status ($percent%)"
+                        }
+                    }
 
-                runOnUiThread {
-                    progressBar.visibility = ProgressBar.GONE
-                    selectDiscBtn.isEnabled = true
-                    launchBtn.isEnabled = true
-                    statusText.text = "Disc unpacked successfully!\nReady to start."
-                    statusIndicator.setBackgroundColor(0xFF4CAF50.toInt())
-                    Toast.makeText(this, "Disc data extracted", Toast.LENGTH_SHORT).show()
+                    runOnUiThread {
+                        isExtracting = false
+                        progressBar.visibility = ProgressBar.GONE
+                        selectDiscBtn.isEnabled = true
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+                        if (result.success) {
+                            val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
+                            prefs.edit().putString("dvd_root", targetDir.absolutePath).apply()
+                            saveConfigOptions()
+
+                            checkPermissionsAndData()
+                            AlertDialog.Builder(this)
+                                .setTitle("✅ Installation Complete")
+                                .setMessage(
+                                    "Mario Kart Wii (RMCP01) unpacked successfully!\n\n" +
+                                    "• Format: WBFS/ISO container\n" +
+                                    "• Files unpacked: ${result.extractedFilesCount}\n" +
+                                    "• Total size: ${String.format("%.2f", result.totalBytesExtracted / 1024.0 / 1024.0 / 1024.0)} GB\n" +
+                                    "• System DOL: ${if (result.dolVerified) "Verified (Match)" else "Extracted"}\n" +
+                                    "• Static Relay: ${if (result.relVerified) "Verified (Match)" else "Extracted"}\n\n" +
+                                    "Installed to:\n${targetDir.absolutePath}"
+                                )
+                                .setPositiveButton("Start Game") { _, _ ->
+                                    launchGame()
+                                }
+                                .setNegativeButton("Close", null)
+                                .show()
+                        } else {
+                            checkPermissionsAndData()
+                            AlertDialog.Builder(this)
+                                .setTitle("⚠️ Installation Error")
+                                .setMessage(result.errorMessage ?: "Failed to extract disc.")
+                                .setPositiveButton("OK", null)
+                                .show()
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
+                    isExtracting = false
                     progressBar.visibility = ProgressBar.GONE
                     selectDiscBtn.isEnabled = true
-                    statusText.text = "Failed to import disc."
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    checkPermissionsAndData()
+
+                    AlertDialog.Builder(this)
+                        .setTitle("⚠️ Disc Import Error")
+                        .setMessage("An error occurred while opening or reading the selected disc file:\n\n${e.message}\n\nPlease ensure you selected a valid, uncorrupted .wbfs or .iso file.")
+                        .setPositiveButton("OK", null)
+                        .show()
                 }
             }
         }.start()

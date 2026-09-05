@@ -85,7 +85,10 @@ jobs:
 
       - name: Check trailing whitespace
         run: |
-          if grep -rn '[[:blank:]]$' --include='*.{cpp,h,hpp,c,kt,java,cs,yml,yaml,toml}' .; then
+          if rg -n '[ \t]+$' \
+            --glob '*.{cpp,h,hpp,c,kt,java,cs,yml,yaml,toml}' \
+            --glob '!android/gradlew*' \
+            --glob '!**/assets/**' -g '!.git/**' .; then
             echo "::error::Trailing whitespace found in files above."
             exit 1
           fi

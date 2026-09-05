@@ -43,7 +43,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew
+        run: chmod +x gradlew
         working-directory: android
 
       - name: Build debug APK
@@ -84,7 +84,7 @@ jobs:
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew
+        run: chmod +x gradlew
         working-directory: android
 
       - name: Run lint

@@ -55,6 +55,7 @@ target_compile_options(mkw_cryptopp PRIVATE -w)
 set_target_properties(mkw_cryptopp PROPERTIES UNITY_BUILD OFF)
 
 # 2. Translated Shards (72 shards for Mario Kart Wii - decoupled prebuilt)
+include("${MKW_GENERATED_DIR}/build_shards/shards.cmake")
 set(MKW_PREBUILT_SHARDS "${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libmkw_base_shared.a")
 if(NOT EXISTS "${MKW_PREBUILT_SHARDS}")
     message(FATAL_ERROR
@@ -121,6 +122,6 @@ target_link_libraries(mkw_android PRIVATE
     aurora::si
     aurora::vi
     aurora::mtx
-    mkw_base_shared
+    -Wl,--whole-archive mkw_base_shared -Wl,--no-whole-archive
     mkw_cryptopp
 )

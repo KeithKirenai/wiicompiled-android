@@ -54,19 +54,21 @@ target_compile_definitions(mkw_cryptopp PUBLIC ${MKW_CRYPTOPP_INTERFACE_DEFINITI
 target_compile_options(mkw_cryptopp PRIVATE -w)
 set_target_properties(mkw_cryptopp PROPERTIES UNITY_BUILD OFF)
 
-# 2. Translated Shards (72 shards for Mario Kart Wii)
-include("${MKW_GENERATED_DIR}/build_shards/shards.cmake")
+# 2. Translated Shards (72 shards for Mario Kart Wii - decoupled prebuilt)
+set(MKW_PREBUILT_SHARDS "${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libmkw_base_shared.a")
+if(NOT EXISTS "${MKW_PREBUILT_SHARDS}")
+    message(FATAL_ERROR
+        "\n[mkw] Missing prebuilt shard archive: ${MKW_PREBUILT_SHARDS}\n"
+        "[mkw] Shard compilation is decoupled from the APK build.\n"
+        "[mkw] Please run 'build-shards.bat' (or use 'build-app.bat' which calls it automatically) to compile shards first.\n"
+    )
+endif()
 
-add_library(mkw_base_shared STATIC ${MKW_BASE_COMMON_SHARDS})
-target_include_directories(mkw_base_shared PRIVATE
-    "${MKW_RUNTIME_DIR}/include"
-    "${MKW_RUNTIME_DIR}/src"
-    "${MKW_ROOT}"
-    "${MKW_AURORA_DIR}/include"
+message(STATUS "[mkw] Using decoupled shard archive: ${MKW_PREBUILT_SHARDS}")
+add_library(mkw_base_shared STATIC IMPORTED GLOBAL)
+set_target_properties(mkw_base_shared PROPERTIES
+    IMPORTED_LOCATION "${MKW_PREBUILT_SHARDS}"
 )
-target_compile_definitions(mkw_base_shared PRIVATE TARGET_PC NOMINMAX ANDROID)
-target_compile_features(mkw_base_shared PRIVATE cxx_std_20)
-target_compile_options(mkw_base_shared PRIVATE -O3 -fno-fast-math -ffp-contract=off -w -pipe)
 
 # 3. Runtime & Platform Sources
 file(GLOB_RECURSE RUNTIME_SOURCES CONFIGURE_DEPENDS "${MKW_RUNTIME_DIR}/src/*.cpp")

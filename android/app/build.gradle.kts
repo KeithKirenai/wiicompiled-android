@@ -24,7 +24,12 @@ android {
         externalNativeBuild {
             cmake {
                 cppFlags("-std=c++20", "-fexceptions", "-frtti", "-O3", "-DNDEBUG")
-                arguments("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release")
+                arguments(
+                    "-DANDROID_STL=c++_shared",
+                    "-DCMAKE_BUILD_TYPE=Release",
+                    "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
+                    "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+                )
             }
         }
     }
@@ -48,12 +53,18 @@ android {
         jvmTarget = "17"
     }
 
-externalNativeBuild {
-            cmake {
-                path = file("src/main/cpp/CMakeLists.txt")
-                version = "4.1.2"
-            }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "4.1.2"
         }
+    }
+
+    packaging {
+        jniLibs {
+            excludes += listOf("**/libmkw_base_shared.a")
+        }
+    }
 }
 
 dependencies {

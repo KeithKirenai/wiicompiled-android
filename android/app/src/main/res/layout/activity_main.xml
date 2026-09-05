@@ -253,6 +253,16 @@
         android:background="#263238"
         android:text="SELECT DISC (.WBFS / .ISO)"
         android:textColor="#ECEFF1"
-        android:textSize="13sp" />
+        android:textSize="13sp"
+        android:layout_marginBottom="8dp" />
+
+    <Button
+        android:id="@+id/exportLogsBtn"
+        android:layout_width="match_parent"
+        android:layout_height="36dp"
+        android:background="#1E282D"
+        android:text="EXPORT / SHARE LOGS"
+        android:textColor="#90A4AE"
+        android:textSize="12sp" />
 
 </LinearLayout>

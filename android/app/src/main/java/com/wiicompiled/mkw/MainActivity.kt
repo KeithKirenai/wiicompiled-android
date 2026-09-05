@@ -26,6 +26,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var selectDiscBtn: Button
     private lateinit var launchBtn: Button
+    private lateinit var exportLogsBtn: Button
 
     private lateinit var spinnerResolution: Spinner
     private lateinit var switchDisableCopyFilter: SwitchCompat
@@ -53,6 +54,7 @@ class MainActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         selectDiscBtn = findViewById(R.id.selectDiscBtn)
         launchBtn = findViewById(R.id.launchBtn)
+        exportLogsBtn = findViewById(R.id.exportLogsBtn)
 
         spinnerResolution = findViewById(R.id.spinnerResolution)
         switchDisableCopyFilter = findViewById(R.id.switchDisableCopyFilter)
@@ -74,6 +76,80 @@ class MainActivity : AppCompatActivity() {
 
         launchBtn.setOnClickListener {
             launchGame()
+        }
+
+        exportLogsBtn.setOnClickListener {
+            exportLogs()
+        }
+    }
+
+    private fun exportLogs() {
+        try {
+            val logsDir = File(filesDir, "WiiCompiled/Logs")
+            val cacheLogs = File(cacheDir, "diagnostic_logs.txt")
+            val sb = java.lang.StringBuilder()
+            sb.append("=== WiiCompiled Android Diagnostic Log ===\n")
+            sb.append("Device: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} (Android ${android.os.Build.VERSION.RELEASE}, API ${android.os.Build.VERSION.SDK_INT})\n")
+            sb.append("Hardware: ${android.os.Build.HARDWARE}, Board: ${android.os.Build.BOARD}\n")
+            sb.append("ABI: ${android.os.Build.SUPPORTED_ABIS.joinToString()}\n\n")
+
+            // Append internal engine logs
+            if (logsDir.exists() && logsDir.isDirectory) {
+                val files = logsDir.listFiles()?.sortedByDescending { it.lastModified() }
+                if (!files.isNullOrEmpty()) {
+                    sb.append("--- Native Logs Found (${files.size}) ---\n")
+                    for (logFile in files.take(3)) {
+                        sb.append("\n=== File: ${logFile.name} (${logFile.length()} bytes) ===\n")
+                        try {
+                            sb.append(logFile.readText())
+                        } catch (re: Exception) {
+                            sb.append("[Error reading file: ${re.message}]\n")
+                        }
+                    }
+                } else {
+                    sb.append("--- No native log files found in ${logsDir.absolutePath} ---\n")
+                }
+            } else {
+                sb.append("--- Logs directory does not exist yet ---\n")
+            }
+
+            // Append logcat dump of the app
+            sb.append("\n--- Logcat (Filtered for WiiCompiled/MKW) ---\n")
+            try {
+                val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", "500"))
+                val lines = process.inputStream.bufferedReader().readLines()
+                val filtered = lines.filter {
+                    it.contains("WiiCompiled", ignoreCase = true) ||
+                    it.contains("mkw", ignoreCase = true) ||
+                    it.contains("aurora", ignoreCase = true) ||
+                    it.contains("AndroidRuntime", ignoreCase = true)
+                }
+                sb.append(filtered.takeLast(200).joinToString("\n"))
+            } catch (le: Exception) {
+                sb.append("[Could not dump logcat: ${le.message}]\n")
+            }
+
+            cacheLogs.writeText(sb.toString())
+
+            val contentUri = androidx.core.content.FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                cacheLogs
+            )
+
+            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, contentUri)
+                putExtra(Intent.EXTRA_SUBJECT, "WiiCompiled Android Crash Logs")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(shareIntent, "Share Diagnostic Logs"))
+        } catch (e: Exception) {
+            AlertDialog.Builder(this)
+                .setTitle("Log Export Error")
+                .setMessage("Could not export logs: ${e.message}")
+                .setPositiveButton("OK", null)
+                .show()
         }
     }
 
@@ -192,12 +268,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var hasPromptedStoragePermission = false
+
     private fun checkPermissionsAndData() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            if (!android.os.Environment.isExternalStorageManager()) {
+            if (!android.os.Environment.isExternalStorageManager() && !hasPromptedStoragePermission) {
+                hasPromptedStoragePermission = true
                 try {
                     val intent = Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                    intent.data = Uri.parse("package:")
+                    intent.data = Uri.parse("package:$packageName")
                     startActivity(intent)
                 } catch (e: Exception) {
                     try {

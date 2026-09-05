@@ -296,6 +296,36 @@ Java_com_wiicompiled_mkw_GameActivity_nativeSetButton(JNIEnv* env, jobject thiz,
         case 3: // BTN_START (Pause / Plus)
             AndroidInput::SetButton(AndroidInput::kBtnPlus, isPressed);
             break;
+        case 4: // BTN_X
+            AndroidInput::SetButton(AndroidInput::kBtnX, isPressed);
+            break;
+        case 5: // BTN_Y
+            AndroidInput::SetButton(AndroidInput::kBtnY, isPressed);
+            break;
+        case 6: // BTN_R
+            AndroidInput::SetButton(AndroidInput::kBtnR, isPressed);
+            break;
+        case 7: // BTN_ZL / Left Trigger
+            AndroidInput::SetButton(AndroidInput::kBtnZL, isPressed);
+            break;
+        case 8: // BTN_ZR / Right Trigger (Gas alternative on Xbox RT)
+            AndroidInput::SetButton(AndroidInput::kBtnZR, isPressed);
+            break;
+        case 9: // BTN_SELECT / Minus
+            AndroidInput::SetButton(AndroidInput::kBtnMinus, isPressed);
+            break;
+        case 10: // DPAD_UP
+            AndroidInput::SetButton(AndroidInput::kBtnDpadUp, isPressed);
+            break;
+        case 11: // DPAD_DOWN
+            AndroidInput::SetButton(AndroidInput::kBtnDpadDown, isPressed);
+            break;
+        case 12: // DPAD_LEFT
+            AndroidInput::SetButton(AndroidInput::kBtnDpadLeft, isPressed);
+            break;
+        case 13: // DPAD_RIGHT
+            AndroidInput::SetButton(AndroidInput::kBtnDpadRight, isPressed);
+            break;
         default:
             break;
     }

@@ -35,6 +35,16 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         const val BTN_B = 1
         const val BTN_L = 2
         const val BTN_START = 3
+        const val BTN_X = 4
+        const val BTN_Y = 5
+        const val BTN_R = 6
+        const val BTN_ZL = 7
+        const val BTN_ZR = 8
+        const val BTN_SELECT = 9
+        const val BTN_DPAD_UP = 10
+        const val BTN_DPAD_DOWN = 11
+        const val BTN_DPAD_LEFT = 12
+        const val BTN_DPAD_RIGHT = 13
 
         init {
             try {
@@ -304,6 +314,118 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (event != null && (event.source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD ||
+            event.source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK)) {
+            val mapped = mapKeyCodeToButton(keyCode)
+            if (mapped != null) {
+                nativeSetButton(mapped, true)
+                return true
+            }
+        }
+        // Intercept BACK button (often sent by controller B or back button) so it doesn't close the game
+        if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            nativeSetButton(BTN_B, true)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        if (event != null && (event.source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD ||
+            event.source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK)) {
+            val mapped = mapKeyCodeToButton(keyCode)
+            if (mapped != null) {
+                nativeSetButton(mapped, false)
+                return true
+            }
+        }
+        if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            nativeSetButton(BTN_B, false)
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    override fun onGenericMotionEvent(event: MotionEvent?): Boolean {
+        if (event != null && (event.source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK ||
+            event.source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD)) {
+            // Left Stick (steering and acceleration)
+            var stickX = event.getAxisValue(MotionEvent.AXIS_X)
+            var stickY = -event.getAxisValue(MotionEvent.AXIS_Y)
+
+            // D-Pad from Hat axes (common on many Bluetooth / Xbox controllers)
+            val hatX = event.getAxisValue(MotionEvent.AXIS_HAT_X)
+            val hatY = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
+
+            if (Math.abs(hatX) > 0.5f) {
+                nativeSetButton(if (hatX > 0) BTN_DPAD_RIGHT else BTN_DPAD_LEFT, true)
+            } else {
+                nativeSetButton(BTN_DPAD_LEFT, false)
+                nativeSetButton(BTN_DPAD_RIGHT, false)
+            }
+
+            if (Math.abs(hatY) > 0.5f) {
+                nativeSetButton(if (hatY > 0) BTN_DPAD_DOWN else BTN_DPAD_UP, true)
+            } else {
+                nativeSetButton(BTN_DPAD_UP, false)
+                nativeSetButton(BTN_DPAD_DOWN, false)
+            }
+
+            // Analog triggers (LT / RT on Xbox / PlayStation)
+            val lt = event.getAxisValue(MotionEvent.AXIS_LTRIGGER).coerceAtLeast(event.getAxisValue(MotionEvent.AXIS_BRAKE))
+            val rt = event.getAxisValue(MotionEvent.AXIS_RTRIGGER).coerceAtLeast(event.getAxisValue(MotionEvent.AXIS_GAS))
+            if (lt > 0.4f) {
+                nativeSetButton(BTN_ZL, true)
+            } else {
+                nativeSetButton(BTN_ZL, false)
+            }
+            if (rt > 0.4f) {
+                // RT used as Gas (A) or ZR
+                nativeSetButton(BTN_A, true)
+            }
+
+            // Apply deadzone for stick
+            if (Math.abs(stickX) < 0.15f) stickX = 0f
+            if (Math.abs(stickY) < 0.15f) stickY = 0f
+
+            nativeSetStick(stickX.coerceIn(-1.0f, 1.0f), stickY.coerceIn(-1.0f, 1.0f))
+            return true
+        }
+        return super.onGenericMotionEvent(event)
+    }
+
+    private fun mapKeyCodeToButton(keyCode: Int): Int? {
+        return when (keyCode) {
+            // Xbox A / DualShock Cross / Nintendo B
+            android.view.KeyEvent.KEYCODE_BUTTON_A -> BTN_A
+            // Xbox B / DualShock Circle / Nintendo A
+            android.view.KeyEvent.KEYCODE_BUTTON_B -> BTN_B
+            // Xbox X / DualShock Square / Nintendo Y
+            android.view.KeyEvent.KEYCODE_BUTTON_X -> BTN_X
+            // Xbox Y / DualShock Triangle / Nintendo X
+            android.view.KeyEvent.KEYCODE_BUTTON_Y -> BTN_Y
+            // Left Bumper (LB) / L1 -> Item (L)
+            android.view.KeyEvent.KEYCODE_BUTTON_L1 -> BTN_L
+            // Right Bumper (RB) / R1 -> Drift / Hop (R)
+            android.view.KeyEvent.KEYCODE_BUTTON_R1 -> BTN_R
+            // Left Trigger (LT) / L2 -> ZL
+            android.view.KeyEvent.KEYCODE_BUTTON_L2 -> BTN_ZL
+            // Right Trigger (RT) / R2 -> ZR
+            android.view.KeyEvent.KEYCODE_BUTTON_R2 -> BTN_ZR
+            // Start / Menu -> Plus / Pause
+            android.view.KeyEvent.KEYCODE_BUTTON_START -> BTN_START
+            // Select / View / Share -> Minus
+            android.view.KeyEvent.KEYCODE_BUTTON_SELECT -> BTN_SELECT
+            // D-Pad buttons
+            android.view.KeyEvent.KEYCODE_DPAD_UP -> BTN_DPAD_UP
+            android.view.KeyEvent.KEYCODE_DPAD_DOWN -> BTN_DPAD_DOWN
+            android.view.KeyEvent.KEYCODE_DPAD_LEFT -> BTN_DPAD_LEFT
+            android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> BTN_DPAD_RIGHT
+            else -> null
+        }
+    }
 
     private fun copyAssetFolder(assetPath: String, targetDir: java.io.File) {
         val list = assets.list(assetPath) ?: return

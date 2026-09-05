@@ -688,6 +688,8 @@ bool initialize(AuroraBackend auroraBackend) {
 #endif
     if (g_backendType == wgpu::BackendType::Vulkan) {
       enableToggles.push_back("vulkan_monolithic_pipeline_cache");
+      enableToggles.push_back("vulkan_use_dynamic_rendering");
+      enableToggles.push_back("vulkan_use_d32s8");
     }
     const wgpu::DawnTogglesDescriptor togglesDescriptor({
         .nextInChain = &cacheDescriptor,
@@ -749,6 +751,10 @@ bool initialize(AuroraBackend auroraBackend) {
       return false;
     }
     g_device.SetLoggingCallback([](wgpu::LoggingType type, wgpu::StringView message) {
+      const std::string_view msgStr(message);
+      if (msgStr.find("VKDBGUTILWARN") != std::string_view::npos) {
+        return;
+      }
       AuroraLogLevel level = LOG_FATAL;
       switch (type) {
       case wgpu::LoggingType::Verbose:

@@ -32,6 +32,9 @@
 #include <Windows.h>
 #include <shellapi.h>
 #endif
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
 
 #include <dolphin/pad.h>
 #include <dolphin/vi.h>
@@ -866,6 +869,20 @@ void DrawFpsOverlay() {
                     ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "| Compiling: %u", stats->queuedPipelines);
                 }
             }
+#if defined(__ANDROID__)
+            static uint32_t s_logPerfCounter = 0;
+            if (++s_logPerfCounter >= 60) {
+                s_logPerfCounter = 0;
+                __android_log_print(ANDROID_LOG_INFO, "MKW-PERF",
+                    "FPS: %.1f (%.1fms) | Draws: %u (+%u merged) | Geom: %.0fKB | Compiling: %u",
+                    presentTiming.framesPerSecond,
+                    presentTiming.averageFrameTimeMs,
+                    stats ? stats->drawCallCount : 0,
+                    stats ? stats->mergedDrawCallCount : 0,
+                    stats ? static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f : 0.0f,
+                    stats ? stats->queuedPipelines : 0);
+            }
+#endif
         }
     }
     ImGui::End();

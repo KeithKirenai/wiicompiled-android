@@ -66,4 +66,40 @@ inline bool HasIdentity(const Settings& settings) {
     return true;
 }
 
+inline bool Write(const std::filesystem::path& nandRoot, const Settings& settings) {
+    const auto path = nandRoot / "title/00000001/00000002/data/setting.txt";
+    std::error_code ec;
+    std::filesystem::create_directories(path.parent_path(), ec);
+    if (ec) {
+        return false;
+    }
+
+    std::string plain;
+    for (const auto& [key, value] : settings) {
+        plain += key;
+        plain += '=';
+        plain += value;
+        plain += "\r\n";
+    }
+
+    if (plain.size() >= 256) {
+        return false;
+    }
+
+    std::array<uint8_t, 256> bytes{};
+    uint32_t key = 0x73B5DBFAu;
+    for (size_t i = 0; i < bytes.size(); ++i) {
+        const char val = (i < plain.size()) ? plain[i] : '\0';
+        bytes[i] = static_cast<uint8_t>(val) ^ static_cast<uint8_t>(key);
+        key = (key << 1) | (key >> 31);
+    }
+
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        return false;
+    }
+    output.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+    return output.good();
+}
+
 } // namespace RuntimeNandSettings

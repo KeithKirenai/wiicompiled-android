@@ -50,10 +50,16 @@ jobs:
         working-directory: android
 
       - name: Build debug APK
+        # The native build includes generated/shards.cmake (translated game code
+        # shards). That tree is gitignored and produced locally by the translate
+        # pipeline from the user's game disc, so it is absent in CI clones.
+        # Skip the build (and artifact upload) when it is not checked in.
+        if: hashFiles('generated/build_shards/shards.cmake') != ''
         run: ./gradlew assembleDebug
         working-directory: android
 
       - uses: actions/upload-artifact@v7
+        if: hashFiles('generated/build_shards/shards.cmake') != ''
         with:
           name: wiicompiled-debug.apk
           path: android/app/build/outputs/apk/debug/*.apk

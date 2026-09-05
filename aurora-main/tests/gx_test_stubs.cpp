@@ -34,6 +34,7 @@ std::optional<aurora::gx::DrawData> s_lastGxDraw;
 bool s_trackDrawCommands = false;
 bool s_useRealVertexFormatHelpers = false;
 std::deque<std::vector<uint8_t>> s_uniformAllocations;
+std::deque<std::vector<uint8_t>> s_indexAllocations;
 } // namespace
 
 // --- aurora::g_config ---
@@ -285,6 +286,13 @@ Range push_indices(const uint8_t* data, size_t length) {
   s_lastPushedIndices.resize(length / sizeof(uint16_t));
   std::memcpy(s_lastPushedIndices.data(), data, length);
   return {};
+}
+std::pair<ByteBuffer, Range> map_indices(size_t length) {
+  s_indexAllocations.emplace_back(length, 0);
+  auto& indexBytes = s_indexAllocations.back();
+  return {ByteBuffer{indexBytes.data(), indexBytes.size()},
+          Range{static_cast<uint32_t>(s_indexAllocations.size() - 1),
+                static_cast<uint32_t>(length)}};
 }
 Range push_uniform(const uint8_t* data, size_t length) { return {}; }
 Range push_storage(const uint8_t* data, size_t length) { return {}; }

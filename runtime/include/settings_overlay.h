@@ -12,4 +12,6 @@ void Draw() noexcept;
 bool StartupScreenVisible() noexcept;
 void NotifyStrapInputAccepted() noexcept;
 void AdvancePresentedFrame() noexcept;
+void RecordFrameStart() noexcept;
+void RecordFrameEnd() noexcept;
 } // namespace settings_overlay

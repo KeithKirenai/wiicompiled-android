@@ -252,7 +252,11 @@ extern "C" int32_t KPAD__Read_HLE(uint32_t chan, uint32_t statusPtr, uint32_t co
 PPC_NATIVE_OVERRIDE(80197380, KPAD__Read_HLE, int32_t, (uint32_t chan, uint32_t statusPtr, uint32_t count),
          (chan, statusPtr, count));
 
-// KPADGetUnifiedWpadStatus: the raw WPAD status behind KPADStatus.
+// KPADGetUnifiedWpadStatus: the raw WPAD status behind KPADStatus. The game
+// reads the Classic Controller's buttons, sticks and triggers from here. The
+// SDK fills `count` entries with the channel's recent samples (the game asks for
+// as many as it asked KPADRead for and looks at entry 0); with one sample per
+// frame here, every entry gets the current one.
 extern "C" int32_t KPAD__GetUnifiedWpadStatus_HLE(uint32_t chan, uint32_t statusPtr, uint32_t count)
 {
     constexpr uint32_t kMaxEntries = 16; // KPAD_MAX_READ_BUFS

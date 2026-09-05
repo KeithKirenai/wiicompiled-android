@@ -14,6 +14,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  recompilation:
+    name: Recompilation test
+    uses: ./.github/workflows/recomp-test.yml
+
   translator-windows:
     name: Translator (Windows)
     runs-on: windows-latest

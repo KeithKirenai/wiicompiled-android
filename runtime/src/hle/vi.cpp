@@ -329,6 +329,7 @@ void AdvanceRetrace(CpuContext* ctx, Clock::time_point retraceStamp, bool servic
         if (!g_auroraFrameActive.load(std::memory_order_acquire)) {
             if (BeginAuroraFrame()) {
                 g_auroraFrameActive.store(true, std::memory_order_release);
+                settings_overlay::RecordFrameStart();
             }
         }
     }
@@ -585,6 +586,7 @@ void VI_HLE_PresentFrame(bool presentedXfb, bool paceToRetrace) {
         std::lock_guard<std::mutex> lock(g_viMutex);
         s_lastPacedRetraceCount = g_vi.retraceCount;
     }
+    settings_overlay::RecordFrameEnd();
     settings_overlay::AdvancePresentedFrame();
     g_auroraFrameActive.store(false, std::memory_order_release);
     g_auroraFrameHadWork.store(false, std::memory_order_release);
@@ -598,6 +600,7 @@ void VI_HLE_PresentFrame(bool presentedXfb, bool paceToRetrace) {
         UpdateAuroraAndProcessEvents();
         if (BeginAuroraFrame()) {
             g_auroraFrameActive.store(true, std::memory_order_release);
+            settings_overlay::RecordFrameStart();
         }
     }
 }

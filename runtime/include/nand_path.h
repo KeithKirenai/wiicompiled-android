@@ -145,6 +145,12 @@ inline bool SeedMissingBootstrapFiles(const std::filesystem::path& root) {
         if (!std::filesystem::exists(dest, ec)) {
             std::filesystem::create_directories(dest.parent_path(), ec);
             std::ofstream dummy(dest, std::ios::binary);
+            if (!dummy) {
+                RT_LOG(RT_TAG_NAND) << "could not create "
+                                    << RuntimeConfigFile::PathToUtf8(root / relativePath)
+                                    << std::endl;
+                return false;
+            }
         }
     }
     return true;

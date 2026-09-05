@@ -830,13 +830,26 @@ void DrawFpsOverlay() {
                                          ImGuiWindowFlags_NoNav |
                                          ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin("Profiler Overlay", nullptr, kFlags)) {
+        ImGui::SetWindowFontScale(1.35f);
         if (presentTiming.sampleCount == 0) {
             ImGui::TextUnformatted("FPS: --  |  Measuring...");
         } else {
             // Main frame rate and frame time
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "FPS: %.1f", presentTiming.framesPerSecond);
             ImGui::SameLine();
-            ImGui::Text(" (%.1fms)", presentTiming.averageFrameTimeMs);
+            ImGui::Text("(%.1fms)", presentTiming.averageFrameTimeMs);
+
+            // CPU and GPU frame times
+            ImGui::SameLine();
+            ImGui::TextDisabled("|");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "CPU: %.1fms", s_cpuTimeMs);
+
+            ImGui::SameLine();
+            ImGui::TextDisabled("|");
+            ImGui::SameLine();
+            const float gpuMs = static_cast<float>(presentTiming.averageFrameTimeMs);
+            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "GPU: %.1fms", gpuMs);
 
             // True motion detection (when frame interpolation diverges)
             if (presentTiming.effectiveFramesPerSecond < presentTiming.framesPerSecond * 0.95) {
@@ -882,9 +895,11 @@ void DrawFpsOverlay() {
             if (++s_logPerfCounter >= 60) {
                 s_logPerfCounter = 0;
                 __android_log_print(ANDROID_LOG_INFO, "MKW-PERF",
-                    "FPS: %.1f (%.1fms) | Draws: %u (+%u merged) | Geom: %.0fKB | Compiling: %u",
+                    "FPS: %.1f (%.1fms) | CPU: %.1fms | GPU: %.1fms | Draws: %u (+%u merged) | Geom: %.0fKB | Compiling: %u",
                     presentTiming.framesPerSecond,
                     presentTiming.averageFrameTimeMs,
+                    s_cpuTimeMs,
+                    gpuMs,
                     stats ? stats->drawCallCount : 0,
                     stats ? stats->mergedDrawCallCount : 0,
                     stats ? static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f : 0.0f,
@@ -906,8 +921,8 @@ void DrawShaderCompilationStatus() {
     constexpr float kMargin = 10.0f;
     const float top = g_topBarVisible ? ImGui::GetFrameHeight() + kMargin : kMargin;
     ImGui::SetNextWindowPos(ImVec2(kMargin, top), ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.55f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(7.0f, 4.0f));
+    ImGui::SetNextWindowBgAlpha(0.65f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10.0f, 6.0f));
     constexpr ImGuiWindowFlags kFlags = ImGuiWindowFlags_AlwaysAutoResize |
                                         ImGuiWindowFlags_NoDecoration |
                                         ImGuiWindowFlags_NoFocusOnAppearing |
@@ -916,8 +931,8 @@ void DrawShaderCompilationStatus() {
                                         ImGuiWindowFlags_NoNav |
                                         ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin("Shader Compilation Status", nullptr, kFlags)) {
-        ImGui::SetWindowFontScale(0.85f);
-        ImGui::Text("%u shader%s compiling", queuedPipelines, queuedPipelines == 1 ? "" : "s");
+        ImGui::SetWindowFontScale(1.4f);
+        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.2f, 1.0f), "[*] %u shader%s compiling...", queuedPipelines, queuedPipelines == 1 ? "" : "s");
     }
     ImGui::End();
     ImGui::PopStyleVar();
@@ -1110,6 +1125,16 @@ void Draw() noexcept {
     // Wait for the frame worker's DONE phase: it has replayed the previous frame's ImGui draw lists
     // and started the next ImGui frame, so all overlay callers can now safely issue ImGui commands.
     aurora_wait_for_frame_worker();
+#if defined(__ANDROID__)
+    static bool s_styleConfigured = false;
+    if (!s_styleConfigured) {
+        s_styleConfigured = true;
+        ImGuiIO& io = ImGui::GetIO();
+        io.FontGlobalScale = 1.35f;
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.ScaleAllSizes(1.35f);
+    }
+#endif
     // Also drive the Wii Remote rescan from here: PADRead runs it too, but this
     // runs once per presented frame whatever the game is doing (e.g. sitting in
     // its "communications interrupted" prompt without polling pads). Same guest

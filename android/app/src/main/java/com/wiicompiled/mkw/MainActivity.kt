@@ -314,19 +314,19 @@ class MainActivity : AppCompatActivity() {
                 hasSdcardData -> "/sdcard/Download/wiicompiled_data"
                 else -> File(filesDir, "game_data").absolutePath
             }
-            statusTitle.text = "Ready to race"
+            statusTitle.text = "Ready"
             statusTitle.setTextColor(0xFF4CAF50.toInt())
-            statusText.text = "Game Data Verified (RMCP01)\n$activeDir"
+            statusText.text = "Disc Data Verified\n$activeDir"
             statusIndicator.setBackgroundColor(0xFF4CAF50.toInt())
             launchBtn.isEnabled = true
             selectDiscBtn.text = "SELECT DIFFERENT DISC (.WBFS / .ISO)"
         } else {
-            statusTitle.text = "Game Assets Missing"
+            statusTitle.text = "Disc Image Required"
             statusTitle.setTextColor(0xFFFF9800.toInt())
             statusIndicator.setBackgroundColor(0xFFFF9800.toInt())
             launchBtn.isEnabled = false
-            statusText.text = "No game assets found.\nPlease select your Mario Kart Wii PAL (RMCP01) .wbfs or .iso disc image."
-            selectDiscBtn.text = "SELECT DISC (.WBFS / .ISO)"
+            statusText.text = "No disc data found.\nPlease select a valid Wii disc image (.wbfs / .iso)."
+            selectDiscBtn.text = "SELECT DISC IMAGE (.WBFS / .ISO)"
         }
     }
 

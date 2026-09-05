@@ -75,6 +75,11 @@ namespace aurora::window {
 void set_surface_ready(bool ready) noexcept;
 }
 
+// JNI bridge defined in aurora.cpp (aurora_core): flips the surface recreation flags
+// so begin_frame_impl() destroys the old Vulkan/WebGPU surface and recreates it from
+// the current g_mkwAndroidNativeWindow at the next frame boundary.
+extern "C" void aurora_android_request_surface_recreate();
+
 static void StartLogcatRedirect() {
     static std::once_flag s_once;
     std::call_once(s_once, []() {
@@ -153,13 +158,15 @@ static void GameRenderWorker() {
     LOGI("GameRenderWorker exited");
 }
 
+#include "runtime_config.h"
+
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstring internalPath) {
+Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstring internalPath, jfloat resMultiplier) {
     StartLogcatRedirect();
     const char* pathStr = env->GetStringUTFChars(internalPath, nullptr);
-    LOGI("Native init with data directory: %s", pathStr);
+    LOGI("Native init with data directory: %s, resMultiplier: %.2f", pathStr, resMultiplier);
     setenv("INTERNAL_STORAGE", pathStr, 1);
     setenv("XDG_DATA_HOME", pathStr, 1);
     setenv("HOME", pathStr, 1);
@@ -178,7 +185,7 @@ Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstr
                    "\n"
                    "[video]\n"
                    "widescreen = true\n"
-                   "resolution_multiplier = 1.0\n"
+                   "resolution_multiplier = " << resMultiplier << "\n"
                    "frame_interpolation_fps = 0\n"
                    "display_mode = \"windowed\"\n"
                    "graphics_api = \"vulkan\"\n"
@@ -207,6 +214,14 @@ Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstr
     } else {
         LOGI("Found existing Config.toml at %s (preserving launcher settings)", configPath.c_str());
     }
+
+    // Explicitly reload config from disk into memory and enforce the chosen resolution multiplier
+    RuntimeConfigFile::ReloadConfigFile();
+    if (resMultiplier > 0.0f) {
+        RuntimeConfigFile::SetResolutionMultiplier(resMultiplier);
+    }
+    LOGI("Runtime config active resolutionMultiplier: %.2f", RuntimeConfigFile::ResolutionMultiplier(1.0f));
+
     aurora_set_disable_copy_filter(true);
     env->ReleaseStringUTFChars(internalPath, pathStr);
 }
@@ -216,6 +231,12 @@ extern "C" void Android_SetScreenResolution(int surfaceWidth, int surfaceHeight,
 
 JNIEXPORT void JNICALL
 Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceCreated(JNIEnv* env, jobject thiz, jobject surface) {
+    // Release any stale ANativeWindow reference before acquiring the new one.
+    if (g_nativeWindow) {
+        ANativeWindow_release(g_nativeWindow);
+        g_nativeWindow = nullptr;
+    }
+
     g_nativeWindow = ANativeWindow_fromSurface(env, surface);
     g_mkwAndroidNativeWindow = g_nativeWindow;
     LOGI("Native window acquired: %p", g_nativeWindow);
@@ -246,7 +267,14 @@ Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceCreated(JNIEnv* env, jobject 
 
     aurora::window::set_surface_ready(true);
 
-    if (g_nativeWindow && !g_renderRunning.load()) {
+    if (g_renderRunning.load()) {
+        // Resume path: the game thread is still alive (RuntimeMain keeps running).
+        // Signal begin_frame_impl() to destroy the old Vulkan surface and recreate it
+        // from the new g_mkwAndroidNativeWindow at the next frame boundary.
+        LOGI("Surface resume: requesting swapchain recreation on existing render thread");
+        aurora_android_request_surface_recreate();
+    } else {
+        // First launch path: start the game thread.
         g_renderRunning.store(true);
         if (g_renderThread.joinable()) {
             g_renderThread.join();
@@ -257,8 +285,13 @@ Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceCreated(JNIEnv* env, jobject 
 
 JNIEXPORT void JNICALL
 Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceDestroyed(JNIEnv* env, jobject thiz) {
-    LOGI("Native window releasing: %p", g_nativeWindow);
+    LOGI("Native window releasing (background): %p", g_nativeWindow);
+
+    // Suspend rendering immediately: Aurora will see is_presentable() == false and
+    // stop trying to acquire/present frames. The render thread itself keeps running.
     aurora::window::set_surface_ready(false);
+
+    // Clear the SDL custom surface so SDL won't try to draw on the destroyed surface.
     jclass sdlClass = env->FindClass("org/libsdl/app/SDLActivity");
     if (sdlClass) {
         jfieldID fid = env->GetStaticFieldID(sdlClass, "mCustomSurface", "Landroid/view/Surface;");
@@ -270,6 +303,22 @@ Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceDestroyed(JNIEnv* env, jobjec
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
     }
+
+    // Release the ANativeWindow handle. Do NOT touch g_renderRunning or join the
+    // thread — the game must survive backgrounding so the user can return seamlessly.
+    if (g_nativeWindow) {
+        ANativeWindow_release(g_nativeWindow);
+        g_nativeWindow = nullptr;
+        g_mkwAndroidNativeWindow = nullptr;
+    }
+}
+
+JNIEXPORT void JNICALL
+Java_com_wiicompiled_mkw_GameActivity_nativeDestroy(JNIEnv* env, jobject thiz) {
+    // Called only from GameActivity.onDestroy() — the user is actually exiting the game.
+    // Signal the render thread to stop and wait for it to finish cleanly.
+    LOGI("nativeDestroy: stopping render thread and cleaning up");
+    aurora::window::set_surface_ready(false);
     g_renderRunning.store(false);
     if (g_renderThread.joinable()) {
         g_renderThread.join();
@@ -277,7 +326,9 @@ Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceDestroyed(JNIEnv* env, jobjec
     if (g_nativeWindow) {
         ANativeWindow_release(g_nativeWindow);
         g_nativeWindow = nullptr;
+        g_mkwAndroidNativeWindow = nullptr;
     }
+    LOGI("nativeDestroy: cleanup complete");
 }
 
 JNIEXPORT void JNICALL

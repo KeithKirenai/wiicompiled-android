@@ -1405,6 +1405,13 @@ int RuntimeMain(int argc, char** argv) {
         const std::string auroraCachePath = RuntimeConfigFile::PathToUtf8(rendererCacheDirectory);
         auroraConfig.userPath = auroraUserPath.c_str();
         auroraConfig.cachePath = auroraCachePath.c_str();
+#if defined(__ANDROID__)
+        // SDL_GetBasePath() resolves to "./" inside the APK on Android, so the bundled
+        // pipeline cache seed (initial_pipeline_cache.db), which the host copies into the
+        // cache directory, would never be found. Point the resource loader there so the
+        // per-boot seed merge repairs any stale/older-version cache Database.
+        auroraConfig.resourcesPath = auroraCachePath.c_str();
+#endif
         auroraConfig.logCallback = &RuntimeAuroraLogCallback;
         auroraConfig.logLevel = LOG_DEBUG;
         const bool configWidescreen = RuntimeConfigFile::WidescreenEnabled(true);

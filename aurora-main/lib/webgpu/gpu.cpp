@@ -839,10 +839,11 @@ void fail_if_device_lost() noexcept {
 }
 
 void serialize_pipeline_caches() noexcept {
-#if defined(WEBGPU_DAWN) && defined(_WIN32)
+#if defined(WEBGPU_DAWN)
   if (!g_device || g_backendType != wgpu::BackendType::Vulkan) {
     return;
   }
+#if defined(_WIN32)
   using PerformIdleTasksFn = void(*)(const wgpu::Device*);
   static const auto performIdleTasks = []() -> PerformIdleTasksFn {
     const HMODULE dawnModule = GetModuleHandleW(L"webgpu_dawn.dll");
@@ -855,6 +856,12 @@ void serialize_pipeline_caches() noexcept {
   if (performIdleTasks != nullptr) {
     performIdleTasks(&g_device);
   }
+#else
+  // Non-Windows builds link Dawn statically (or via a normal dynamic link), so the
+  // exported native entry point is callable directly. Flush Dawn's deferred work so the
+  // Vulkan monolithic pipeline cache reaches the blob cache (dawn_cache.db) in-session.
+  dawn::native::PerformIdleTasks(g_device);
+#endif
 #endif
 }
 

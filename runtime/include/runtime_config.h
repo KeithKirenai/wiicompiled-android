@@ -535,6 +535,10 @@ inline RuntimeUserConfig& Mutable() {
     return const_cast<RuntimeUserConfig&>(Get());
 }
 
+inline void ReloadConfigFile() {
+    Mutable() = LoadConfigFile();
+}
+
 inline constexpr std::array<std::string_view, 12> kControllerButtonKeys = {
     "a", "b", "x", "y", "start", "z", "l", "r", "up", "down", "left", "right",
 };

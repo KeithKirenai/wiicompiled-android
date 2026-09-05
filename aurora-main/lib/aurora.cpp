@@ -1814,6 +1814,9 @@ std::recursive_mutex& renderer_gpu_mutex() noexcept { return g_rendererGpuMutex;
 } // namespace aurora
 
 // C API bindings
+extern "C" void aurora_android_request_surface_recreate() {
+  aurora::request_surface_recreate();
+}
 AuroraInfo aurora_initialize(int argc, char* argv[], const AuroraConfig* config) {
   return aurora::initialize(argc, argv, *config);
 }

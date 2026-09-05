@@ -57,7 +57,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         }
     }
 
-    private external fun nativeInit(internalPath: String)
+    private external fun nativeInit(internalPath: String, resMultiplier: Float)
     private external fun nativeSurfaceCreated(surface: Any)
     private external fun nativeSurfaceDestroyed()
     private external fun nativeSetButton(buttonId: Int, isPressed: Boolean)
@@ -65,6 +65,10 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private external fun nativeTiltEvent(angle: Float)
     private external fun nativeTouchEvent(action: Int, x: Float, y: Float, pointerId: Int)
     private external fun nativeGetPerfStats(): String
+    /** Called only when the Activity is truly being destroyed (user exiting the app). */
+    private external fun nativeDestroy()
+
+    private var activeResMultiplier: Float = 1.0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,20 +77,27 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             sdlClass.getMethod("setContext", android.app.Activity::class.java).invoke(null, this)
             sdlClass.getMethod("setupJNI").invoke(null)
         } catch (e: Throwable) {
-            android.util.Log.w("WiiCompiled", "SDL reflection in onCreate: ${e.message}")
-        }
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        val sustainedPerf = intent.getBooleanExtra("SUSTAINED_PERF", true)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N && sustainedPerf) {
-            window.setSustainedPerformanceMode(true)
+            android.util.Log.w("WiiCompiled", "SDL reflection: ${e.message}")
         }
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        if (intent.getBooleanExtra("SUSTAINED_PERF", true)) {
             try {
-                val gameManager = getSystemService(Context.GAME_SERVICE) as? android.app.GameManager
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    val pManager = getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+                    if (pManager?.isSustainedPerformanceModeSupported == true) {
+                        window.setSustainedPerformanceMode(true)
+                        android.util.Log.i("WiiCompiled", "Sustained performance mode ENABLED")
+                    }
+                }
+            } catch (e: Throwable) {
+                android.util.Log.w("WiiCompiled", "Could not set sustained performance mode: ${e.message}")
+            }
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            try {
+                val gameManager = getSystemService(android.app.GameManager::class.java)
                 gameManager?.setGameState(android.app.GameState(false, android.app.GameState.MODE_GAMEPLAY_UNINTERRUPTIBLE))
-                android.util.Log.i("WiiCompiled", "GameManager registered MODE_GAMEPLAY_UNINTERRUPTIBLE")
             } catch (e: Throwable) {
                 android.util.Log.w("WiiCompiled", "GameManager setGameState error: ${e.message}")
             }
@@ -122,6 +133,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         val touchControlsEnabled = prefs.getBoolean("touch_controls", true)
         val tiltControlsEnabled = prefs.getBoolean("tilt_controls", true)
 
+        activeResMultiplier = when (resIdx) {
+            1 -> 1.5f
+            2 -> 2.0f
+            3 -> 3.0f
+            else -> 1.0f
+        }
+
         touchOverlayContainer.visibility = if (touchControlsEnabled) View.VISIBLE else View.GONE
         android.util.Log.i("WiiCompiled", "Controls configured: touch=$touchControlsEnabled, tilt=$tiltControlsEnabled")
 
@@ -144,9 +162,21 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
                 val targetH = 792
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
-                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (HD 792p)")
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (HD 792p, 1.5x)")
             }
-            else -> { // FHD / Full panel resolution
+            2 -> { // FHD (960p/1056p)
+                val targetH = 1056
+                val targetW = (targetH * aspect).toInt()
+                surfaceView.holder.setFixedSize(targetW, targetH)
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (FHD 1056p, 2.0x)")
+            }
+            3 -> { // QHD (1440p/1584p)
+                val targetH = 1584
+                val targetW = (targetH * aspect).toInt()
+                surfaceView.holder.setFixedSize(targetW, targetH)
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (QHD 1584p, 3.0x)")
+            }
+            else -> { // Full panel resolution
                 surfaceView.holder.setSizeFromLayout()
                 android.util.Log.i("WiiCompiled", "Full panel resolution configured: ${screenW}x${screenH}")
             }
@@ -194,10 +224,24 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             android.util.Log.w("WiiCompiled", "Could not seed dsp_coef.bin from assets: ${e.message}")
         }
 
-        // Seed pre-warmed shader pipeline cache from assets if missing or smaller
+        // Seed pre-warmed shader pipeline cache from assets.
+        //
+        // The runtime imports the bundled seed (initial_pipeline_cache.db) into the live cache
+        // on every start and prunes rows whose config_version is stale, so a bumped config
+        // version self-heals. Always refresh that seed file from the APK so the runtime merge
+        // sees the current build's rows; only bootstrap the live DB here when it is absent or
+        // implausibly small, since the runtime merge handles first-boot and upgrade cases.
         try {
             val cacheDir = java.io.File(filesDir, "WiiCompiled/Cache")
             cacheDir.mkdirs()
+
+            val seedFile = java.io.File(cacheDir, "initial_pipeline_cache.db")
+            assets.open("initial_pipeline_cache.db").use { input ->
+                java.io.FileOutputStream(seedFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+
             val targetDb = java.io.File(cacheDir, "pipeline_cache.db")
             if (!targetDb.exists() || targetDb.length() < 100000L) {
                 assets.open("initial_pipeline_cache.db").use { input ->
@@ -205,7 +249,11 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
                         input.copyTo(output)
                     }
                 }
-                android.util.Log.i("WiiCompiled", "Seeded pre-warmed initial_pipeline_cache.db (${targetDb.length()} bytes)")
+                // The runtime opens the live DB in WAL mode; stale sidecar files from a
+                // previous session would otherwise be applied against the freshly seeded file.
+                java.io.File(cacheDir, "pipeline_cache.db-wal").delete()
+                java.io.File(cacheDir, "pipeline_cache.db-shm").delete()
+                android.util.Log.i("WiiCompiled", "Seeded pre-warmed pipeline cache (${targetDb.length()} bytes)")
             }
         } catch (e: Throwable) {
             android.util.Log.w("WiiCompiled", "Could not seed pipeline cache from assets: ${e.message}")
@@ -245,7 +293,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             return
         }
 
-        nativeInit(filesDir.absolutePath)
+        nativeInit(filesDir.absolutePath, activeResMultiplier)
     }
 
     private fun setupButtonTouch(btn: Button, buttonId: Int) {
@@ -297,6 +345,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
+    }
+
+    override fun onDestroy() {
+        // Cleanly stop the game/render thread only when the user is truly exiting.
+        // Do NOT call this on backgrounding — the thread must survive to allow seamless resume.
+        nativeDestroy()
+        super.onDestroy()
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {

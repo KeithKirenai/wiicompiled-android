@@ -1,8 +1,9 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
+    android:background="@color/md_theme_dark_background"
     android:fillViewport="true"
     android:fitsSystemWindows="true">
 
@@ -10,294 +11,499 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="20dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="36dp">
 
-        <!-- Clean Neutral Header -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="WiiCompiled Launcher"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Runtime configuration and storage setup"
-            android:textColor="#888888"
-            android:textSize="12sp"
-            android:layout_marginBottom="14dp" />
-
-        <!-- Status Card -->
+        <!-- Top Header Title matching Material You showcase -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="#1E1E1E"
-            android:padding="12dp"
             android:orientation="vertical"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WiiCompiled"
+                android:textColor="@color/md_theme_dark_onBackground"
+                android:textSize="32sp"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="-0.02" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WiiCompiled Android Runtime"
+                android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                android:textSize="14sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- Status Card (Material You Pill / Rounded Surface Container) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/md_theme_dark_outlineVariant">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:orientation="vertical"
+                android:padding="20dp">
 
-                <View
-                    android:id="@+id/statusIndicator"
-                    android:layout_width="8dp"
-                    android:layout_height="8dp"
-                    android:background="#4CAF50"
-                    android:layout_marginEnd="8dp" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <View
+                        android:id="@+id/statusIndicator"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/btn_round_ctrl"
+                        android:backgroundTint="@color/status_ready"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:id="@+id/statusTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Ready"
+                        android:textColor="@color/status_ready"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="RMCP01"
+                        android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                        android:textSize="12sp"
+                        android:background="@drawable/btn_round_ctrl"
+                        android:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp" />
+                </LinearLayout>
 
                 <TextView
-                    android:id="@+id/statusTitle"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/statusText"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Ready"
-                    android:textColor="#4CAF50"
+                    android:text="Game Data Verified"
+                    android:textColor="@color/md_theme_dark_onSurfaceVariant"
                     android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:layout_marginTop="8dp" />
+
+                <!-- Stock Material 3 Linear Progress Indicator -->
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/progressBar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="true"
+                    android:visibility="gone"
+                    android:layout_marginTop="14dp"
+                    app:indicatorColor="@color/md_theme_dark_primary"
+                    app:trackColor="@color/md_theme_dark_surfaceContainerHighest"
+                    app:trackCornerRadius="4dp" />
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:id="@+id/statusText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Game Data Verified"
-                android:textColor="#9E9E9E"
-                android:textSize="12sp"
-                android:layout_marginTop="4dp" />
-
-            <ProgressBar
-                android:id="@+id/progressBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="4dp"
-                android:indeterminate="true"
-                android:visibility="gone"
-                android:layout_marginTop="8dp" />
-        </LinearLayout>
-
-        <!-- Settings Section Header -->
+        <!-- Category: Display & Performance -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SETTINGS"
-            android:textColor="#666666"
-            android:textSize="11sp"
+            android:text="GRAPHICS &amp; ENGINE"
+            android:textColor="@color/md_theme_dark_primary"
+            android:textSize="12sp"
             android:textStyle="bold"
             android:letterSpacing="0.08"
-            android:layout_marginBottom="10dp" />
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
 
-        <!-- Resolution Row -->
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/md_theme_dark_outlineVariant">
 
-            <TextView
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Internal Resolution"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <Spinner
-                android:id="@+id/spinnerResolution"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-        </LinearLayout>
+                <!-- Internal Resolution Selection -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingVertical="8dp">
 
-        <!-- Copy Filter Row -->
-        <LinearLayout
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Internal Resolution"
+                        android:textColor="@color/md_theme_dark_onSurface"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Render scale for 3D geometry"
+                        android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <Spinner
+                        android:id="@+id/spinnerResolution"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:backgroundTint="@color/md_theme_dark_primary" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_theme_dark_outlineVariant"
+                    android:layout_marginVertical="6dp" />
+
+                <!-- Disable Copy Filter Switch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Disable Copy Filter"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sharpens frame buffer clarity"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchDisableCopyFilter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_theme_dark_outlineVariant"
+                    android:layout_marginVertical="6dp" />
+
+                <!-- Disable Bloom Switch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Disable Bloom"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Reduces post-processing cost"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchDisableBloom"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_theme_dark_outlineVariant"
+                    android:layout_marginVertical="6dp" />
+
+                <!-- Sustained Performance Switch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Sustained Performance"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Mitigates thermal throttling spikes"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchSustainedPerf"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_theme_dark_outlineVariant"
+                    android:layout_marginVertical="6dp" />
+
+                <!-- Async Audio Mixing Switch -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Async Audio Mixing"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Offloads sound mixer to worker core"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchAudioMixer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Category: Input Controls -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="INPUT &amp; CONTROLS"
+            android:textColor="@color/md_theme_dark_primary"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp" />
+
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+            android:layout_marginBottom="24dp"
+            app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/md_theme_dark_outlineVariant">
 
-            <TextView
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Disable Copy Filter"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
+                android:orientation="vertical"
+                android:padding="16dp">
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchDisableCopyFilter"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true" />
-        </LinearLayout>
+                <!-- On-Screen Touch Controls -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
 
-        <!-- Disable Bloom Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Disable Bloom"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="On-Screen Touch Overlay"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp" />
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchDisableBloom"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true" />
-        </LinearLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Virtual d-pad, A/B, and item triggers"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp" />
+                    </LinearLayout>
 
-        <!-- Sustained Perf Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchTouchControls"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Sustained Performance Mode"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_theme_dark_outlineVariant"
+                    android:layout_marginVertical="6dp" />
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchSustainedPerf"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true" />
-        </LinearLayout>
+                <!-- Tilt / Motion Controls -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingVertical="8dp">
 
-        <!-- Audio Mix Worker Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Async Audio Mixing"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Motion / Tilt Steering"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp" />
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchAudioMixer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true" />
-        </LinearLayout>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Use device accelerometer as Wii Wheel"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp" />
+                    </LinearLayout>
 
-        <!-- On-Screen Touch Controls Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="12dp">
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/switchTiltControls"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checked="true" />
+                </LinearLayout>
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="On-Screen Touch Overlay"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchTouchControls"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true" />
-        </LinearLayout>
-
-        <!-- Tilt Steering Controls Row -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Motion / Tilt Steering"
-                android:textColor="#E0E0E0"
-                android:textSize="14sp" />
-
-            <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switchTiltControls"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:checked="true" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
-
-        <!-- Neutral Actions Section -->
-        <Button
+        <!-- Actions: Material 3 Buttons (Filled & Tonal & Outlined) -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/launchBtn"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="#2E7D32"
-            android:text="LAUNCH APPLICATION"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
+            android:layout_height="56dp"
+            android:text="Launch Game"
+            android:textSize="16sp"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp"
-            android:enabled="false" />
+            app:cornerRadius="28dp"
+            android:layout_marginBottom="12dp"
+            android:enabled="false"
+            app:backgroundTint="@color/md_theme_dark_primary"
+            android:textColor="@color/md_theme_dark_onPrimary" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/selectDiscBtn"
+            style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="match_parent"
-            android:layout_height="42dp"
-            android:background="#263238"
-            android:text="SELECT DISC IMAGE (.WBFS / .ISO)"
-            android:textColor="#ECEFF1"
-            android:textSize="13sp"
-            android:layout_marginBottom="8dp" />
+            android:layout_height="52dp"
+            android:text="Select Disc Image (.wbfs / .iso)"
+            android:textSize="14sp"
+            app:cornerRadius="26dp"
+            android:layout_marginBottom="10dp"
+            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+            android:textColor="@color/md_theme_dark_onSurface" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRemapper"
+            style="@style/Widget.Material3.Button.OutlinedButton"
             android:layout_width="match_parent"
-            android:layout_height="40dp"
-            android:background="#2C343D"
-            android:text="CONTROLLER CONFIGURATION"
-            android:textColor="#CFD8DC"
-            android:textSize="12sp"
-            android:layout_marginBottom="8dp" />
+            android:layout_height="50dp"
+            android:text="Controller Configuration"
+            android:textSize="14sp"
+            app:cornerRadius="25dp"
+            android:layout_marginBottom="10dp"
+            app:strokeColor="@color/md_theme_dark_outlineVariant"
+            android:textColor="@color/md_theme_dark_secondary" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/exportLogsBtn"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="match_parent"
-            android:layout_height="36dp"
-            android:background="#1E2328"
-            android:text="EXPORT SYSTEM LOGS"
-            android:textColor="#90A4AE"
-            android:textSize="12sp" />
+            android:layout_height="44dp"
+            android:text="Export Diagnostic Logs"
+            android:textSize="13sp"
+            android:textColor="@color/md_theme_dark_onSurfaceVariant" />
 
     </LinearLayout>
-</ScrollView>
+</androidx.core.widget.NestedScrollView>

@@ -12,9 +12,11 @@ import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SwitchCompat
+import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import com.wiicompiled.mkw.extractor.WiiDiscExtractor
 import java.io.File
 
@@ -23,18 +25,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusTitle: TextView
     private lateinit var statusText: TextView
     private lateinit var statusIndicator: View
-    private lateinit var progressBar: ProgressBar
+    private lateinit var progressBar: LinearProgressIndicator
     private lateinit var selectDiscBtn: Button
     private lateinit var launchBtn: Button
     private lateinit var exportLogsBtn: Button
 
     private lateinit var spinnerResolution: Spinner
-    private lateinit var switchDisableCopyFilter: SwitchCompat
-    private lateinit var switchDisableBloom: SwitchCompat
-    private lateinit var switchSustainedPerf: SwitchCompat
-    private lateinit var switchAudioMixer: SwitchCompat
-    private lateinit var switchTouchControls: SwitchCompat
-    private lateinit var switchTiltControls: SwitchCompat
+    private lateinit var switchDisableCopyFilter: MaterialSwitch
+    private lateinit var switchDisableBloom: MaterialSwitch
+    private lateinit var switchSustainedPerf: MaterialSwitch
+    private lateinit var switchAudioMixer: MaterialSwitch
+    private lateinit var switchTouchControls: MaterialSwitch
+    private lateinit var switchTiltControls: MaterialSwitch
 
     private var isExtracting = false
 
@@ -45,6 +47,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        DynamicColors.applyIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -150,7 +153,7 @@ class MainActivity : AppCompatActivity() {
             }
             startActivity(Intent.createChooser(shareIntent, "Share Diagnostic Logs"))
         } catch (e: Exception) {
-            AlertDialog.Builder(this)
+            MaterialAlertDialogBuilder(this)
                 .setTitle("Log Export Error")
                 .setMessage("Could not export logs: ${e.message}")
                 .setPositiveButton("OK", null)
@@ -172,7 +175,8 @@ class MainActivity : AppCompatActivity() {
         val resOptions = arrayOf(
             "1.0x (Native 480p/528p)",
             "1.5x (HD 720p/792p)",
-            "2.0x (FHD 960p/1056p)"
+            "2.0x (FHD 960p/1056p)",
+            "3.0x (QHD 1440p/1584p)"
         )
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, resOptions)
         spinnerResolution.adapter = adapter
@@ -212,6 +216,7 @@ class MainActivity : AppCompatActivity() {
             0 -> "1.0"
             1 -> "1.5"
             2 -> "2.0"
+            3 -> "3.0"
             else -> "1.0"
         }
 
@@ -385,7 +390,7 @@ class MainActivity : AppCompatActivity() {
                             saveConfigOptions()
 
                             checkPermissionsAndData()
-                            AlertDialog.Builder(this)
+                            MaterialAlertDialogBuilder(this)
                                 .setTitle("✅ Installation Complete")
                                 .setMessage(
                                     "Mario Kart Wii (RMCP01) unpacked successfully!\n\n" +
@@ -403,7 +408,7 @@ class MainActivity : AppCompatActivity() {
                                 .show()
                         } else {
                             checkPermissionsAndData()
-                            AlertDialog.Builder(this)
+                            MaterialAlertDialogBuilder(this)
                                 .setTitle("⚠️ Installation Error")
                                 .setMessage(result.errorMessage ?: "Failed to extract disc.")
                                 .setPositiveButton("OK", null)
@@ -419,7 +424,7 @@ class MainActivity : AppCompatActivity() {
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     checkPermissionsAndData()
 
-                    AlertDialog.Builder(this)
+                    MaterialAlertDialogBuilder(this)
                         .setTitle("⚠️ Disc Import Error")
                         .setMessage("An error occurred while opening or reading the selected disc file:\n\n${e.message}\n\nPlease ensure you selected a valid, uncorrupted .wbfs or .iso file.")
                         .setPositiveButton("OK", null)

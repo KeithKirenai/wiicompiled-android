@@ -1,60 +1,78 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#121212"
-    android:padding="20dp"
+    android:background="@color/md_theme_dark_background"
+    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="28dp"
+        android:paddingBottom="36dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Controller Button Remapper"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="6dp" />
+            android:text="Controller Remapper"
+            android:textColor="@color/md_theme_dark_onBackground"
+            android:textSize="28sp"
+            android:fontFamily="sans-serif"
+            android:letterSpacing="-0.02" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Tap any game action, then press the controller button you want to assign to it."
-            android:textColor="#9E9E9E"
+            android:text="Tap any game action, then press the controller button to bind it."
+            android:textColor="@color/md_theme_dark_onSurfaceVariant"
             android:textSize="13sp"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="20dp" />
 
-        <LinearLayout
-            android:id="@+id/remapperContainer"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:layout_marginBottom="24dp"
+            app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/md_theme_dark_outlineVariant">
 
-        <Button
-            android:id="@+id/btnResetDefaults"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:background="#37474F"
-            android:text="RESET TO DEFAULT CONTROLLER MAP"
-            android:textColor="#ECEFF1"
-            android:textSize="13sp"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="10dp" />
+            <LinearLayout
+                android:id="@+id/remapperContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp" />
+        </com.google.android.material.card.MaterialCardView>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSaveRemapper"
             android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:background="#2E7D32"
-            android:text="SAVE &amp; CLOSE"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
+            android:layout_height="54dp"
+            android:text="Save &amp; Return"
+            android:textSize="15sp"
             android:textStyle="bold"
-            android:layout_marginBottom="24dp" />
+            app:cornerRadius="27dp"
+            android:layout_marginBottom="10dp"
+            app:backgroundTint="@color/md_theme_dark_primary"
+            android:textColor="@color/md_theme_dark_onPrimary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnResetDefaults"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="Reset to Standard Controller Defaults"
+            android:textSize="13sp"
+            app:cornerRadius="24dp"
+            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+            android:textColor="@color/md_theme_dark_onSurface" />
 
     </LinearLayout>
-</ScrollView>
+</androidx.core.widget.NestedScrollView>

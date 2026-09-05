@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material You Dark Theme Palette (Harmonic Dark Green / Teal / Slate) -->
+    <color name="md_theme_dark_primary">#A8D5BA</color>
+    <color name="md_theme_dark_onPrimary">#133827</color>
+    <color name="md_theme_dark_primaryContainer">#2B4E3C</color>
+    <color name="md_theme_dark_onPrimaryContainer">#C4F2D6</color>
+
+    <color name="md_theme_dark_secondary">#B8CCBD</color>
+    <color name="md_theme_dark_onSecondary">#24342A</color>
+    <color name="md_theme_dark_secondaryContainer">#3A4B40</color>
+    <color name="md_theme_dark_onSecondaryContainer">#D4E8D9</color>
+
+    <color name="md_theme_dark_tertiary">#A5CDDE</color>
+    <color name="md_theme_dark_onTertiary">#073543</color>
+    <color name="md_theme_dark_tertiaryContainer">#234B5A</color>
+    <color name="md_theme_dark_onTertiaryContainer">#C1E9FB</color>
+
+    <color name="md_theme_dark_background">#111413</color>
+    <color name="md_theme_dark_onBackground">#E1E3DF</color>
+    <color name="md_theme_dark_surface">#111413</color>
+    <color name="md_theme_dark_onSurface">#E1E3DF</color>
+
+    <color name="md_theme_dark_surfaceVariant">#202622</color>
+    <color name="md_theme_dark_onSurfaceVariant">#C0C9C1</color>
+    <color name="md_theme_dark_surfaceContainerLow">#161A18</color>
+    <color name="md_theme_dark_surfaceContainer">#1D221F</color>
+    <color name="md_theme_dark_surfaceContainerHigh">#272D29</color>
+    <color name="md_theme_dark_surfaceContainerHighest">#323834</color>
+
+    <color name="md_theme_dark_outline">#8A938C</color>
+    <color name="md_theme_dark_outlineVariant">#36413A</color>
+
+    <!-- Status Accents -->
+    <color name="status_ready">#66BB6A</color>
+    <color name="status_ready_container">#1B3820</color>
+    <color name="status_warning">#FFA726</color>
+    <color name="status_warning_container">#3D2708</color>
+    <color name="status_working">#42A5F5</color>
+    <color name="status_working_container">#0D2B45</color>
+
+    <!-- General Utility -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

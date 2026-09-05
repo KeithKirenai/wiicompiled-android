@@ -18,7 +18,7 @@
         android:label="WiiCompiled MKW"
         android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar">
+        android:theme="@style/Theme.WiiCompiled.Material3">
 
         <activity
             android:name=".MainActivity"

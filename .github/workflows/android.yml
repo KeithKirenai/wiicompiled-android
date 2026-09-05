@@ -34,7 +34,7 @@ jobs:
         run: sdkmanager "ndk;28.2.13676358"
 
       - name: Install CMake
-        run: sdkmanager "cmake;4.4.2"
+        run: sdkmanager "cmake;4.1.2"
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -78,7 +78,7 @@ jobs:
         run: sdkmanager "ndk;28.2.13676358"
 
       - name: Install CMake
-        run: sdkmanager "cmake;4.4.2"
+        run: sdkmanager "cmake;4.1.2"
 
       - name: Cache Gradle packages
         uses: actions/cache@v4

@@ -54,7 +54,11 @@ jobs:
         working-directory: aurora-main
 
       - name: Build
-        run: cmake --build build --parallel $(nproc)
+        # Build only the unit-test targets. The full `all` target also compiles
+        # examples/simple.c, which cannot build: the vendored GXGeometry.h uses a
+        # C++-only `GXSetArray` overload that is illegal in C (static declaration
+        # follows non-static declaration). Tests avoid that TU.
+        run: cmake --build build --target gx_fifo_tests os_alloc_tests --parallel $(nproc)
         working-directory: aurora-main
 
       - name: Test

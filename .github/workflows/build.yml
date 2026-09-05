@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  translator:
-    name: Translator (build + test)
+  translator-windows:
+    name: Translator (Windows)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -34,3 +34,39 @@ jobs:
 
       - name: Test
         run: dotnet test translator/Translator.sln -c Release --no-build --verbosity normal
+
+  translator-ubuntu:
+    name: Translator (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore translator/Translator.sln
+
+      - name: Build
+        run: dotnet build translator/Translator.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test translator/Translator.sln -c Release --no-build --verbosity normal
+
+  format-check:
+    name: Code style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Check formatting
+        run: dotnet format translator/Translator.sln --verify-no-changes --verbosity diagnostic

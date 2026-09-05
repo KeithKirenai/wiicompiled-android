@@ -1,0 +1,108 @@
+name: PR Check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  license-scan:
+    name: License compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check for Nintendo IP in source code
+        run: |
+          set -euo pipefail
+          # Scan C++/Kotlin/Java/C# source for obvious Nintendo trademarks.
+          # Assets, docs, and LICENSE files are intentionally excluded.
+          hits=$(rg -i -n 'nintendo|mario kart|super smash|zelda|pokemon|metroid|kirby|donkey kong|star fox|animal crossing|splatoon|fire emblem| Luigi|princess peach|toad' \
+            --glob '*.{cpp,h,hpp,c,kt,java,cs,xml,yml,yaml,toml,json}' \
+            --glob '!THIRD-PARTY-NOTICES.md' \
+            --glob '!AGENTS.md' \
+            --glob '!README.md' \
+            --glob '!LICENSE' \
+            --glob '!CONTRIBUTING.md' \
+            --glob '!assets/**' \
+            . || true)
+          if [ -n "$hits" ]; then
+            echo "::warning::Potential Nintendo IP references found in source code:"
+            echo "$hits"
+            echo ""
+            echo "This is informational only — AGENTS.md documents the Nintendo IP disclaimer."
+          else
+            echo "No Nintendo IP references found in source code."
+          fi
+
+  yaml-lint:
+    name: YAML / TOML lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install linters
+        run: pip install yamllint tomli
+
+      - name: Validate YAML files
+        run: |
+          yamllint -d relaxed .github/workflows/*.yml
+
+      - name: Validate TOML files
+        run: |
+          python3 -c "
+          import tomli, sys, glob
+          errors = []
+          for f in glob.glob('**/*.toml', recursive=True):
+              try:
+                  with open(f, 'rb') as fh:
+                      tomli.load(fh)
+              except Exception as e:
+                  errors.append(f'{f}: {e}')
+          if errors:
+              for e in errors:
+                  print(f'::error file={e.split(\":\")[0]}::{e}')
+              sys.exit(1)
+          print('All TOML files valid.')
+          "
+
+  trailing-whitespace:
+    name: Trailing whitespace & EOF
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check trailing whitespace
+        run: |
+          if grep -rn '[[:blank:]]$' --include='*.{cpp,h,hpp,c,kt,java,cs,yml,yaml,toml}' .; then
+            echo "::error::Trailing whitespace found in files above."
+            exit 1
+          fi
+          echo "No trailing whitespace found."
+
+      - name: Check files end with newline
+        run: |
+          missing=0
+          while IFS= read -r -d '' f; do
+            if [ -s "$f" ] && [ "$(tail -c 1 "$f" | xxd -p)" != "0a" ]; then
+              echo "::warning file=$f::File does not end with a newline"
+              missing=1
+            fi
+          done < <(find . -type f \
+            -not -path './.git/*' \
+            -not -path '*/assets/*' \
+            \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' -o -name '*.c' \
+               -o -name '*.kt' -o -name '*.java' -o -name '*.cs' \
+               -o -name '*.yml' -o -name '*.yaml' -o -name '*.toml' \) -print0)
+          exit $missing

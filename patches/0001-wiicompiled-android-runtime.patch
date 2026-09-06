@@ -1,0 +1,196 @@
+﻿diff --git a/runtime/CMakeLists.txt b/runtime/CMakeLists.txt
+index 6fd79e2..9cc3ebb 100644
+--- a/runtime/CMakeLists.txt
++++ b/runtime/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-´╗┐cmake_minimum_required(VERSION 3.16)
++cmake_minimum_required(VERSION 3.16)
+ project(mkw_recompiled)
+ 
+ if(NOT CMAKE_CXX_COMPILER_ID MATCHES "^(Clang|AppleClang)$" OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+@@ -11,11 +11,13 @@ elseif(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|ARM64)$")
+     # The first native macOS target is Apple Silicon. Intel and universal
+     # binaries remain future compatibility work; do not silently claim them.
+     set(MKW_PLATFORM_MACOS TRUE)
++elseif(CMAKE_SYSTEM_NAME STREQUAL "Android" AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
++    set(MKW_PLATFORM_ANDROID TRUE)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|amd64|x86_64|X86_64|aarch64|arm64|ARM64)$")
+     set(MKW_PLATFORM_LINUX TRUE)
+ else()
+     message(FATAL_ERROR
+-        "WiiCompiled supports 64-bit LLVM-MinGW Clang on Windows, native Linux x86_64/aarch64, or Apple Clang on macOS arm64")
++        "WiiCompiled supports 64-bit LLVM-MinGW Clang on Windows, native Linux x86_64/aarch64, Apple Clang on macOS arm64, or Android NDK Clang on aarch64")
+ endif()
+ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+     message(FATAL_ERROR "WiiCompiled only supports Release builds")
+@@ -249,6 +251,10 @@ if(MKW_PLATFORM_MACOS)
+     # mkw_co_init/mkw_co_switch at link time.
+     enable_language(ASM)
+     list(APPEND SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/platform/macos/co_switch.S")
++elseif(MKW_PLATFORM_ANDROID)
++    list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/guest_flat_memory_macos.cpp")
++    enable_language(ASM)
++    list(APPEND SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/platform/android/co_switch_android.S")
+ else()
+     list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_LIST_DIR}/src/guest_flat_memory_macos.cpp")
+ endif()
+diff --git a/runtime/src/hle/input/kpad.cpp b/runtime/src/hle/input/kpad.cpp
+index c7c2ffa..41b3a5c 100644
+--- a/runtime/src/hle/input/kpad.cpp
++++ b/runtime/src/hle/input/kpad.cpp
+@@ -1,6 +1,9 @@
+ #include "hle_stubs.h"
+ #include "memory.h"
+ #include "wii_remote_input.h"
++#if defined(__ANDROID__)
++#include "android_touch_input.h"
++#endif
+ 
+ #include <algorithm>
+ #include <array>
+@@ -205,14 +208,39 @@ void WriteUnifiedStatus(uint32_t addr, const WiiRemoteInput::KpadSample* sample)
+ 
+ } // namespace
+ 
+-// KPADRead: fills KPADStatus[0] for `chan` from the Bluetooth remote, returns the entry count.
++// KPADRead: fills KPADStatus[0] for `chan` from the Bluetooth remote or Android touch input, returns the entry count.
+ extern "C" int32_t KPAD__Read_HLE(uint32_t chan, uint32_t statusPtr, uint32_t count)
+ {
+     if (chan >= g_channels.size() || statusPtr == 0 || count == 0) {
+         return 0;
+     }
+     WiiRemoteInput::KpadSample sample;
+-    const bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
++    bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
++#if defined(__ANDROID__)
++    if (!have && chan == 0) {
++        auto touch = AndroidInput::GetTouchState();
++        if (touch.touchActive) {
++            have = true;
++            sample.hasClassic = true;
++            sample.clHold = touch.buttons;
++            // Left stick normalized to -1.0 .. 1.0
++            sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
++            sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
++            sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
++            sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
++            sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
++            sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
++            // Map Classic A/B to Core A/B so UI menus respond
++            if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800; // WPAD_BUTTON_A
++            if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400; // WPAD_BUTTON_B
++            if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010; // WPAD_BUTTON_PLUS
++            if (touch.buttons & AndroidInput::kBtnDpadUp) sample.hold |= 0x0008;
++            if (touch.buttons & AndroidInput::kBtnDpadDown) sample.hold |= 0x0004;
++            if (touch.buttons & AndroidInput::kBtnDpadLeft) sample.hold |= 0x0001;
++            if (touch.buttons & AndroidInput::kBtnDpadRight) sample.hold |= 0x0002;
++        }
++    }
++#endif
+     try {
+         return WriteStatus(chan, statusPtr, have ? &sample : nullptr);
+     } catch (const Memory::AccessViolation&) {
+@@ -222,11 +250,7 @@ extern "C" int32_t KPAD__Read_HLE(uint32_t chan, uint32_t statusPtr, uint32_t co
+ PPC_NATIVE_OVERRIDE(80197380, KPAD__Read_HLE, int32_t, (uint32_t chan, uint32_t statusPtr, uint32_t count),
+          (chan, statusPtr, count));
+ 
+-// KPADGetUnifiedWpadStatus: the raw WPAD status behind KPADStatus. The game
+-// reads the Classic Controller's buttons, sticks and triggers from here. The
+-// SDK fills `count` entries with the channel's recent samples (the game asks for
+-// as many as it asked KPADRead for and looks at entry 0); with one sample per
+-// frame here, every entry gets the current one.
++// KPADGetUnifiedWpadStatus: the raw WPAD status behind KPADStatus.
+ extern "C" int32_t KPAD__GetUnifiedWpadStatus_HLE(uint32_t chan, uint32_t statusPtr, uint32_t count)
+ {
+     constexpr uint32_t kMaxEntries = 16; // KPAD_MAX_READ_BUFS
+@@ -234,7 +258,26 @@ extern "C" int32_t KPAD__GetUnifiedWpadStatus_HLE(uint32_t chan, uint32_t status
+         return 0;
+     }
+     WiiRemoteInput::KpadSample sample;
+-    const bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
++    bool have = WiiRemoteInput::ReadKpadSample(chan, sample);
++#if defined(__ANDROID__)
++    if (!have && chan == 0) {
++        auto touch = AndroidInput::GetTouchState();
++        if (touch.touchActive) {
++            have = true;
++            sample.hasClassic = true;
++            sample.clHold = touch.buttons;
++            sample.clLStick[0] = static_cast<float>(touch.stickX) / 128.0f;
++            sample.clLStick[1] = static_cast<float>(touch.stickY) / 128.0f;
++            sample.clLStickRaw[0] = static_cast<int16_t>(touch.stickX * 4);
++            sample.clLStickRaw[1] = static_cast<int16_t>(touch.stickY * 4);
++            sample.clTriggerL = (touch.buttons & AndroidInput::kBtnL) ? 255 : 0;
++            sample.clTriggerR = (touch.buttons & AndroidInput::kBtnR) ? 255 : 0;
++            if (touch.buttons & AndroidInput::kBtnA) sample.hold |= 0x0800;
++            if (touch.buttons & AndroidInput::kBtnB) sample.hold |= 0x0400;
++            if (touch.buttons & AndroidInput::kBtnPlus) sample.hold |= 0x0010;
++        }
++    }
++#endif
+     try {
+         const uint32_t entries = std::min(count, kMaxEntries);
+         for (uint32_t i = 0; i < entries; ++i) {
+diff --git a/runtime/src/host_context.cpp b/runtime/src/host_context.cpp
+index e23c1c0..b64f827 100644
+--- a/runtime/src/host_context.cpp
++++ b/runtime/src/host_context.cpp
+@@ -8,7 +8,7 @@
+ #define WIN32_LEAN_AND_MEAN
+ #endif
+ #include <windows.h>
+-#elif defined(__APPLE__) && defined(__aarch64__)
++#elif (defined(__APPLE__) && defined(__aarch64__)) || (defined(__ANDROID__) && defined(__aarch64__))
+ #include <sys/mman.h>
+ #include <unistd.h>
+ 
+@@ -72,7 +72,7 @@ void Switch(Handle target)
+     SwitchToFiber(target);
+ }
+ 
+-#elif defined(__APPLE__) && defined(__aarch64__)
++#elif (defined(__APPLE__) && defined(__aarch64__)) || (defined(__ANDROID__) && defined(__aarch64__))
+ 
+ namespace {
+ struct Context {
+diff --git a/runtime/src/platform/host_platform.cpp b/runtime/src/platform/host_platform.cpp
+index c0caa95..6a26a3d 100644
+--- a/runtime/src/platform/host_platform.cpp
++++ b/runtime/src/platform/host_platform.cpp
+@@ -46,6 +46,16 @@ std::optional<std::filesystem::path> ExecutableDirectory() noexcept {
+     std::error_code ec;
+     const auto resolved = std::filesystem::weakly_canonical(path, ec);
+     return (ec ? std::filesystem::path(path) : resolved).parent_path();
++#elif defined(__linux__) || defined(__ANDROID__)
++    char buffer[1024];
++    const ssize_t len = ::readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
++    if (len > 0) {
++        buffer[len] = '\0';
++        std::error_code ec;
++        const auto resolved = std::filesystem::weakly_canonical(buffer, ec);
++        return (ec ? std::filesystem::path(buffer) : resolved).parent_path();
++    }
++    return std::nullopt;
+ #else
+     return std::nullopt;
+ #endif
+@@ -66,6 +76,19 @@ std::filesystem::path ApplicationDataDirectory(std::string_view applicationName)
+     if (const passwd* user = getpwuid(getuid()); user && user->pw_dir && *user->pw_dir) {
+         return std::filesystem::path(user->pw_dir) / "Library" / "Application Support" / applicationName;
+     }
++#elif defined(__ANDROID__)
++    // Standard app private files directory in internal storage
++    if (const char* internalDir = std::getenv("INTERNAL_STORAGE"); internalDir && *internalDir) {
++        return std::filesystem::path(internalDir);
++    }
++    return std::filesystem::path("/data/data/com.wiicompiled.mkw/files");
++#elif defined(__linux__)
++    if (const char* xdgData = std::getenv("XDG_DATA_HOME"); xdgData && *xdgData) {
++        return std::filesystem::path(xdgData) / applicationName;
++    }
++    if (const char* home = std::getenv("HOME"); home && *home) {
++        return std::filesystem::path(home) / ".local" / "share" / applicationName;
++    }
+ #endif
+     return std::filesystem::current_path() / applicationName;
+ }

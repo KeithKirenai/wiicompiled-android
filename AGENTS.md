@@ -3,7 +3,7 @@
 Guidance for AI coding agents working in the **WiiCompiled Android Port** repository.
 
 > The third-party license ledger and mandatory attributions for this project live in
-> **[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)** — never edit it casually.
+> **[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)** — never edit it casually.
 
 ## Project Overview
 
@@ -53,7 +53,7 @@ Gradle build runs from `android\` using `gradlew.bat` (`assembleDebug`, `assembl
 
 * **Android code**: lives under `com.wiicompiled.mkw`; match existing patterns for the disc importer, sensor/touch input, and fullscreen surface. SDL glue stays under `org.libsdl`.
 * **Native code**: JNI bridge in `app/src/main/cpp`; shard/CMake sources under `cmake/shards`.
-* **License/attribution**: never edit `THIRD_PARTY_NOTICES.md` casually; keep all licensing and attribution records in that file, not in this file or README.
+* **License/attribution**: never edit `THIRD-PARTY-NOTICES.md` casually; keep all licensing and attribution records in that file, not in this file or README.
 
 ## Important Notes
 

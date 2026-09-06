@@ -38,7 +38,7 @@ The upstream engine is desktop Windows/macOS. This fork adds the missing Android
     feed into the native engine.
   - `app/src/main/cpp/` — JNI bridge (`libmkw_android.so`), Android touch input adapter,
     disc extraction bridge, and the Android render-loop / Vulkan wiring.
-- `THIRD_PARTY_NOTICES.md` — full third-party license ledger and mandatory attributions.
+- `THIRD-PARTY-NOTICES.md` — full third-party license ledger and mandatory attributions.
 - AArch64 fiber switching for guest OSThreads (Android assembly port of the desktop switcher), a
   `memfd` syscall fallback for older Android kernels, and Android-specific input/audio paths
   adapted from the mobile work in the upstream projects.
@@ -223,7 +223,7 @@ No. Don't ask. Nothing in this repo or any build contains Nintendo code or asset
 Because it's an early Android bring-up. Rendering and internal resolution are not tuned for mobile
 GPUs yet. This is the main thing being worked on.
 
-**Why is there a THIRD_PARTY_NOTICES.md?**
+**Why is there a THIRD-PARTY-NOTICES.md?**
 It is the license ledger for this port. It records every third-party component, its license, its
 copyright holder, and the mandatory attribution text (for example the FreeType notice and the
 Dolphin DiscIO attribution). If you ship this project, it must stay intact.
@@ -246,7 +246,7 @@ Plus the same core dependencies the upstream runtime ships and the upstream
 DSP coef ROM), **SDL**, **Retro Rewind**, and the static-recompilation community.
 
 The complete ledger — every component, its license, its copyright holder, and the required
-notices — is in **[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)**.
+notices — is in **[`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)**.
 
 ## License
 

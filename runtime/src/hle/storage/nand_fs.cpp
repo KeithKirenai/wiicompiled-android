@@ -433,10 +433,6 @@ std::optional<int32_t> NandCheckSystemSaveRead(const char* who,
                  static_cast<int32_t>(NAND_RESULT_UNKNOWN);
 }
 
-bool IsFaceLibDatabasePath(const char* path) {
-    return std::strcmp(path, "/shared2/menu/FaceLib/RFL_DB.dat") == 0;
-}
-
 // Create directories recursively
 bool CreateDirectoryPath(const std::filesystem::path& path) {
     if (path.empty()) {

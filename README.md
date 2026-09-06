@@ -164,7 +164,7 @@ Once `generated\` and the prebuilt archive exist, the fast path is:
 
 ```powershell
 .\build-shards.bat     # compile shards (skips if libmkw_base_shared.a already exists)
-.\build-app-debug.bat  # -> debug APK   (or .\build-app-release.bat for release)
+.\build-app.bat debug   # -> debug APK   (or .\build-app.bat release for release)
 .\install-app.bat      # choose debug/release and install over ADB
 ```
 

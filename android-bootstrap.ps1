@@ -381,9 +381,9 @@ if ($Only -eq "" -or $Only -eq "App") {
     Push-Location $Root
     try {
         if ($Release) {
-            cmd /c "build-app-release.bat"
+            cmd /c "build-app.bat release"
         } else {
-            cmd /c "build-app-debug.bat"
+            cmd /c "build-app.bat debug"
         }
         if ($LASTEXITCODE -ne 0) { Fail "APK build failed (exit $LASTEXITCODE)." }
     } finally { Pop-Location }

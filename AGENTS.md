@@ -19,7 +19,7 @@ This repository is the **Android port of WiiCompiled** (Mario Kart Wii PowerPC s
   * `Config.toml` — App-level TOML configuration.
 * **`cmake/shards/`** — CMake build for the translated shard archive.
 * **`runtime/`**, **`translator/`**, **`aurora-main/`**, **`projects/`**, **`Assets/`** — Upstream WiiCompiled components.
-* **Root build helpers** — `android-bootstrap.ps1/.bat`, `build-shards.bat`, `build-app*.bat`, `install-app.bat`, `run_android.bat/.ps1` — Windows build/install automation for this port.
+* **Root build helpers** — `android-bootstrap.ps1/.bat`, `build-shards.bat`, `build-app.bat`, `install-app.bat` — Windows build/install automation for this port.
 
 ## Build System
 

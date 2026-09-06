@@ -1446,10 +1446,14 @@ int RuntimeMain(int argc, char** argv) {
         static constexpr std::array<GraphicsBackendEntry, 2> kGraphicsBackends{{
             {"auto", BACKEND_AUTO}, {"metal", BACKEND_METAL},
         }};
-// only vulkan for linux
-#elif defined(__linux__)
-            static constexpr std::array<GraphicsBackendEntry, 2> kGraphicsBackends{{
+#elif defined(__ANDROID__)
+        static constexpr std::array<GraphicsBackendEntry, 4> kGraphicsBackends{{
             {"auto", BACKEND_AUTO}, {"vulkan", BACKEND_VULKAN},
+            {"opengles", BACKEND_OPENGLES}, {"opengl", BACKEND_OPENGL},
+        }};
+#elif defined(__linux__)
+        static constexpr std::array<GraphicsBackendEntry, 3> kGraphicsBackends{{
+            {"auto", BACKEND_AUTO}, {"vulkan", BACKEND_VULKAN}, {"opengl", BACKEND_OPENGL},
         }};
 #elif defined(_WIN32)
         static constexpr std::array<GraphicsBackendEntry, 3> kGraphicsBackends{{

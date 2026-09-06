@@ -156,11 +156,13 @@ extern "C" int32_t NANDOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint32_t
     }
 
     if (!file) {
+        int err = errno;
         if (IsFaceLibResourcePath(path) && SeedFaceLibResource(hostPath)) {
             file = NandFopen(hostPath, fopenMode);
         }
         if (!file) {
-            LogNandError("NANDOpen", "FAILED to open");
+            LogNandError("NANDOpen", "FAILED to open '%s' (host: '%s', mode: %u, fopenMode: '%s', errno=%d: %s)",
+                         path, HostPathText(hostPath).c_str(), mode, fopenMode, err, strerror(err));
             return NAND_RESULT_NOEXISTS;
         }
     }
@@ -400,11 +402,37 @@ extern "C" int32_t NANDGetStatus_HLE(uint32_t pathPtr, uint32_t outStatusPtr) {
         return NAND_RESULT_NOEXISTS;
     }
     
-    // NANDStatus structure - fill with fake values
-    // This is typically used to check permissions and file type
-    Memory::Write32(outStatusPtr, 0);      // Magic/type
-    Memory::Write32(outStatusPtr + 4, 0);  // Permissions  
-    
+    // NANDStatus structure in RVL SDK:
+    // offset 0x00: u32 length (file size in bytes, 0 for directories)
+    // offset 0x04: u8  ownerPerm (3 = read/write)
+    // offset 0x05: u8  groupPerm (3 = read/write)
+    // offset 0x06: u8  otherPerm (3 = read/write)
+    // offset 0x07: u8  attr / attributes (1 = file, 2 = directory)
+    // Clear the full structure (at least 0x1C bytes to be safe for all SDK variants)
+    uint8_t* outStatus = reinterpret_cast<uint8_t*>(Memory::GetPointer(outStatusPtr));
+    if (outStatus) {
+        std::memset(outStatus, 0, 0x20);
+    }
+
+    uint32_t fileSize = 0;
+    const bool isDir = IsDirectory(hostPath);
+    if (!isDir) {
+        std::error_code ec;
+        auto sz = std::filesystem::file_size(hostPath, ec);
+        if (!ec) {
+            fileSize = static_cast<uint32_t>(sz);
+        }
+    }
+
+    Memory::Write32(outStatusPtr + 0, fileSize);
+    Memory::Write8(outStatusPtr + 4, 3); // ownerPerm (read/write)
+    Memory::Write8(outStatusPtr + 5, 3); // groupPerm (read/write)
+    Memory::Write8(outStatusPtr + 6, 3); // otherPerm (read/write)
+    Memory::Write8(outStatusPtr + 7, isDir ? 2 : 1); // attr / attributes
+
+    RT_LOGF(RT_TAG_NAND, "NANDGetStatus: path='%s' size=%u isDir=%d\n",
+            path, fileSize, isDir ? 1 : 0);
+
     return NAND_RESULT_OK;
 }
 PPC_NATIVE_OVERRIDE(8019C380, NANDGetStatus_HLE, int32_t, (uint32_t pathPtr, uint32_t outStatusPtr), (pathPtr, outStatusPtr));

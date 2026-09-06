@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var exportLogsBtn: Button
 
     // Graphics & Engine
+    private lateinit var spinnerGraphicsApi: Spinner
     private lateinit var spinnerResolution: Spinner
     private lateinit var switchWidescreen: MaterialSwitch
     private lateinit var switchSkipUnreadyPipelines: MaterialSwitch
@@ -82,6 +83,7 @@ class MainActivity : AppCompatActivity() {
         val btnRemapper = findViewById<Button>(R.id.btnRemapper)
 
         // Graphics & Engine bindings
+        spinnerGraphicsApi = findViewById(R.id.spinnerGraphicsApi)
         spinnerResolution = findViewById(R.id.spinnerResolution)
         switchWidescreen = findViewById(R.id.switchWidescreen)
         switchSkipUnreadyPipelines = findViewById(R.id.switchSkipUnreadyPipelines)
@@ -211,7 +213,24 @@ class MainActivity : AppCompatActivity() {
     private fun setupConfigOptions() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
 
-        // 1. Resolution
+        // 1. Graphics Backend
+        val backendOptions = arrayOf(
+            "Vulkan (Recommended)",
+            "OpenGL ES (Compatibility)",
+            "Auto (System Preferred)"
+        )
+        val backendAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, backendOptions)
+        spinnerGraphicsApi.adapter = backendAdapter
+        val savedBackend = prefs.getString("graphics_api", "vulkan") ?: "vulkan"
+        val backendIdx = when (savedBackend) {
+            "vulkan" -> 0
+            "opengles", "opengl" -> 1
+            "auto" -> 2
+            else -> 0
+        }
+        spinnerGraphicsApi.setSelection(backendIdx)
+
+        // 2. Resolution
         val resOptions = arrayOf(
             "1.0x (Native 480p/528p)",
             "1.5x (HD 720p/792p)",
@@ -335,7 +354,16 @@ class MainActivity : AppCompatActivity() {
         val showFps = switchShowFps.isChecked
         val networkEnabled = switchNetworkEnabled.isChecked
 
+        val backendIdx = spinnerGraphicsApi.selectedItemPosition
+        val graphicsApi = when (backendIdx) {
+            0 -> "vulkan"
+            1 -> "opengles"
+            2 -> "auto"
+            else -> "vulkan"
+        }
+
         prefs.edit()
+            .putString("graphics_api", graphicsApi)
             .putInt("resolution_idx", resIdx)
             .putBoolean("widescreen", widescreen)
             .putBoolean("skip_unready_pipelines", skipUnreadyPipelines)
@@ -371,6 +399,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         updateConfigFile(
+            graphicsApi = graphicsApi,
             resolutionMultiplier = multiplier,
             widescreen = widescreen,
             skipUnreadyPipelines = skipUnreadyPipelines,
@@ -390,6 +419,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateConfigFile(
+        graphicsApi: String = "vulkan",
         resolutionMultiplier: String,
         widescreen: Boolean,
         skipUnreadyPipelines: Boolean,
@@ -423,7 +453,7 @@ class MainActivity : AppCompatActivity() {
                 "resolution_multiplier = " + resolutionMultiplier + "\n" +
                 "frame_interpolation_fps = " + frameInterpolationFps + "\n" +
                 "display_mode = \"windowed\"\n" +
-                "graphics_api = \"vulkan\"\n" +
+                "graphics_api = \"" + graphicsApi + "\"\n" +
                 "skip_unready_pipelines = " + (if (skipUnreadyPipelines) "true" else "false") + "\n" +
                 "disable_copy_filter = " + (if (disableCopyFilter) "true" else "false") + "\n" +
                 "disabled_post_processing_paths = " + (if (disableBloom) "16" else "0") + "\n" +

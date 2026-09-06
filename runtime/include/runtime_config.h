@@ -167,9 +167,10 @@ inline bool IsSupportedResolutionMultiplier(float value) {
 inline bool IsSupportedGraphicsApi(std::string_view value) {
 #if defined(__APPLE__)
     static constexpr std::array<std::string_view, 2> values{"auto", "metal"};
-// only vulkan for linux
+#elif defined(__ANDROID__)
+    static constexpr std::array<std::string_view, 4> values{"auto", "vulkan", "opengles", "opengl"};
 #elif defined(__linux__)
-    static constexpr std::array<std::string_view, 2> values{"auto", "vulkan"};
+    static constexpr std::array<std::string_view, 3> values{"auto", "vulkan", "opengl"};
 #elif defined(_WIN32)
     static constexpr std::array<std::string_view, 3> values{"auto", "d3d12", "vulkan"};
 #endif

@@ -622,11 +622,12 @@ extern "C" int32_t NAND_IOS_Ioctl_HLE(
                     Memory::Write32(outBufPtr, 0);
                     // Group ID = 0
                     Memory::Write16(outBufPtr + 4, 0);
-                    // Permissions: 3 = read/write for all
-                    Memory::Write8(outBufPtr + 0x49, 3); // owner perm
-                    Memory::Write8(outBufPtr + 0x46, 3); // group perm
-                    Memory::Write8(outBufPtr + 0x47, 3); // other perm
-                    Memory::Write8(outBufPtr + 0x48, IsDirectory(hostPath) ? 2 : 1); // attrs (2=dir, 1=file)
+                    // Permissions: 3 = read/write for all. The ISFS attribute
+                    // bytes occupy 0x46..0x49 in owner/group/other/attr order.
+                    Memory::Write8(outBufPtr + 0x46, 3); // owner perm
+                    Memory::Write8(outBufPtr + 0x47, 3); // group perm
+                    Memory::Write8(outBufPtr + 0x48, 3); // other perm
+                    Memory::Write8(outBufPtr + 0x49, IsDirectory(hostPath) ? 2 : 1); // attrs (2=dir, 1=file)
                 }
                 return ISFS_OK;
             }

@@ -418,7 +418,8 @@ std::optional<int32_t> NandCheckSystemSaveRead(const char* who,
     if (action == RuntimeNandSave::ReadAction::Missing) {
         LogNandWarning(who, "treating empty or zero-filled system save '%s' as missing",
                        HostPathText(hostPath).c_str());
-        return ios ? ISFS_ENOENT : NAND_RESULT_NOEXISTS;
+        return ios ? static_cast<int32_t>(ISFS_ENOENT) :
+                 static_cast<int32_t>(NAND_RESULT_NOEXISTS);
     }
     if (action == RuntimeNandSave::ReadAction::RecoveryNeeded) {
         LogNandError(who, "system save '%s' is missing or blank but its .nandsafe.tmp contains data; "
@@ -428,7 +429,12 @@ std::optional<int32_t> NandCheckSystemSaveRead(const char* who,
         LogNandError(who, "could not inspect system save '%s' or its write shadow; leaving data untouched",
                      HostPathText(hostPath).c_str());
     }
-    return ios ? ISFS_EIO : NAND_RESULT_UNKNOWN;
+    return ios ? static_cast<int32_t>(ISFS_EIO) :
+                 static_cast<int32_t>(NAND_RESULT_UNKNOWN);
+}
+
+bool IsFaceLibDatabasePath(const char* path) {
+    return std::strcmp(path, "/shared2/menu/FaceLib/RFL_DB.dat") == 0;
 }
 
 // Create directories recursively

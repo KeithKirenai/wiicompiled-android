@@ -635,15 +635,9 @@ constexpr std::array PreferredBackendOrder{
 #ifdef DAWN_ENABLE_BACKEND_VULKAN
     BACKEND_VULKAN,
 #endif
-#if !defined(_WIN32) && defined(DAWN_ENABLE_BACKEND_D3D11)
-    BACKEND_D3D11,
+#ifdef DAWN_ENABLE_BACKEND_OPENGLES
+    BACKEND_OPENGLES,
 #endif
-// #ifdef DAWN_ENABLE_BACKEND_DESKTOP_GL
-//     BACKEND_OPENGL,
-// #endif
-// #ifdef DAWN_ENABLE_BACKEND_OPENGLES
-//     BACKEND_OPENGLES,
-// #endif
 #ifdef DAWN_ENABLE_BACKEND_NULL
     BACKEND_NULL,
 #endif

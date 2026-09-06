@@ -25,6 +25,10 @@
 #if defined(WEBGPU_DAWN) && !defined(__MINGW32__)
 #include "../dawn/BackendBinding.hpp"
 #include <dawn/native/DawnNative.h>
+#if defined(DAWN_ENABLE_BACKEND_OPENGL) || defined(DAWN_ENABLE_BACKEND_OPENGLES)
+#include <dawn/native/OpenGLBackend.h>
+#include <EGL/egl.h>
+#endif
 #elif defined(WEBGPU_DAWN)
 #include "../dawn/BackendBinding.hpp"
 #endif
@@ -565,10 +569,18 @@ bool initialize(AuroraBackend auroraBackend) {
     const std::vector<const char*> adapterEnableToggles{
         "allow_unsafe_apis",
     };
-    const wgpu::DawnTogglesDescriptor adapterTogglesDescriptor({
+    wgpu::DawnTogglesDescriptor adapterTogglesDescriptor({
         .enabledToggleCount = adapterEnableToggles.size(),
         .enabledToggles = adapterEnableToggles.data(),
     });
+#endif
+#if defined(WEBGPU_DAWN) && (defined(DAWN_ENABLE_BACKEND_OPENGL) || defined(DAWN_ENABLE_BACKEND_OPENGLES))
+    dawn::native::opengl::RequestAdapterOptionsGetGLProc glProcOptions;
+    if (backend == wgpu::BackendType::OpenGLES || backend == wgpu::BackendType::OpenGL) {
+      glProcOptions.getProc = reinterpret_cast<dawn::native::opengl::EGLGetProcProc>(eglGetProcAddress);
+      glProcOptions.display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+      adapterTogglesDescriptor.nextInChain = &glProcOptions;
+    }
 #endif
     const wgpu::RequestAdapterOptions options{
 #ifdef WEBGPU_DAWN

@@ -15,6 +15,7 @@ set(MKW_GENERATED_DIR "${MKW_ROOT}/generated")
 set(DAWN_ENABLE_D3D11 OFF CACHE BOOL "" FORCE)
 set(DAWN_ENABLE_D3D12 OFF CACHE BOOL "" FORCE)
 set(DAWN_ENABLE_VULKAN ON CACHE BOOL "" FORCE)
+set(DAWN_ENABLE_OPENGLES ON CACHE BOOL "" FORCE)
 set(DAWN_ENABLE_METAL OFF CACHE BOOL "" FORCE)
 set(TINT_BUILD_HLSL_WRITER OFF CACHE BOOL "" FORCE)
 set(DAWN_BUILD_SAMPLES OFF CACHE BOOL "" FORCE)
@@ -117,6 +118,8 @@ target_link_libraries(mkw_android PRIVATE
     android
     log
     vulkan
+    GLESv3
+    EGL
     aurora::gx
     aurora::pad
     aurora::si

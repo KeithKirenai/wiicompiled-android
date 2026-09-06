@@ -417,6 +417,15 @@ extern "C" int32_t NANDSafeOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint
         if (!file && IsFaceLibResourcePath(path) && SeedFaceLibResource(hostPath)) {
             file = NandFopen(hostPath, "rb");
         }
+        if (!file && IsFaceLibDatabasePath(path)) {
+            // FaceLib treats the Mii database as optional for offline play. Keep the
+            // fallback ephemeral so a missing system NAND does not become a persistent
+            // zero-byte database that later looks corrupt.
+            file = std::tmpfile();
+            if (file) {
+                LogNandWarning("NANDSafeOpen", "using empty offline FaceLib database");
+            }
+        }
         if (!file) {
             LogNandError("NANDSafeOpen", "FAILED to open '%s' for reading",
                     HostPathText(hostPath).c_str());

@@ -808,6 +808,23 @@ void DrawGraphicsSettings() {
     ImGui::Text("Graphics API: %s", GraphicsApiDisplayName());
 }
 
+static const char* copyFormatName(uint32_t fmt) {
+    switch (fmt) {
+    case 0x0: return "I4";
+    case 0x1: return "I8";
+    case 0x2: return "IA4";
+    case 0x3: return "IA8";
+    case 0x4: return "RGB565";
+    case 0x5: return "RGB5A3";
+    case 0x6: return "RGBA8";
+    case 0xE: return "CMPR";
+    case 0x11: return "Z8";
+    case 0x13: return "Z16";
+    case 0x16: return "Z24X8";
+    default: return "fmt?";
+    }
+}
+
 void DrawFpsOverlay() {
     AuroraPresentTiming presentTiming{};
     aurora_get_present_timing(&presentTiming);
@@ -940,15 +957,21 @@ void DrawFpsOverlay() {
                 AuroraGpuPassTimings gpuPassTimings;
                 aurora_get_gpu_pass_timings(&gpuPassTimings);
                 if (gpuPassTimings.count > 0) {
-                    char passList[256];
+                    char passList[512];
                     int off = snprintf(passList, sizeof(passList), "%.2f",
                                        static_cast<float>(gpuPassTimings.totalUs) / 1000.0f);
                     for (uint32_t p = 0; p < gpuPassTimings.count && off > 0 && off < (int)sizeof(passList);
                          ++p) {
-                        off += snprintf(passList + off, sizeof(passList) - off, " %.2f(%ux%u,%u)",
+                        const uint32_t flags = gpuPassTimings.passFlags[p];
+                        const char* fmtName = (flags & AURORA_PASS_FLAG_COPY)
+                                                  ? copyFormatName(gpuPassTimings.passFormat[p])
+                                                  : "rt";
+                        off += snprintf(passList + off, sizeof(passList) - off, " %.2f(%ux%u,%u,%s%s%s)",
                                         static_cast<float>(gpuPassTimings.passUs[p]) / 1000.0f,
                                         gpuPassTimings.passWidth[p], gpuPassTimings.passHeight[p],
-                                        gpuPassTimings.passDraws[p]);
+                                        gpuPassTimings.passDraws[p], fmtName,
+                                        (flags & AURORA_PASS_FLAG_SHADER) ? ",sdr" : "",
+                                        (flags & AURORA_PASS_FLAG_HALF_SCALE) ? ",half" : "");
                     }
                     __android_log_print(ANDROID_LOG_INFO, "MKW-PASS",
                                         "Frame: %.2f ms (CPU encode) | %u passes: %s",

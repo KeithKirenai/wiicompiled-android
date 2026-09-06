@@ -62,9 +62,16 @@ void aurora_get_present_timing(AuroraPresentTiming* timing);
 // devices this targets are tiled GPUs whose drivers do not expose Vulkan timestamp queries, and on
 // a tiler recorded order does not reflect real GPU time anyway). `totalUs` spans the whole native
 // render; `passUs` covers per-pass encoding incl. its resolve/copy encodes, `passWidth`/`passHeight`
-// the pass target size, and `passDraws` the number of draw commands in the pass. Pass order is
-// submission order; arrays fill up to AURORA_GPU_PASS_TIMING_MAX, the rest stay 0.
+// the pass target size, `passDraws` the number of draw commands in the pass, `passFormat` the packed
+// GX resolve format (0 = no resolve/copy, just a render target) and `passFlags` a bitmask of copy
+// characteristics. Pass order is submission order; arrays fill up to AURORA_GPU_PASS_TIMING_MAX,
+// the rest stay 0.
 #define AURORA_GPU_PASS_TIMING_MAX 16
+#define AURORA_PASS_FLAG_COPY 0x1         // this pass carries a GX EFB copy (resolve target)
+#define AURORA_PASS_FLAG_SHADER 0x2       // copy is done by a full-screen shader (conversion or sampled)
+#define AURORA_PASS_FLAG_HALF_SCALE 0x4   // copy target is half the EFB resolution
+#define AURORA_PASS_FLAG_OPAQUE 0x8       // copy forces opaque alpha
+#define AURORA_PASS_FLAG_SNAPSHOT 0x10    // copy re-sources from a cleared-EFB snapshot
 typedef struct {
   uint32_t count;
   uint64_t totalUs;
@@ -72,6 +79,8 @@ typedef struct {
   uint32_t passWidth[AURORA_GPU_PASS_TIMING_MAX];
   uint32_t passHeight[AURORA_GPU_PASS_TIMING_MAX];
   uint32_t passDraws[AURORA_GPU_PASS_TIMING_MAX];
+  uint32_t passFormat[AURORA_GPU_PASS_TIMING_MAX];
+  uint32_t passFlags[AURORA_GPU_PASS_TIMING_MAX];
 } AuroraGpuPassTimings;
 void aurora_get_gpu_pass_timings(AuroraGpuPassTimings* timings);
 

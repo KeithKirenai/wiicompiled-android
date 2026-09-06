@@ -163,6 +163,8 @@ struct PassTimingSample {
   uint32_t width;
   uint32_t height;
   uint32_t drawCount;
+  uint32_t format;
+  uint32_t flags;
 };
 struct PassTimingSet {
   std::array<PassTimingSample, kMaxTimedPasses> samples = {};
@@ -177,6 +179,8 @@ uint32_t g_passUs[kMaxTimedPasses] = {};
 uint32_t g_passWidth[kMaxTimedPasses] = {};
 uint32_t g_passHeight[kMaxTimedPasses] = {};
 uint32_t g_passDrawCount[kMaxTimedPasses] = {};
+uint32_t g_passFormat[kMaxTimedPasses] = {};
+uint32_t g_passFlags[kMaxTimedPasses] = {};
 uint32_t g_passCount = 0;
 uint64_t g_passFrameTotalUs = 0;
 } // namespace
@@ -1376,6 +1380,16 @@ static void render_impl(std::vector<RenderPass>& renderPasses, wgpu::CommandEnco
         drawCount += command.type == CommandType::Draw ? 1U : 0U;
       }
       sample.drawCount = drawCount;
+      sample.format = passInfo.resolveTarget ? static_cast<uint32_t>(passInfo.resolveFormat) : 0;
+      sample.flags = 0;
+      if (passInfo.resolveTarget) {
+        sample.flags |= AURORA_PASS_FLAG_COPY;
+        if (passInfo.resolveNeedsConversion || passInfo.resolveNeedsShaderSampling)
+          sample.flags |= AURORA_PASS_FLAG_SHADER;
+        if (passInfo.resolveHalfScale) sample.flags |= AURORA_PASS_FLAG_HALF_SCALE;
+        if (passInfo.resolveForceOpaqueAlpha) sample.flags |= AURORA_PASS_FLAG_OPAQUE;
+        if (passInfo.snapshotColorResolveSource) sample.flags |= AURORA_PASS_FLAG_SNAPSHOT;
+      }
     }
   }
   if (timePasses) {
@@ -1390,6 +1404,8 @@ static void render_impl(std::vector<RenderPass>& renderPasses, wgpu::CommandEnco
       g_passWidth[i] = sample.width;
       g_passHeight[i] = sample.height;
       g_passDrawCount[i] = sample.drawCount;
+      g_passFormat[i] = sample.format;
+      g_passFlags[i] = sample.flags;
     }
   }
   if (finalize) {
@@ -1741,5 +1757,7 @@ void aurora_get_gpu_pass_timings(AuroraGpuPassTimings* timings) {
     timings->passWidth[i] = aurora::gfx::g_passWidth[i];
     timings->passHeight[i] = aurora::gfx::g_passHeight[i];
     timings->passDraws[i] = aurora::gfx::g_passDrawCount[i];
+    timings->passFormat[i] = aurora::gfx::g_passFormat[i];
+    timings->passFlags[i] = aurora::gfx::g_passFlags[i];
   }
 }

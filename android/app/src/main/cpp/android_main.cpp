@@ -249,6 +249,16 @@ Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstr
     }
     LOGI("Runtime config active resolutionMultiplier: %.2f", RuntimeConfigFile::ResolutionMultiplier(1.0f));
 
+    // The resolution multiplier and copy-filter flag get pushed into Aurora's live
+    // engine state above/below, but frame interpolation was never wired up the same
+    // way: it stayed parsed into RuntimeConfigFile only, so the config file and the
+    // settings UI reflected the chosen target while Aurora's internal
+    // g_frameInterpolationFps atomic (which the renderer actually checks per frame)
+    // silently stayed 0. Push it explicitly, same as the other two settings.
+    const uint32_t frameInterpolationFps = RuntimeConfigFile::FrameInterpolationFps(0);
+    aurora_set_frame_interpolation_fps(frameInterpolationFps);
+    LOGI("Runtime config active frameInterpolationFps: %u", frameInterpolationFps);
+
     aurora_set_disable_copy_filter(true);
     env->ReleaseStringUTFChars(internalPath, pathStr);
 }

@@ -1,6 +1,25 @@
+import java.io.IOException
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+}
+
+fun toolOnPath(tool: String): Boolean {
+    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
+    val lookup = if (isWindows) "where" else "which"
+    return try {
+        val process = ProcessBuilder(lookup, tool).redirectErrorStream(true).start()
+        process.waitFor() == 0
+    } catch (e: IOException) {
+        false
+    }
+}
+
+val ccacheArgs = if (toolOnPath("ccache")) {
+    listOf("-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache")
+} else {
+    emptyList()
 }
 
 android {
@@ -25,10 +44,9 @@ android {
             cmake {
                 cppFlags("-std=c++20", "-fexceptions", "-frtti", "-O3", "-DNDEBUG")
                 arguments(
-                    "-DANDROID_STL=c++_shared",
-                    "-DCMAKE_BUILD_TYPE=Release",
-                    "-DCMAKE_C_COMPILER_LAUNCHER=ccache",
-                    "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
+                    *(
+                        listOf("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release") + ccacheArgs
+                    ).toTypedArray()
                 )
             }
         }

@@ -21,9 +21,13 @@ std::shared_ptr<wgpu::ChainedStruct> SetupWindowAndGetSurfaceDescriptor(SDL_Wind
 #if defined(SDL_PLATFORM_ANDROID)
   std::shared_ptr<wgpu::SurfaceSourceAndroidNativeWindow> desc =
       std::make_shared<wgpu::SurfaceSourceAndroidNativeWindow>();
-  desc->window = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
+  // Prefer the live handle owned by the app: SDL latches its window pointer
+  // once at window creation and never updates it after the Android surface is
+  // destroyed and recreated, so the SDL property can reference a dead window
+  // and silently resurrect a black swapchain on every background/resume cycle.
+  desc->window = g_mkwAndroidNativeWindow;
   if (!desc->window) {
-    desc->window = g_mkwAndroidNativeWindow;
+    desc->window = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, nullptr);
   }
   return std::move(desc);
 #elif defined(SDL_PLATFORM_WIN32)

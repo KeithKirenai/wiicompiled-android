@@ -52,4 +52,10 @@ void SetTilt(float angle) {
     g_state.tiltAngle = angle;
 }
 
+void ReleaseAll() {
+    std::lock_guard<std::mutex> lock(g_inputMutex);
+    g_state = TouchInputState{};
+    g_hasActiveInput.store(false, std::memory_order_relaxed);
+}
+
 } // namespace AndroidInput

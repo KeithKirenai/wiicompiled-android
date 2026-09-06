@@ -7,6 +7,7 @@
 #include "timebase_contract.h"
 
 #include <array>
+#include <atomic>
 #include <bitset>
 #include <chrono>
 #include <cmath>
@@ -42,14 +43,74 @@ std::bitset<2048> g_warnedSprWrite{};
 std::array<uint32_t, 2048> g_sprShadow{};
 uint32_t g_reservationAddr = 0;
 bool g_hasReservation = false;
-const auto g_timeBaseStart = std::chrono::steady_clock::now();
+// Wall-clock anchor for the emulated time base, in nanoseconds since the
+// steady_clock epoch. Mutable only while the guest is paused (the resume path
+// slides it forward by the paused duration so guest time continues exactly
+// where it froze); reads are relaxed loads so the hot time base read stays on a
+// fast path.
+std::atomic<int64_t> g_timeBaseStartNanos{
+    std::chrono::steady_clock::now().time_since_epoch().count()};
+std::atomic<bool> g_guestPaused{false};
+std::atomic<uint64_t> g_frozenTimeBaseNanos{0};
+std::atomic<int64_t> g_pauseStartNanos{0};
 
 uint64_t GetTimeBase() {
-    const auto elapsed = std::chrono::steady_clock::now() - g_timeBaseStart;
+    if (g_guestPaused.load(std::memory_order_acquire)) {
+        // Guest clock is frozen while the app is backgrounded (Android
+        // lifecycle): return the snapshot taken when the pause began so no
+        // elapsed wall time reaches guest timers/alarm deltas.
+        return TimeBaseContract::NanosecondsToTicks(
+            g_frozenTimeBaseNanos.load(std::memory_order_acquire));
+    }
+    const auto now = std::chrono::steady_clock::now();
+    const auto anchor = std::chrono::steady_clock::time_point(
+        std::chrono::nanoseconds(g_timeBaseStartNanos.load(std::memory_order_relaxed)));
+    const auto elapsed = now - anchor;
     const auto nanoseconds =
         std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
     return TimeBaseContract::NanosecondsToTicks(static_cast<uint64_t>(nanoseconds));
 }
+
+} // namespace
+
+void RuntimeSetGuestPaused(bool paused) noexcept {
+    if (paused) {
+        if (g_guestPaused.exchange(true, std::memory_order_acq_rel)) {
+            return;
+        }
+        // Snapshot the frozen time base BEFORE publishing the paused flag: the
+        // read path latches g_frozenTimeBaseNanos only while paused, so the
+        // relaxed store just above must be visible before the acquire load.
+        const auto now = std::chrono::steady_clock::now();
+        g_frozenTimeBaseNanos.store(
+            static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    now - std::chrono::steady_clock::time_point(std::chrono::nanoseconds(
+                              g_timeBaseStartNanos.load(std::memory_order_relaxed))))
+                    .count()),
+            std::memory_order_release);
+        g_pauseStartNanos.store(now.time_since_epoch().count(), std::memory_order_relaxed);
+        return;
+    }
+    if (!g_guestPaused.exchange(false, std::memory_order_acq_rel)) {
+        return;
+    }
+    // Slide the wall-clock anchor forward by the paused duration so the guest
+    // clock resumes exactly where it froze: guestTime = wallNow - anchor holds
+    // across the boundary with no elapsed-time catch-up.
+    const auto now = std::chrono::steady_clock::now();
+    const int64_t slippageNanos = now.time_since_epoch().count() -
+                                  g_pauseStartNanos.load(std::memory_order_relaxed);
+    if (slippageNanos > 0) {
+        g_timeBaseStartNanos.fetch_add(slippageNanos, std::memory_order_relaxed);
+    }
+}
+
+bool RuntimeIsGuestPaused() noexcept {
+    return g_guestPaused.load(std::memory_order_acquire);
+}
+
+namespace {
 
 constexpr uint32_t kFpscrFx = 1u << 31;
 constexpr uint32_t kFpscrFex = 1u << 30;

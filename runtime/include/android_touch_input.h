@@ -35,4 +35,8 @@ void SetButton(uint32_t button, bool pressed);
 void SetStick(int8_t x, int8_t y);
 void SetTilt(float angle);
 
+// Releases every held input (buttons, stick, tilt) so a backgrounded app never
+// resumes with ghosted controls. Safe to call from any thread.
+void ReleaseAll();
+
 } // namespace AndroidInput

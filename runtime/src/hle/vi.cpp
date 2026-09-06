@@ -264,6 +264,12 @@ static std::atomic<bool> s_inAdvanceRetrace{false};
 static std::atomic<bool> s_presentSequenceActive{false};
 
 void AdvanceRetrace(CpuContext* ctx, Clock::time_point retraceStamp, bool serviceAurora) {
+    // While the app is backgrounded (Android lifecycle) the guest clock is
+    // frozen: deliver no retraces so guest threads stay asleep and no frames or
+    // presents are produced until the app is resumed.
+    if (RuntimeIsGuestPaused()) {
+        return;
+    }
     // Prevent re-entry - this can happen if OSWakeupThread triggers SelectThread
     // which goes idle and calls ProcessTimerEvents again
     if (s_inAdvanceRetrace.exchange(true)) {
@@ -391,6 +397,14 @@ bool AdvanceDueRetraces(CpuContext* ctx, int maxToProcess, bool serviceAurora)
                 return advancedAny;
             }
             target = g_vi.lastRetrace + g_vi.retraceInterval;
+            // Coming out of pause (Android backgrounding) the wall clock jumped
+            // far past the last delivered retrace because AdvanceRetrace is
+            // gated while paused. Snap the VI timeline to now instead of
+            // allowing the catch-up burst of expired intervals.
+            if (now > target + 2 * g_vi.retraceInterval) {
+                g_vi.lastRetrace = now - g_vi.retraceInterval;
+                target = g_vi.lastRetrace + g_vi.retraceInterval;
+            }
             if (now < target) {
                 return advancedAny;
             }
@@ -455,6 +469,14 @@ void VI_HLE_ProcessRetracesDeferred(int maxToProcess) {
 }
 
 void VI_HLE_WaitForNextRetracePoll() {
+    // While paused there are no retraces to wait for (AdvanceRetrace is gated
+    // and the guest clock is frozen). Sleep in coarse slices so the scheduler
+    // idle loop neither spins nor stalls: each slice re-checks the pause flag,
+    // which the JNI thread latches directly on resume.
+    if (RuntimeIsGuestPaused()) {
+        std::this_thread::sleep_for(50ms);
+        return;
+    }
     Clock::time_point retraceDeadline;
     {
         std::lock_guard<std::mutex> lock(g_viMutex);

@@ -348,10 +348,13 @@ const AuroraEvent* poll_events() {
   // Clear out the previous scroll values to prevent ghost input
   input::set_mouse_scroll(0, 0);
   if (is_paused()) {
-    if (SDL_WaitEvent(&event)) {
+    // Never block indefinitely while paused. The GameActivity surface glue does
+    // not push an SDL event when it becomes ready again, so poll every 50 ms and
+    // leave the paused branch as soon as is_paused() turns false after resume.
+    if (SDL_WaitEventTimeout(&event, 50)) {
       process_event(event);
     } else {
-      Log.warn("SDL_WaitEvent failed: {}", SDL_GetError());
+      Log.debug("paused: timed out waiting for event");
     }
   }
   while (SDL_PollEvent(&event)) {
@@ -570,6 +573,15 @@ bool is_paused() noexcept {
   if (!is_presentable()) {
     return true;
   }
+#if defined(SDL_PLATFORM_ANDROID)
+  // SDL's Android lifecycle glue (nativePause/nativeResume/nativeFocusChanged)
+  // is never wired up when the surface is owned by the custom GameActivity, so
+  // MINIMIZED/RESTORED/focus events do not arrive and the SDL window flags can
+  // not be trusted. Pause state must follow the surface we are given through
+  // JNI (set_surface_ready) and nothing else, otherwise resume leaves the
+  // emulator stuck forever in the paused event wait.
+  return false;
+#else
   const auto flags = SDL_GetWindowFlags(g_window);
   if ((flags & SDL_WINDOW_HIDDEN) != 0u) {
     return true;
@@ -580,6 +592,7 @@ bool is_paused() noexcept {
     return false;
   }
   return g_config.pauseOnFocusLost && ((flags & SDL_WINDOW_INPUT_FOCUS) == 0u || (flags & SDL_WINDOW_MINIMIZED) != 0u);
+#endif
 }
 
 bool is_presentable() noexcept {

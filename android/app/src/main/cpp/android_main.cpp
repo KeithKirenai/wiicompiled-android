@@ -21,6 +21,9 @@
 #include <aurora/gfx.h>
 #include <aurora/cpu_topology.hpp>
 
+// Guest-clock pause control, implemented in runtime/src/ppc_helpers.cpp.
+extern "C" void RuntimeSetGuestPaused(bool paused) noexcept;
+
 #define LOG_TAG "WiiCompiled_NDK"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -348,6 +351,25 @@ Java_com_wiicompiled_mkw_GameActivity_nativeSurfaceDestroyed(JNIEnv* env, jobjec
         g_nativeWindow = nullptr;
         g_mkwAndroidNativeWindow = nullptr;
     }
+}
+
+// App backgrounded (Android lifecycle): freeze the guest clock and release every
+// held input so nothing is delivered while hidden. The game then genuinely
+// pauses: no guest timers, no retrace cadence, no presents, and no sound.
+JNIEXPORT void JNICALL
+Java_com_wiicompiled_mkw_GameActivity_nativeOnAppPause(JNIEnv* env, jobject thiz) {
+    LOGI("nativeOnAppPause: freezing guest clock and releasing inputs");
+    AndroidInput::ReleaseAll();
+    RuntimeSetGuestPaused(true);
+}
+
+// App foregrounded again: unfreeze the guest clock. RuntimeSetGuestPaused slides
+// the time-base anchor forward by the paused duration, so guest time and the VI
+// retrace timeline resume where they froze.
+JNIEXPORT void JNICALL
+Java_com_wiicompiled_mkw_GameActivity_nativeOnAppResume(JNIEnv* env, jobject thiz) {
+    LOGI("nativeOnAppResume: unfreezing guest clock");
+    RuntimeSetGuestPaused(false);
 }
 
 JNIEXPORT void JNICALL

@@ -30,9 +30,10 @@
             </intent-filter>
         </activity>
 
-        <activity
+<activity
             android:name=".GameActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation">
         </activity>

@@ -74,6 +74,8 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private external fun nativeInit(internalPath: String, resMultiplier: Float)
     private external fun nativeSurfaceCreated(surface: Any)
     private external fun nativeSurfaceDestroyed()
+    private external fun nativeOnAppPause()
+    private external fun nativeOnAppResume()
     private external fun nativeSetButton(buttonId: Int, isPressed: Boolean)
     private external fun nativeSetStick(stickX: Float, stickY: Float)
     private external fun nativeTiltEvent(angle: Float)
@@ -129,6 +131,10 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
             or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         )
+
+        // Keep the screen on while racing; manual power-button locks still
+        // exercise the pause path.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContentView(R.layout.activity_game)
 
@@ -353,6 +359,9 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     override fun onResume() {
         super.onResume()
+        if (!isFinishing) {
+            nativeOnAppResume()
+        }
         customKeyMap = ControllerConfig.getMapping(this)
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
@@ -362,12 +371,19 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     override fun onPause() {
         super.onPause()
         sensorManager.unregisterListener(this)
+        // Backgrounded (HOME, lock, task switch): freeze the guest clock and
+        // release all held inputs so the game genuinely pauses while hidden.
+        if (!isFinishing) {
+            nativeOnAppPause()
+        }
     }
 
     override fun onDestroy() {
         // Cleanly stop the game/render thread only when the user is truly exiting.
         // Do NOT call this on backgrounding — the thread must survive to allow seamless resume.
-        nativeDestroy()
+        if (isFinishing) {
+            nativeDestroy()
+        }
         super.onDestroy()
     }
 

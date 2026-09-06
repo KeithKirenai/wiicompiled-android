@@ -47,13 +47,27 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         const val BTN_DPAD_RIGHT = 13
 
         init {
+            for (sdlClass in listOf(
+                "org.libsdl.app.SDL",
+                "org.libsdl.app.SDLActivity",
+                "org.libsdl.app.SDLAudioManager",
+                "org.libsdl.app.SDLControllerManager",
+                "org.libsdl.app.SDLInputConnection",
+                "org.libsdl.app.HIDDeviceManager"
+            )) {
+                try {
+                    Class.forName(sdlClass)
+                } catch (e: Throwable) {
+                    android.util.Log.w("WiiCompiled", "Preload $sdlClass failed: ${e.message}")
+                }
+            }
+            System.loadLibrary("mkw_android")
             try {
                 val sdlClass = Class.forName("org.libsdl.app.SDL")
                 sdlClass.getMethod("initialize").invoke(null)
             } catch (e: Throwable) {
-                android.util.Log.w("WiiCompiled", "SDL.initialize reflection: ${e.message}")
+                android.util.Log.w("WiiCompiled", "SDL.initialize error: ${e.message}")
             }
-            System.loadLibrary("mkw_android")
         }
     }
 
@@ -76,8 +90,11 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             val sdlClass = Class.forName("org.libsdl.app.SDL")
             sdlClass.getMethod("setContext", android.app.Activity::class.java).invoke(null, this)
             sdlClass.getMethod("setupJNI").invoke(null)
+            val sdlCtrlMgrClass = Class.forName("org.libsdl.app.SDLControllerManager")
+            sdlCtrlMgrClass.getMethod("initialize").invoke(null)
+            android.util.Log.i("WiiCompiled", "SDL.setContext, setupJNI and SDLControllerManager.initialize completed successfully")
         } catch (e: Throwable) {
-            android.util.Log.w("WiiCompiled", "SDL reflection: ${e.message}")
+            android.util.Log.e("WiiCompiled", "SDL setup failed: ${e.message}", e)
         }
 
         if (intent.getBooleanExtra("SUSTAINED_PERF", true)) {

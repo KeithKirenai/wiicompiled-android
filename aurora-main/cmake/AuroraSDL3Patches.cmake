@@ -118,6 +118,154 @@ static void UpdateDeviceIdentity(SDL_HIDAPI_Device *device)
 
     now = SDL_GetTicks();
 ]==])
+
+  # ── Android: guard every SDLControllerManager / SDLHapticHandler JNI hook ──
+  #
+  # SDL's Android controller glue (SDL_android.c) calls into Java
+  # (SDLControllerManager.pollInputDevices(), SDLControllerManager.pollHapticDevices()
+  # and the joystick LED / haptic methods) through raw JNI with no NULL checks on
+  # the JNIEnv, the controller class ref, or the resolved method id. If
+  # SDLControllerManager.nativeSetupJNI() was never reached - e.g. a load-order
+  # problem made JNI_OnLoad register_methods() fail, or an exception skipped
+  # SDL.setupJNI() - those globals stay NULL and the first joystick poll (fired
+  # every ~3 s) makes ART abort the process (art::Runtime::Abort inside
+  # SDL_UpdateJoysticks). Log and skip instead of aborting.
+  set(_android "${sdl_source_dir}/src/core/android/SDL_android.c")
+  if (NOT EXISTS "${_android}")
+    message(FATAL_ERROR "aurora: SDL3 source tree at ${sdl_source_dir} has no SDL_android.c")
+  endif ()
+
+  _aurora_sdl3_replace("${_android}" "Android: guard Android_JNI_PollInputDevices"
+[==[void Android_JNI_PollInputDevices(void)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midPollInputDevices);
+}
+]==]
+[==[void Android_JNI_PollInputDevices(void)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    if (!env || !mControllerManagerClass || !midPollInputDevices) {
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_PollInputDevices skipped (controller JNI not ready)");
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midPollInputDevices);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_PollInputDevices cleared a pending JNI exception");
+    }
+}
+]==])
+
+  _aurora_sdl3_replace("${_android}" "Android: guard Android_JNI_JoystickSetLED"
+[==[void Android_JNI_JoystickSetLED(int device_id, int red, int green, int blue)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midJoystickSetLED, device_id, red, green, blue);
+}
+]==]
+[==[void Android_JNI_JoystickSetLED(int device_id, int red, int green, int blue)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    if (!env || !mControllerManagerClass || !midJoystickSetLED) {
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_JoystickSetLED skipped (controller JNI not ready)");
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midJoystickSetLED, device_id, red, green, blue);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_JoystickSetLED cleared a pending JNI exception");
+    }
+}
+]==])
+
+  _aurora_sdl3_replace("${_android}" "Android: guard Android_JNI_PollHapticDevices"
+[==[void Android_JNI_PollHapticDevices(void)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midPollHapticDevices);
+}
+]==]
+[==[void Android_JNI_PollHapticDevices(void)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    if (!env || !mControllerManagerClass || !midPollHapticDevices) {
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_PollHapticDevices skipped (controller JNI not ready)");
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midPollHapticDevices);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_PollHapticDevices cleared a pending JNI exception");
+    }
+}
+]==])
+
+  _aurora_sdl3_replace("${_android}" "Android: guard Android_JNI_HapticRun"
+[==[void Android_JNI_HapticRun(int device_id, float intensity, int length)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midHapticRun, device_id, intensity, length);
+}
+]==]
+[==[void Android_JNI_HapticRun(int device_id, float intensity, int length)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    if (!env || !mControllerManagerClass || !midHapticRun) {
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_HapticRun skipped (controller JNI not ready)");
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midHapticRun, device_id, intensity, length);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_HapticRun cleared a pending JNI exception");
+    }
+}
+]==])
+
+  _aurora_sdl3_replace("${_android}" "Android: guard Android_JNI_HapticRumble"
+[==[void Android_JNI_HapticRumble(int device_id, float low_frequency_intensity, float high_frequency_intensity, int length)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midHapticRumble, device_id, low_frequency_intensity, high_frequency_intensity, length);
+}
+]==]
+[==[void Android_JNI_HapticRumble(int device_id, float low_frequency_intensity, float high_frequency_intensity, int length)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    if (!env || !mControllerManagerClass || !midHapticRumble) {
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_HapticRumble skipped (controller JNI not ready)");
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midHapticRumble, device_id, low_frequency_intensity, high_frequency_intensity, length);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_HapticRumble cleared a pending JNI exception");
+    }
+}
+]==])
+
+  _aurora_sdl3_replace("${_android}" "Android: guard Android_JNI_HapticStop"
+[==[void Android_JNI_HapticStop(int device_id)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midHapticStop, device_id);
+}
+]==]
+[==[void Android_JNI_HapticStop(int device_id)
+{
+    JNIEnv *env = Android_JNI_GetEnv();
+    if (!env || !mControllerManagerClass || !midHapticStop) {
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_HapticStop skipped (controller JNI not ready)");
+        return;
+    }
+    (*env)->CallStaticVoidMethod(env, mControllerManagerClass, midHapticStop, device_id);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        __android_log_print(ANDROID_LOG_WARN, "SDL", "Android_JNI_HapticStop cleared a pending JNI exception");
+    }
+}
+]==])
 endfunction()
 
 # Script mode (FetchContent PATCH_COMMAND).

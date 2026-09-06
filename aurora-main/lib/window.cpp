@@ -493,10 +493,16 @@ bool initialize() {
       SDL_HINT_JOYSTICK_HIDAPI_GAMECUBE_RUMBLE_BRAKE, SDL_GetError());
 
   TRY(SDL_DisableScreenSaver(), "Error disabling screensaver: {}", SDL_GetError());
+#if defined(SDL_PLATFORM_ANDROID) || defined(__ANDROID__)
+  // Android uses on-screen touch overlay and native touch/motion events.
+  // Prevent SDL background joystick polling from querying devices before/outside main thread.
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "0");
+#else
   if (g_config.allowJoystickBackgroundEvents) {
     TRY(SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1"), "Error setting {}: {}",
         SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, SDL_GetError());
   }
+#endif
 
   return true;
 }

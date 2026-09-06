@@ -131,11 +131,28 @@ extern int RuntimeMain(int argc, char** argv);
 #include <sys/resource.h>
 #include <sched.h>
 
+static JavaVM* g_javaVM = nullptr;
+
 static void GameRenderWorker() {
     LOGI("GameRenderWorker started - invoking WiiCompiled RuntimeMain");
     if (!g_nativeWindow) {
         LOGE("GameRenderWorker started without native window");
         return;
+    }
+
+    // Attach native worker thread to ART JVM so SDL JNI callbacks can execute safely without art::Runtime::Abort()
+    JNIEnv* workerEnv = nullptr;
+    bool attachedToJVM = false;
+    if (g_javaVM) {
+        jint res = g_javaVM->GetEnv((void**)&workerEnv, JNI_VERSION_1_6);
+        if (res == JNI_EDETACHED) {
+            if (g_javaVM->AttachCurrentThread(&workerEnv, nullptr) == JNI_OK) {
+                attachedToJVM = true;
+                LOGI("GameRenderWorker successfully attached to ART JavaVM");
+            } else {
+                LOGE("GameRenderWorker failed to attach to ART JavaVM");
+            }
+        }
     }
 
     // Dynamically pin game execution thread to performance/prime cores and elevate priority
@@ -155,6 +172,12 @@ static void GameRenderWorker() {
     } catch (...) {
         LOGE("RuntimeMain threw unknown non-standard exception");
     }
+
+    if (attachedToJVM && g_javaVM) {
+        g_javaVM->DetachCurrentThread();
+        LOGI("GameRenderWorker detached from ART JavaVM");
+    }
+
     LOGI("GameRenderWorker exited");
 }
 
@@ -164,6 +187,10 @@ extern "C" {
 
 JNIEXPORT void JNICALL
 Java_com_wiicompiled_mkw_GameActivity_nativeInit(JNIEnv* env, jobject thiz, jstring internalPath, jfloat resMultiplier) {
+    if (!g_javaVM && env) {
+        env->GetJavaVM(&g_javaVM);
+        LOGI("nativeInit captured JavaVM: %p", g_javaVM);
+    }
     StartLogcatRedirect();
     const char* pathStr = env->GetStringUTFChars(internalPath, nullptr);
     LOGI("Native init with data directory: %s, resMultiplier: %.2f", pathStr, resMultiplier);

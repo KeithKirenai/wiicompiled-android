@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import android.app.Activity;
 import android.content.Context;
 import android.hardware.lights.Light;
 import android.hardware.lights.LightsRequest;
@@ -46,7 +47,7 @@ public class SDLControllerManager
 
     private static final String TAG = "SDLControllerManager";
 
-    static void initialize() {
+    public static void initialize() {
         if (mJoystickHandler == null) {
             mJoystickHandler = new SDLJoystickHandler();
         }
@@ -71,35 +72,72 @@ public class SDLControllerManager
      * This method is called by SDL using JNI.
      */
     static void pollInputDevices() {
-        mJoystickHandler.pollInputDevices();
+        Log.i("SDLControllerManager", "static pollInputDevices() called from native JNI");
+        try {
+            if (mJoystickHandler == null) {
+                initialize();
+            }
+            if (mJoystickHandler != null) {
+                mJoystickHandler.pollInputDevices();
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in static pollInputDevices: " + t.getMessage(), t);
+        }
     }
 
     /**
      * This method is called by SDL using JNI.
      */
     static void joystickSetLED(int device_id, int red, int green, int blue) {
-        mJoystickHandler.setLED(device_id, red, green, blue);
+        try {
+            if (mJoystickHandler != null) {
+                mJoystickHandler.setLED(device_id, red, green, blue);
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in joystickSetLED: " + t.getMessage(), t);
+        }
     }
 
     /**
      * This method is called by SDL using JNI.
      */
     static void pollHapticDevices() {
-        mHapticHandler.pollHapticDevices();
+        try {
+            if (mHapticHandler == null) {
+                initialize();
+            }
+            if (mHapticHandler != null) {
+                mHapticHandler.pollHapticDevices();
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in static pollHapticDevices: " + t.getMessage(), t);
+        }
     }
 
     /**
      * This method is called by SDL using JNI.
      */
     static void hapticRun(int device_id, float intensity, int length) {
-        mHapticHandler.run(device_id, intensity, length);
+        try {
+            if (mHapticHandler != null) {
+                mHapticHandler.run(device_id, intensity, length);
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in hapticRun: " + t.getMessage(), t);
+        }
     }
 
     /**
      * This method is called by SDL using JNI.
      */
     static void hapticRumble(int device_id, float low_frequency_intensity, float high_frequency_intensity, int length) {
-        mHapticHandler.rumble(device_id, low_frequency_intensity, high_frequency_intensity, length);
+        try {
+            if (mHapticHandler != null) {
+                mHapticHandler.rumble(device_id, low_frequency_intensity, high_frequency_intensity, length);
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in hapticRumble: " + t.getMessage(), t);
+        }
     }
 
     /**
@@ -107,7 +145,13 @@ public class SDLControllerManager
      */
     static void hapticStop(int device_id)
     {
-        mHapticHandler.stop(device_id);
+        try {
+            if (mHapticHandler != null) {
+                mHapticHandler.stop(device_id);
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in hapticStop: " + t.getMessage(), t);
+        }
     }
 
     // Check if a given device is considered a possible SDL joystick
@@ -212,98 +256,116 @@ class SDLJoystickHandler {
      * Handles adding and removing of input devices.
      */
     synchronized void pollInputDevices() {
-        int[] deviceIds = InputDevice.getDeviceIds();
+        try {
+            int[] deviceIds = InputDevice.getDeviceIds();
 
-        for (int device_id : deviceIds) {
-            if (SDLControllerManager.isDeviceSDLJoystick(device_id)) {
-                SDLJoystick joystick = getJoystick(device_id);
-                if (joystick == null) {
-                    InputDevice joystickDevice = InputDevice.getDevice(device_id);
-                    joystick = new SDLJoystick();
-                    joystick.device_id = device_id;
-                    joystick.name = joystickDevice.getName();
-                    joystick.desc = getJoystickDescriptor(joystickDevice);
-                    joystick.axes = new ArrayList<InputDevice.MotionRange>();
-                    joystick.hats = new ArrayList<InputDevice.MotionRange>();
-                    joystick.lights = new ArrayList<Light>();
+            for (int device_id : deviceIds) {
+                if (SDLControllerManager.isDeviceSDLJoystick(device_id)) {
+                    SDLJoystick joystick = getJoystick(device_id);
+                    if (joystick == null) {
+                        InputDevice joystickDevice = InputDevice.getDevice(device_id);
+                        if (joystickDevice == null) continue;
+                        joystick = new SDLJoystick();
+                        joystick.device_id = device_id;
+                        joystick.name = joystickDevice.getName();
+                        joystick.desc = getJoystickDescriptor(joystickDevice);
+                        joystick.axes = new ArrayList<InputDevice.MotionRange>();
+                        joystick.hats = new ArrayList<InputDevice.MotionRange>();
+                        joystick.lights = new ArrayList<Light>();
 
-                    List<InputDevice.MotionRange> ranges = joystickDevice.getMotionRanges();
-                    Collections.sort(ranges, new RangeComparator());
-                    for (InputDevice.MotionRange range : ranges) {
-                        if ((range.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) {
-                            if (range.getAxis() == MotionEvent.AXIS_HAT_X || range.getAxis() == MotionEvent.AXIS_HAT_Y) {
-                                joystick.hats.add(range);
-                            } else {
-                                joystick.axes.add(range);
-                            }
-                        }
-                    }
-
-                    boolean can_rumble = false;
-                    boolean has_rgb_led = false;
-                    if (Build.VERSION.SDK_INT >= 31 /* Android 12.0 (S) */) {
-                        VibratorManager vibratorManager = joystickDevice.getVibratorManager();
-                        int[] vibrators = vibratorManager.getVibratorIds();
-                        if (vibrators.length > 0) {
-                            can_rumble = true;
-                        }
-                        LightsManager lightsManager = joystickDevice.getLightsManager();
-                        List<Light> lights = lightsManager.getLights();
-                        for (Light light : lights) {
-                            if (light.hasRgbControl()) {
-                                joystick.lights.add(light);
-                            }
-                        }
-                        if (!joystick.lights.isEmpty()) {
-                            joystick.lightsSession = lightsManager.openSession();
-                            has_rgb_led = true;
-                        }
-                    }
-
-                    mJoysticks.add(joystick);
-                    SDLControllerManager.nativeAddJoystick(joystick.device_id, joystick.name, joystick.desc,
-                            getVendorId(joystickDevice), getProductId(joystickDevice),
-                            getButtonMask(joystickDevice), joystick.axes.size(), getAxisMask(joystick.axes), joystick.hats.size()/2, can_rumble, has_rgb_led);
-                }
-            }
-        }
-
-        /* Check removed devices */
-        ArrayList<Integer> removedDevices = null;
-        for (SDLJoystick joystick : mJoysticks) {
-            int device_id = joystick.device_id;
-            int i;
-            for (i = 0; i < deviceIds.length; i++) {
-                if (device_id == deviceIds[i]) break;
-            }
-            if (i == deviceIds.length) {
-                if (removedDevices == null) {
-                    removedDevices = new ArrayList<Integer>();
-                }
-                removedDevices.add(device_id);
-            }
-        }
-
-        if (removedDevices != null) {
-            for (int device_id : removedDevices) {
-                SDLControllerManager.nativeRemoveJoystick(device_id);
-                for (int i = 0; i < mJoysticks.size(); i++) {
-                    if (mJoysticks.get(i).device_id == device_id) {
-                        if (Build.VERSION.SDK_INT >= 31 /* Android 12.0 (S) */) {
-                            if (mJoysticks.get(i).lightsSession != null) {
-                                try {
-                                    mJoysticks.get(i).lightsSession.close();
-                                } catch (Exception e) {
-                                    // Session may already be unregistered when device disconnects
+                        List<InputDevice.MotionRange> ranges = joystickDevice.getMotionRanges();
+                        if (ranges != null) {
+                            Collections.sort(ranges, new RangeComparator());
+                            for (InputDevice.MotionRange range : ranges) {
+                                if ((range.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) {
+                                    if (range.getAxis() == MotionEvent.AXIS_HAT_X || range.getAxis() == MotionEvent.AXIS_HAT_Y) {
+                                        joystick.hats.add(range);
+                                    } else {
+                                        joystick.axes.add(range);
+                                    }
                                 }
-                                mJoysticks.get(i).lightsSession = null;
                             }
                         }
-                        mJoysticks.remove(i);
-                        break;
+
+                        boolean can_rumble = false;
+                        boolean has_rgb_led = false;
+                        if (Build.VERSION.SDK_INT >= 31 /* Android 12.0 (S) */) {
+                            try {
+                                VibratorManager vibratorManager = joystickDevice.getVibratorManager();
+                                if (vibratorManager != null) {
+                                    int[] vibrators = vibratorManager.getVibratorIds();
+                                    if (vibrators != null && vibrators.length > 0) {
+                                        can_rumble = true;
+                                    }
+                                }
+                            } catch (Throwable ignored) {}
+
+                            try {
+                                LightsManager lightsManager = joystickDevice.getLightsManager();
+                                if (lightsManager != null) {
+                                    List<Light> lights = lightsManager.getLights();
+                                    if (lights != null) {
+                                        for (Light light : lights) {
+                                            if (light.hasRgbControl()) {
+                                                joystick.lights.add(light);
+                                            }
+                                        }
+                                    }
+                                    if (!joystick.lights.isEmpty()) {
+                                        joystick.lightsSession = lightsManager.openSession();
+                                        has_rgb_led = true;
+                                    }
+                                }
+                            } catch (Throwable ignored) {}
+                        }
+
+                        mJoysticks.add(joystick);
+                        SDLControllerManager.nativeAddJoystick(joystick.device_id, joystick.name, joystick.desc,
+                                getVendorId(joystickDevice), getProductId(joystickDevice),
+                                getButtonMask(joystickDevice), joystick.axes.size(), getAxisMask(joystick.axes), joystick.hats.size()/2, can_rumble, has_rgb_led);
                     }
                 }
             }
+
+            /* Check removed devices */
+            ArrayList<Integer> removedDevices = null;
+            for (SDLJoystick joystick : mJoysticks) {
+                int device_id = joystick.device_id;
+                int i;
+                for (i = 0; i < deviceIds.length; i++) {
+                    if (device_id == deviceIds[i]) break;
+                }
+                if (i == deviceIds.length) {
+                    if (removedDevices == null) {
+                        removedDevices = new ArrayList<Integer>();
+                    }
+                    removedDevices.add(device_id);
+                }
+            }
+
+            if (removedDevices != null) {
+                for (int device_id : removedDevices) {
+                    SDLControllerManager.nativeRemoveJoystick(device_id);
+                    for (int i = 0; i < mJoysticks.size(); i++) {
+                        if (mJoysticks.get(i).device_id == device_id) {
+                            if (Build.VERSION.SDK_INT >= 31 /* Android 12.0 (S) */) {
+                                if (mJoysticks.get(i).lightsSession != null) {
+                                    try {
+                                        mJoysticks.get(i).lightsSession.close();
+                                    } catch (Exception e) {
+                                        // Session may already be unregistered when device disconnects
+                                    }
+                                    mJoysticks.get(i).lightsSession = null;
+                                }
+                            }
+                            mJoysticks.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in pollInputDevices: " + t.getMessage(), t);
         }
     }
 
@@ -643,50 +705,56 @@ class SDLHapticHandler {
     }
 
     synchronized void pollHapticDevices() {
+        try {
+            final int deviceId_VIBRATOR_SERVICE = 999999;
+            boolean hasVibratorService = false;
 
-        final int deviceId_VIBRATOR_SERVICE = 999999;
-        boolean hasVibratorService = false;
+            /* Check VIBRATOR_SERVICE */
+            Activity ctx = SDL.getContext();
+            if (ctx != null) {
+                Vibrator vib = (Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+                if (vib != null) {
+                    hasVibratorService = vib.hasVibrator();
 
-        /* Check VIBRATOR_SERVICE */
-        Vibrator vib = (Vibrator) SDL.getContext().getSystemService(Context.VIBRATOR_SERVICE);
-        if (vib != null) {
-            hasVibratorService = vib.hasVibrator();
-
-            if (hasVibratorService) {
-                SDLHaptic haptic = getHaptic(deviceId_VIBRATOR_SERVICE);
-                if (haptic == null) {
-                    haptic = new SDLHaptic();
-                    haptic.device_id = deviceId_VIBRATOR_SERVICE;
-                    haptic.name = "VIBRATOR_SERVICE";
-                    haptic.vib = vib;
-                    mHaptics.add(haptic);
-                    SDLControllerManager.nativeAddHaptic(haptic.device_id, haptic.name);
-                }
-            }
-        }
-
-        /* Check removed devices */
-        ArrayList<Integer> removedDevices = null;
-        for (SDLHaptic haptic : mHaptics) {
-            int device_id = haptic.device_id;
-            if (device_id != deviceId_VIBRATOR_SERVICE || !hasVibratorService) {
-                if (removedDevices == null) {
-                    removedDevices = new ArrayList<Integer>();
-                }
-                removedDevices.add(device_id);
-            }  // else: don't remove the vibrator if it is still present
-        }
-
-        if (removedDevices != null) {
-            for (int device_id : removedDevices) {
-                SDLControllerManager.nativeRemoveHaptic(device_id);
-                for (int i = 0; i < mHaptics.size(); i++) {
-                    if (mHaptics.get(i).device_id == device_id) {
-                        mHaptics.remove(i);
-                        break;
+                    if (hasVibratorService) {
+                        SDLHaptic haptic = getHaptic(deviceId_VIBRATOR_SERVICE);
+                        if (haptic == null) {
+                            haptic = new SDLHaptic();
+                            haptic.device_id = deviceId_VIBRATOR_SERVICE;
+                            haptic.name = "VIBRATOR_SERVICE";
+                            haptic.vib = vib;
+                            mHaptics.add(haptic);
+                            SDLControllerManager.nativeAddHaptic(haptic.device_id, haptic.name);
+                        }
                     }
                 }
             }
+
+            /* Check removed devices */
+            ArrayList<Integer> removedDevices = null;
+            for (SDLHaptic haptic : mHaptics) {
+                int device_id = haptic.device_id;
+                if (device_id != deviceId_VIBRATOR_SERVICE || !hasVibratorService) {
+                    if (removedDevices == null) {
+                        removedDevices = new ArrayList<Integer>();
+                    }
+                    removedDevices.add(device_id);
+                }  // else: don't remove the vibrator if it is still present
+            }
+
+            if (removedDevices != null) {
+                for (int device_id : removedDevices) {
+                    SDLControllerManager.nativeRemoveHaptic(device_id);
+                    for (int i = 0; i < mHaptics.size(); i++) {
+                        if (mHaptics.get(i).device_id == device_id) {
+                            mHaptics.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            Log.w("SDLControllerManager", "Error in pollHapticDevices: " + t.getMessage(), t);
         }
     }
 

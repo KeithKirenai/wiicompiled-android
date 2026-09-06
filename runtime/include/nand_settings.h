@@ -236,6 +236,10 @@ inline bool Ensure(const std::filesystem::path& root, std::string& error,
     if (written) {
 #ifdef _WIN32
         published = MoveFileExW(temporary.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH) != 0;
+#elif defined(__ANDROID__)
+    std::error_code publishError;
+    std::filesystem::rename(temporary, path, publishError);
+    published = !publishError;
 #else
         published = ::link(temporary.c_str(), path.c_str()) == 0;
 #endif

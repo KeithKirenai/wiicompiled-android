@@ -2,6 +2,8 @@
 // <nand_root>\title\00010004\524d4350\data\rksys.dat on the host.
 
 #include "nand_internal.h"
+#include "console_identity.h"
+#include "mii_seed_database.h"
 
 #include "isa/big_endian.h"
 #include "hle/storage/riivolution.h"
@@ -375,6 +377,7 @@ static bool ExtractFromU8(const std::filesystem::path& archivePath, const char* 
 // The only FaceLib resource the game ever seeds; every call site used to pass it
 // as an argument and the path predicate below hard-codes the same name.
 static constexpr char kFaceLibResourceName[] = "RFL_Res.dat";
+static constexpr char kFaceLibDatabasePath[] = "/shared2/menu/FaceLib/RFL_DB.dat";
 
 bool SeedFaceLibResource(const std::filesystem::path& hostPath) {
     std::vector<uint8_t> payload;
@@ -409,6 +412,30 @@ bool SeedFaceLibResource(const std::filesystem::path& hostPath) {
 
 bool IsFaceLibResourcePath(const char* path) {
     return std::strcmp(path, "/shared2/menu/FaceLib/RFL_Res.dat") == 0;
+}
+
+bool IsFaceLibSeedPath(const char* path) {
+    return IsFaceLibResourcePath(path) || std::strcmp(path, kFaceLibDatabasePath) == 0;
+}
+
+bool SeedFaceLibFile(const char* path, const std::filesystem::path& hostPath) {
+    if (IsFaceLibResourcePath(path)) {
+        return SeedFaceLibResource(hostPath);
+    }
+    if (std::strcmp(path, kFaceLibDatabasePath) != 0) {
+        return false;
+    }
+
+    const auto database = RuntimeMii::CreateSeedDatabase(RuntimeConsoleIdentity::Current().mac);
+    CreateParentDirectories(hostPath);
+    std::ofstream out(hostPath, std::ios::binary);
+    if (!out) {
+        LogNandError("FaceLibSeed", "Failed to create %s", HostPathText(hostPath).c_str());
+        return false;
+    }
+    out.write(reinterpret_cast<const char*>(database.data()),
+              static_cast<std::streamsize>(database.size()));
+    return static_cast<bool>(out);
 }
 
 std::optional<int32_t> NandCheckSystemSaveRead(const char* who,

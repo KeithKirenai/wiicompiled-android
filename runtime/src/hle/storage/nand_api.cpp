@@ -157,7 +157,7 @@ extern "C" int32_t NANDOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint32_t
 
     if (!file) {
         int err = errno;
-        if (IsFaceLibResourcePath(path) && SeedFaceLibResource(hostPath)) {
+        if (IsFaceLibSeedPath(path) && SeedFaceLibFile(path, hostPath)) {
             file = NandFopen(hostPath, fopenMode);
         }
         if (!file) {

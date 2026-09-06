@@ -397,8 +397,8 @@ extern "C" int32_t NAND_IOS_Open_HLE(uint32_t pathPtr, uint32_t mode) {
 
     // Seed FaceLib resources before the existence check so every open mode can
     // still find them on a fresh managed NAND.
-    if (!PathExists(hostPath) && IsFaceLibResourcePath(path)) {
-        SeedFaceLibResource(hostPath);
+    if (!PathExists(hostPath) && IsFaceLibSeedPath(path)) {
+        SeedFaceLibFile(path, hostPath);
     }
 
     // Determine file mode. IOS never creates files on open - creation happens

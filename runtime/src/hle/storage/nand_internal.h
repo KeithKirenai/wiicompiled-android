@@ -111,6 +111,8 @@ bool NandRename(const std::filesystem::path& from, const std::filesystem::path& 
 
 bool SeedFaceLibResource(const std::filesystem::path& hostPath);
 bool IsFaceLibResourcePath(const char* path);
+bool SeedFaceLibFile(const char* path, const std::filesystem::path& hostPath);
+bool IsFaceLibSeedPath(const char* path);
 
 // ============================================================================
 // stdio helpers shared by the NAND* library and the IOS_* device layer

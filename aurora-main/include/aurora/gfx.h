@@ -32,6 +32,16 @@ typedef struct {
   uint32_t interpolatedFrameCount;
 } AuroraStats;
 
+// Dawn Vulkan pipeline-cache (dawn_cache.db) replay accumulators, per process. When
+// `hits` reaches `lookups` and `stores` stays 0, every queued pipeline build is a
+// cached replay of a precompiled driver blob - not a shader compilation.
+typedef struct {
+  uint64_t lookups;
+  uint64_t hits;
+  uint64_t stores;
+  uint64_t hitBytes;
+} AuroraBlobCacheStats;
+
 typedef struct {
   uint64_t totalPresentCount;
   uint32_t sampleCount;
@@ -45,7 +55,25 @@ typedef struct {
 } AuroraPresentTiming;
 
 const AuroraStats* aurora_get_stats();
+const AuroraBlobCacheStats* aurora_get_blob_cache_stats();
 void aurora_get_present_timing(AuroraPresentTiming* timing);
+
+// Per-pass CPU command-encoding breakdown of the latest native frame (driver-independent; the
+// devices this targets are tiled GPUs whose drivers do not expose Vulkan timestamp queries, and on
+// a tiler recorded order does not reflect real GPU time anyway). `totalUs` spans the whole native
+// render; `passUs` covers per-pass encoding incl. its resolve/copy encodes, `passWidth`/`passHeight`
+// the pass target size, and `passDraws` the number of draw commands in the pass. Pass order is
+// submission order; arrays fill up to AURORA_GPU_PASS_TIMING_MAX, the rest stay 0.
+#define AURORA_GPU_PASS_TIMING_MAX 16
+typedef struct {
+  uint32_t count;
+  uint64_t totalUs;
+  uint32_t passUs[AURORA_GPU_PASS_TIMING_MAX];
+  uint32_t passWidth[AURORA_GPU_PASS_TIMING_MAX];
+  uint32_t passHeight[AURORA_GPU_PASS_TIMING_MAX];
+  uint32_t passDraws[AURORA_GPU_PASS_TIMING_MAX];
+} AuroraGpuPassTimings;
+void aurora_get_gpu_pass_timings(AuroraGpuPassTimings* timings);
 
 // Interpolation health: the per-frame fields describe the last sealed frame, the counters
 // accumulate since it was configured. This answers "output FPS dropped but the game held 60".

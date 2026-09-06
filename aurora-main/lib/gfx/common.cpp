@@ -148,6 +148,39 @@ AuroraStats g_stats{};
 uint32_t g_drawCallCount = 0;
 uint32_t g_mergedDrawCallCount = 0;
 
+// Per-pass frame breakdown for diagnostics. The frame worker times command encoding of each native
+// pass and snapshots the pass inventory (target size, draw count, format) under a mutex; the ImGui
+// overlay and the runtime's MKW-GPU logcat line read it via aurora_get_gpu_pass_timings(). This is
+// deliberately driver-independent: the devices this runs on are tiled GPUs whose Vulkan drivers do
+// not expose timestamp queries, and even where they do, per-pass GPU timestamps on a tiler do not
+// map cleanly to recorded order. GPU occupancy is cross-checked out-of-band with the GK / GPU-loading
+// counters.
+namespace {
+constexpr uint32_t kMaxTimedPasses = AURORA_GPU_PASS_TIMING_MAX;
+
+struct PassTimingSample {
+  uint64_t encodeUs;
+  uint32_t width;
+  uint32_t height;
+  uint32_t drawCount;
+};
+struct PassTimingSet {
+  std::array<PassTimingSample, kMaxTimedPasses> samples = {};
+  uint32_t count = 0;
+  uint64_t frameTotalUs = 0;
+};
+
+// Written by the frame worker only, then published under the mutex.
+PassTimingSet g_passSamples;
+std::mutex g_passMutex;
+uint32_t g_passUs[kMaxTimedPasses] = {};
+uint32_t g_passWidth[kMaxTimedPasses] = {};
+uint32_t g_passHeight[kMaxTimedPasses] = {};
+uint32_t g_passDrawCount[kMaxTimedPasses] = {};
+uint32_t g_passCount = 0;
+uint64_t g_passFrameTotalUs = 0;
+} // namespace
+
 using CommandList = std::vector<Command>;
 struct RenderPass {
   wgpu::TextureView colorView;
@@ -1204,6 +1237,12 @@ static void render_impl(std::vector<RenderPass>& renderPasses, wgpu::CommandEnco
   // Palette conversions, MSAA resolves and EFB copies depend on sealed frame state, not on the
   // interpolation weight, so encode them on the native render and let replay slots sample them.
   const bool encodeTextureBakes = interpolatedFrame < 0;
+  // Only the native, finalizing slot drives the per-pass diagnostics; replay slots re-encode the
+  // same passes within the same submitted work.
+  const bool timePasses = finalize && interpolatedFrame < 0;
+  const auto passFrameStart = timePasses ? std::chrono::steady_clock::now()
+                                         : std::chrono::steady_clock::time_point{};
+  uint32_t passIdx = 0;
   for (u32 i = 0; i < renderPasses.size(); ++i) {
     const auto& passInfo = renderPasses[i];
     if (encodeTextureBakes) {
@@ -1247,6 +1286,10 @@ static void render_impl(std::vector<RenderPass>& renderPasses, wgpu::CommandEnco
         .colorAttachments = attachments.data(),
         .depthStencilAttachment = &depthStencilAttachment,
     };
+
+    const bool timeThisPass = timePasses && passIdx < kMaxTimedPasses;
+    const auto passStart = timeThisPass ? std::chrono::steady_clock::now()
+                                        : std::chrono::steady_clock::time_point{};
 
     auto pass = cmd.BeginRenderPass(&renderPassDescriptor);
     render_pass_impl(pass, renderPasses, i, interpolatedFrame);
@@ -1320,6 +1363,33 @@ static void render_impl(std::vector<RenderPass>& renderPasses, wgpu::CommandEnco
         };
         cmd.CopyTextureToTexture(&src, &dst, &size);
       }
+    }
+    if (timeThisPass) {
+      const auto passEnd = std::chrono::steady_clock::now();
+      PassTimingSample& sample = g_passSamples.samples[passIdx++];
+      sample.encodeUs = static_cast<uint64_t>(
+          std::chrono::duration_cast<std::chrono::microseconds>(passEnd - passStart).count());
+      sample.width = passInfo.targetSize.width;
+      sample.height = passInfo.targetSize.height;
+      uint32_t drawCount = 0;
+      for (const auto& command : passInfo.commands) {
+        drawCount += command.type == CommandType::Draw ? 1U : 0U;
+      }
+      sample.drawCount = drawCount;
+    }
+  }
+  if (timePasses) {
+    std::lock_guard lock(g_passMutex);
+    g_passCount = passIdx;
+    g_passFrameTotalUs = static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - passFrameStart)
+            .count());
+    for (uint32_t i = 0; i < passIdx; ++i) {
+      const auto& sample = g_passSamples.samples[i];
+      g_passUs[i] = static_cast<uint32_t>(sample.encodeUs);
+      g_passWidth[i] = sample.width;
+      g_passHeight[i] = sample.height;
+      g_passDrawCount[i] = sample.drawCount;
     }
   }
   if (finalize) {
@@ -1646,3 +1716,30 @@ void aurora_pop_debug_group() {
 }
 
 const AuroraStats* aurora_get_stats() { return &aurora::gfx::g_stats; }
+
+const AuroraBlobCacheStats* aurora_get_blob_cache_stats() {
+  static AuroraBlobCacheStats s_blobCacheStats;
+  const auto s = aurora::webgpu::blob_cache_stats();
+  s_blobCacheStats.lookups = s.lookups;
+  s_blobCacheStats.hits = s.hits;
+  s_blobCacheStats.stores = s.stores;
+  s_blobCacheStats.hitBytes = s.hitBytes;
+  return &s_blobCacheStats;
+}
+
+void aurora_get_gpu_pass_timings(AuroraGpuPassTimings* timings) {
+  if (timings == nullptr) {
+    return;
+  }
+  timings->count = 0;
+  timings->totalUs = 0;
+  std::lock_guard lock(aurora::gfx::g_passMutex);
+  timings->count = aurora::gfx::g_passCount;
+  timings->totalUs = aurora::gfx::g_passFrameTotalUs;
+  for (uint32_t i = 0; i < aurora::gfx::g_passCount; ++i) {
+    timings->passUs[i] = aurora::gfx::g_passUs[i];
+    timings->passWidth[i] = aurora::gfx::g_passWidth[i];
+    timings->passHeight[i] = aurora::gfx::g_passHeight[i];
+    timings->passDraws[i] = aurora::gfx::g_passDrawCount[i];
+  }
+}

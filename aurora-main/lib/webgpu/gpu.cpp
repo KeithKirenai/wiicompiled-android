@@ -67,6 +67,7 @@ wgpu::Instance g_instance;
 static wgpu::AdapterInfo g_adapterInfo;
 static wgpu::SurfaceCapabilities g_surfaceCapabilities;
 bool g_bcTexturesSupported;
+bool g_timestampQuerySupported;
 // Written by Dawn's device-loss callback and consumed at ordered frame boundaries. Keep the
 // callback free of logging, allocation, teardown and renderer state mutation.
 static std::atomic_bool g_deviceLost{false};
@@ -558,7 +559,21 @@ bool initialize(AuroraBackend auroraBackend) {
     }
   }
   {
+#ifdef WEBGPU_DAWN
+    // timestamp-query is experimental in WebGPU; Dawn hides it from the adapter's feature list
+    // unless this toggle is set here (features are reported against adapter toggles).
+    const std::vector<const char*> adapterEnableToggles{
+        "allow_unsafe_apis",
+    };
+    const wgpu::DawnTogglesDescriptor adapterTogglesDescriptor({
+        .enabledToggleCount = adapterEnableToggles.size(),
+        .enabledToggles = adapterEnableToggles.data(),
+    });
+#endif
     const wgpu::RequestAdapterOptions options{
+#ifdef WEBGPU_DAWN
+        .nextInChain = &adapterTogglesDescriptor,
+#endif
         .powerPreference = wgpu::PowerPreference::HighPerformance,
         .backendType = backend,
         .compatibleSurface = g_surface,
@@ -647,6 +662,13 @@ bool initialize(AuroraBackend auroraBackend) {
         g_bcTexturesSupported = true;
         requiredFeatures.push_back(feature);
       }
+      // Lets the gfx layer attribute GPU time per render pass (diagnostics only). Optional: if the
+      // adapter omits it the feature list below simply stays empty.
+      if (feature == wgpu::FeatureName::TimestampQuery) {
+        g_timestampQuerySupported = true;
+        requiredFeatures.push_back(feature);
+        Log.info("Adapter features TimestampQuery: enabled for per-pass GPU diagnostics");
+      }
       // The presenter calls device and queue methods while the frame worker encodes, which Dawn only
       // supports with this feature; without it the two race inside the device's dynamic uploader.
       if (feature == wgpu::FeatureName::ImplicitDeviceSynchronization) {
@@ -658,6 +680,9 @@ bool initialize(AuroraBackend auroraBackend) {
       Log.warn(
           "Adapter does not support ImplicitDeviceSynchronization; multi-threaded presentation is "
           "not safe on this device.");
+    }
+    if (!g_timestampQuerySupported) {
+      Log.warn("Adapter lacks Vulkan timestamp queries; gfx uses CPU-side pass timing.");
     }
 #ifdef WEBGPU_DAWN
     wgpu::DawnCacheDeviceDescriptor cacheDescriptor({
@@ -678,6 +703,9 @@ bool initialize(AuroraBackend auroraBackend) {
 #ifndef ANDROID
       "use_user_defined_labels_in_backend",
 #endif
+      // TimestampQuery / timestamp-query is experimental in WebGPU, so Dawn only surfaces it with
+      // this toggle. Used purely for diagnostics: Vulkan timestamp queries around each render pass.
+      "allow_unsafe_apis",
       "disable_symbol_renaming",
       "enable_immediate_error_handling",
         /* clang-format on */

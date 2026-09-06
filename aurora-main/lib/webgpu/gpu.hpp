@@ -58,6 +58,9 @@ extern wgpu::RenderPipeline g_CopyPipeline;
 extern wgpu::BindGroup g_CopyBindGroup;
 extern wgpu::Instance g_instance;
 extern bool g_bcTexturesSupported;
+// Adapter advertises WGPUFeatureName_TimestampQuery and the device was created with it required.
+// When true the gfx layer instruments per-render-pass GPU time for diagnostics.
+extern bool g_timestampQuerySupported;
 
 bool initialize(AuroraBackend backend);
 void shutdown();

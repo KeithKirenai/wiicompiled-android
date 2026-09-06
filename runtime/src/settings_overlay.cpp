@@ -41,6 +41,8 @@
 #include <aurora/aurora.h>
 #include <aurora/gfx.h>
 
+#include <cstdio>
+
 extern "C" int g_gxFrameCount;
 
 // Defined in runtime/src/hle/audio/ax_mix.cpp. That header is private to the HLE
@@ -851,6 +853,28 @@ void DrawFpsOverlay() {
             const float gpuMs = static_cast<float>(presentTiming.averageFrameTimeMs);
             ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "GPU: %.1fms", gpuMs);
 
+            // Per-pass encoder breakdown (CPU command-encode ms, native frame only)
+            AuroraGpuPassTimings gpuPassTimings;
+            aurora_get_gpu_pass_timings(&gpuPassTimings);
+            if (gpuPassTimings.count > 0) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("|");
+                ImGui::SameLine();
+                char passSummary[256];
+                int off =
+                    snprintf(passSummary, sizeof(passSummary), "%u passes: %.2f",
+                             gpuPassTimings.count, static_cast<float>(gpuPassTimings.totalUs) / 1000.0f);
+                for (uint32_t p = 0; p < gpuPassTimings.count && p < 6 && off > 0 &&
+                                    off < (int)sizeof(passSummary);
+                     ++p) {
+                    off += snprintf(passSummary + off, sizeof(passSummary) - off, " %.2f(%ux%u,%u)",
+                                    static_cast<float>(gpuPassTimings.passUs[p]) / 1000.0f,
+                                    gpuPassTimings.passWidth[p], gpuPassTimings.passHeight[p],
+                                    gpuPassTimings.passDraws[p]);
+                }
+                ImGui::TextDisabled("%s", passSummary);
+            }
+
             // True motion detection (when frame interpolation diverges)
             if (presentTiming.effectiveFramesPerSecond < presentTiming.framesPerSecond * 0.95) {
                 ImGui::SameLine();
@@ -884,10 +908,19 @@ void DrawFpsOverlay() {
                     ImGui::Text("TexUpload: %.0fKB", texKb);
                 }
 
-                // Shader compilation bottleneck indicator
+                // Pipeline build indicator. Queued builds resolve through the Dawn blob cache
+                // when possible: cached entries replay precompiled driver blobs instead of
+                // recompiling shaders, so "cache 100%" means replaying, not compiling.
                 if (stats->queuedPipelines > 0) {
+                    const auto* blob = aurora_get_blob_cache_stats();
+                    const uint32_t cachePct = (blob && blob->lookups > 0)
+                                                  ? static_cast<uint32_t>((blob->hits * 100) / blob->lookups)
+                                                  : 0;
+                    const bool replaying = cachePct >= 100 && blob && blob->stores == 0;
                     ImGui::SameLine();
-                    ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "| Compiling: %u", stats->queuedPipelines);
+                    ImGui::TextColored(replaying ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
+                                                 : ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
+                                       "| Builds: %u (cache %u%%)", stats->queuedPipelines, cachePct);
                 }
             }
 #if defined(__ANDROID__)
@@ -895,7 +928,7 @@ void DrawFpsOverlay() {
             if (++s_logPerfCounter >= 60) {
                 s_logPerfCounter = 0;
                 __android_log_print(ANDROID_LOG_INFO, "MKW-PERF",
-                    "FPS: %.1f (%.1fms) | CPU: %.1fms | GPU: %.1fms | Draws: %u (+%u merged) | Geom: %.0fKB | Compiling: %u",
+                    "FPS: %.1f (%.1fms) | CPU: %.1fms | GPU: %.1fms | Draws: %u (+%u merged) | Geom: %.0fKB | Builds: %u",
                     presentTiming.framesPerSecond,
                     presentTiming.averageFrameTimeMs,
                     s_cpuTimeMs,
@@ -904,6 +937,24 @@ void DrawFpsOverlay() {
                     stats ? stats->mergedDrawCallCount : 0,
                     stats ? static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f : 0.0f,
                     stats ? stats->queuedPipelines : 0);
+                AuroraGpuPassTimings gpuPassTimings;
+                aurora_get_gpu_pass_timings(&gpuPassTimings);
+                if (gpuPassTimings.count > 0) {
+                    char passList[256];
+                    int off = snprintf(passList, sizeof(passList), "%.2f",
+                                       static_cast<float>(gpuPassTimings.totalUs) / 1000.0f);
+                    for (uint32_t p = 0; p < gpuPassTimings.count && off > 0 && off < (int)sizeof(passList);
+                         ++p) {
+                        off += snprintf(passList + off, sizeof(passList) - off, " %.2f(%ux%u,%u)",
+                                        static_cast<float>(gpuPassTimings.passUs[p]) / 1000.0f,
+                                        gpuPassTimings.passWidth[p], gpuPassTimings.passHeight[p],
+                                        gpuPassTimings.passDraws[p]);
+                    }
+                    __android_log_print(ANDROID_LOG_INFO, "MKW-PASS",
+                                        "Frame: %.2f ms (CPU encode) | %u passes: %s",
+                                        static_cast<float>(gpuPassTimings.totalUs) / 1000.0f,
+                                        gpuPassTimings.count, passList);
+                }
             }
 #endif
         }
@@ -930,9 +981,14 @@ void DrawShaderCompilationStatus() {
                                         ImGuiWindowFlags_NoMove |
                                         ImGuiWindowFlags_NoNav |
                                         ImGuiWindowFlags_NoSavedSettings;
-    if (ImGui::Begin("Shader Compilation Status", nullptr, kFlags)) {
+    if (ImGui::Begin("Pipeline Build Status", nullptr, kFlags)) {
         ImGui::SetWindowFontScale(1.4f);
-        ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.2f, 1.0f), "[*] %u shader%s compiling...", queuedPipelines, queuedPipelines == 1 ? "" : "s");
+        const auto* blob = aurora_get_blob_cache_stats();
+        const bool replaying = blob && blob->lookups > 0 && blob->hits == blob->lookups;
+        ImGui::TextColored(replaying ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
+                                     : ImVec4(1.0f, 0.45f, 0.2f, 1.0f),
+                           "[*] %u pipeline%s %s", queuedPipelines, queuedPipelines == 1 ? "" : "s",
+                           replaying ? "restoring from cache..." : "building...");
     }
     ImGui::End();
     ImGui::PopStyleVar();

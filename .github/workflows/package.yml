@@ -19,6 +19,7 @@ concurrency:
   group: package-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+jobs:
   recompilation:
     name: Recompilation test
     uses: ./.github/workflows/recomp-test.yml

@@ -22,15 +22,11 @@ internal static class AssemblyBlobWriter
         var expectedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var assembly = new StringBuilder();
         foreach (var header in headerLines) assembly.AppendLine(header);
-        // PE/COFF (Windows), Mach-O (macOS), and ELF (Linux) spell a read-only data section
-        // differently in GNU-as syntax. The build always targets
-        // whichever platform the translator itself runs on (there is no cross-compilation
-        // support), so that's what this picks the section syntax from.
-        assembly.AppendLine(OperatingSystem.IsWindows()
-            ? ".section .rdata,\"dr\""
-            : OperatingSystem.IsMacOS()
-                ? ".section __TEXT,__const"
-                : ".section .rodata,\"a\",@progbits");
+        // For Android (and Linux ELF), the read-only data section must be .rodata with "a",@progbits.
+        // Even when the translator runs on a Windows host, the Android target uses Clang/ELF for ARM64.
+        assembly.AppendLine(OperatingSystem.IsMacOS()
+            ? ".section __TEXT,__const"
+            : ".section .rodata,\"a\",@progbits");
         assembly.AppendLine();
 
         foreach (var blob in blobs)
@@ -56,14 +52,12 @@ internal static class AssemblyBlobWriter
         {
             if (!expectedFiles.Contains(Path.GetFullPath(stalePath))) File.Delete(stalePath);
         }
-        if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS())
+        if (!OperatingSystem.IsMacOS())
         {
             // Absence of a .note.GNU-stack section makes the linker assume the oldest, most
             // conservative default for this object (an executable stack) and warn about it; this
             // file has no code needing one, so mark it explicitly like every other GNU-as ELF
-            // object linked into the binary already does (the norm on modern toolchains, just not
-            // producible without an explicit section since this file is hand-assembled, not
-            // compiler-emitted).
+            // object linked into the binary already does.
             assembly.AppendLine(".section .note.GNU-stack,\"\",@progbits");
         }
         FileOutput.WriteTextIfChanged(assemblyPath, assembly.ToString());

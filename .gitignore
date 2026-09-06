@@ -40,6 +40,7 @@ Code.pul
 CMakeCache.txt
 CMakeFiles/
 cmake-build-*/
+/cmake/shards/build_arm64/
 
 
 # .NET

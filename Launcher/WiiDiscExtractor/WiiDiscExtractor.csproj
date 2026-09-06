@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>WiiDiscExtractor</AssemblyName>
+    <RootNamespace>WiiDiscExtractor</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>patchzy</Authors>
+    <Product>WiiDiscExtractor</Product>
+    <Description>Reads Wii ISO/WBFS images and extracts main.dol + StaticR.rel with SHA256 verification.</Description>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+</Project>

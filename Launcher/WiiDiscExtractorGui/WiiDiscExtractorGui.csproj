@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>WiiCompiledAndroidBuilder</AssemblyName>
+    <RootNamespace>WiiCompiled.Android.Builder</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>WiiCompiled Team</Authors>
+    <Product>WiiCompiled Android Builder</Product>
+    <Description>All-in-one desktop GUI for extracting Mario Kart Wii PAL (RMCP01), translating PowerPC code, compiling ARM64 shards, and building the Android APK.</Description>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WiiDiscExtractor\WiiDiscExtractor.csproj" />
+  </ItemGroup>
+</Project>

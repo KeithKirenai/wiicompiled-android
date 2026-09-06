@@ -130,45 +130,49 @@ git clone https://github.com/KeithKirenai/wiicompiled-android.git
 cd wiicompiled-android
 ```
 
-### Step 3 — Extract your game disc
+### Step 3 — Build & Install the APK
 
-Extract **`main.dol`** and **`StaticR.rel`** from your own RMCP01 PAL (PAL rev 0) Mario Kart Wii
-disc (e.g. with Dolphin or cleanrip). These two files are the **only** game files the build needs.
+You can build the APK either using the **Desktop Builder GUI** (recommended, zero-terminal) or via the **Command Line**.
 
-### Step 4 — Build & install (one-shot)
+#### Option A — Desktop Builder GUI (Recommended)
 
-From the repository root, run the bootstrap:
+Double-click **`launch-builder.bat`** in the repository root:
+
+1. The GUI automatically checks your toolchain (Android SDK, NDK, CMake, Ninja, .NET 8, and connected ADB device).
+2. **Drag and drop** or browse your Mario Kart Wii PAL (`.iso` or `.wbfs`) disc dump. The builder verifies the header and game ID (`RMCP01`).
+3. Choose your variant (**Release** recommended for optimal performance, or **Debug**).
+4. If your phone is plugged in with USB debugging enabled, check **Install APK to phone over ADB upon completion**.
+5. Click **Build APK**. The GUI performs the full pipeline with live status and progress:
+   - **Step 1:** Extracts `main.dol` + `StaticR.rel` and verifies hashes.
+   - **Step 2:** Runs ahead-of-time PowerPC translation into C++ source shards.
+   - **Step 3:** Compiles the native ARM64 archive (`libmkw_base_shared.a`).
+   - **Step 4:** Packages the Android APK via Gradle.
+   - **Step 5:** Pushes the APK to your phone or reveals it in Windows Explorer.
+
+---
+
+#### Option B — Command Line (One-shot bootstrap)
+
+From the repository root, run the bootstrap script directly with your disc image or dump folder:
 
 ```powershell
-.\android-bootstrap.bat -Install -DiscSource D:\dumps\RMCP01
+.\android-bootstrap.bat -Install -DiscSource "D:\dumps\RMCP01.iso"
 ```
 
-`-DiscSource` is the folder containing `main.dol` + `StaticR.rel`. If you instead place those two
-files into `Assets\` yourself, you can omit `-DiscSource`. The bootstrap will:
+`-DiscSource` can be either your `.iso` / `.wbfs` disc image or a folder containing pre-extracted `main.dol` + `StaticR.rel`. If those two files are already placed in `Assets\`, you can omit `-DiscSource`. The bootstrap will:
 
 1. **Detect** your SDK/NDK/CMake/Ninja and print what it found.
 2. **Write** `android\local.properties` with your SDK paths.
-3. **Stage** your disc files into `Assets`.
+3. **Extract & Stage** your disc files into `Assets/`.
 4. **Translate** — run the .NET translator to generate the C++ shard sources (`generated\`) and
    `shards.cmake`. *Only runs if these are missing.*
 5. **Build shards** — compile all translated C++ into `libmkw_base_shared.a` (~1.8 GB, the long step).
-6. **Build the APK** — `gradlew assembleDebug`.
-7. **Install** — because you passed `-Install`, push the APK to your connected phone (OEM USB
-   debugging must be enabled).
+6. **Build the APK** — `gradlew assembleRelease` (or `assembleDebug`).
+7. **Install** — because you passed `-Install`, push the APK to your connected phone.
 
 When it finishes, the game is installed. Open it from your app drawer.
 
-### Build & install separately (after first setup)
-
-Once `generated\` and the prebuilt archive exist, the fast path is:
-
-```powershell
-.\build-shards.bat     # compile shards (skips if libmkw_base_shared.a already exists)
-.\build-app.bat debug   # -> debug APK   (or .\build-app.bat release for release)
-.\install-app.bat      # choose debug/release and install over ADB
-```
-
-Individual bootstrap stages:
+Individual bootstrap stages (optional):
 
 ```powershell
 .\android-bootstrap.bat -Only Detect           # show detected toolchain

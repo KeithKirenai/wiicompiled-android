@@ -11,8 +11,12 @@
     Run from the repository root. Safe to re-run: completed steps are skipped.
 
 .PARAMETER DiscSource
-    Directory containing the required game disc files (main.dol, StaticR.rel).
-    If omitted and the files are missing from Wiicompiled\Assets, you will be
+    Either a directory containing the required game disc files (main.dol,
+    StaticR.rel), or a path to a Wii disc image (ISO, WBFS, GCM, GCZ, CISO,
+    CHD, WIA, RVZ). When an image is given the bootstrap builds and runs the
+    native WiiDiscExtractor to pull main.dol + StaticR.rel out, then stages the
+    two files into Assets.
+    If omitted and the files are missing from Wiicompiled\\Assets, you will be
     prompted for a location.
 
 .PARAMETER SkipEnter
@@ -42,12 +46,14 @@
     .\android-bootstrap.ps1 -Install
     .\android-bootstrap.ps1 -Release -Install -DiscSource D:\dumps\RMCP01
     .\android-bootstrap.ps1 -Only Translate
+    .\android-bootstrap.ps1 -Only DiscExtract -DiscSource D:\images\RMCP01.iso
+    .\android-bootstrap.ps1 -Assets -DiscSource D:\images\RMCP01.wbfs
 #>
 [CmdletBinding()]
 param(
     [string]$DiscSource = "",
     [switch]$SkipEnter,
-    [ValidateSet("Detect", "LocalProperties", "Assets", "Translate", "Shards", "App", "Install")]
+    [ValidateSet("Detect", "LocalProperties", "Assets", "DiscExtract", "Translate", "Shards", "App", "Install")]
     [string]$Only = "",
     [switch]$Release,
     [switch]$Install,
@@ -77,6 +83,84 @@ $TranslatorCsproj = Join-Path $Root "translator\src\Translator.Cli\Translator.Cl
 $TranslatorDll = Join-Path $Root "translator\src\Translator.Cli\bin\Release\net8.0\Translator.Cli.dll"
 
 $GameFiles = @("main.dol", "StaticR.rel")
+
+# Build shortcuts for the extractor (CLI + GUI). These are thin wrappers that build
+# the chosen project and invoke it; they reuse the same Has-DotNet8 / dotnet logic.
+$ExtractorGuiCsproj = Join-Path $Root "Launcher\WiiDiscExtractorGui\WiiDiscExtractorGui.csproj"
+
+function Invoke-ExtractorCli([string]$ImagePath, [string]$OutputDir, [switch]$Staging, [int]$CancelAfter) {
+    if (-not (Has-DotNet8)) {
+        Fail "WiiDiscExtractor requires the .NET 8 SDK. Install from https://dotnet.microsoft.com/download/dotnet/8.0"
+    }
+    Write-Host "Building WiiDiscExtractor..." -ForegroundColor Yellow
+    Push-Location $Root
+    try {
+        & dotnet build $ExtractorCsproj -c Release --nologo -v q
+        if ($LASTEXITCODE -ne 0) { Fail "WiiDiscExtractor build failed (exit $LASTEXITCODE)." }
+    } finally { Pop-Location }
+
+    if (-not (Test-Path $ExtractorExe)) {
+        Fail "WiiDiscExtractor.exe not found after build."
+    }
+
+    $args = @()
+    if ($ImagePath) { $args += "-i"; $args += $ImagePath }
+    if ($OutputDir) { $args += "-o"; $args += $OutputDir }
+    if ($Staging) { $args += "--staging" }
+    if ($CancelAfter -gt 0) { $args += "--cancel-after"; $args += $CancelAfter.ToString() }
+
+    Push-Location $Root
+    try {
+        $proc = Start-Process -FilePath $ExtractorExe -ArgumentList $args -NoNewWindow -Wait -PassThru
+        return $proc.ExitCode
+    } finally { Pop-Location }
+}
+
+function Invoke-ExtractorGui() {
+    if (-not (Has-DotNet8)) {
+        Fail "WiiDiscExtractor GUI requires the .NET 8 SDK. Install from https://dotnet.microsoft.com/download/dotnet/8.0"
+    }
+    Write-Host "Building WiiDiscExtractorGui..." -ForegroundColor Yellow
+    Push-Location $Root
+    try {
+        & dotnet build $ExtractorGuiCsproj -c Release --nologo -v q
+        if ($LASTEXITCODE -ne 0) { Fail "WiiDiscExtractorGui build failed (exit $LASTEXITCODE)." }
+    } finally { Pop-Location }
+
+    if (-not (Test-Path $ExtractorGuiExe)) {
+        Fail "WiiDiscExtractorGui.exe not found after build."
+    }
+    Write-Host "Launching $ExtractorGuiExe" -ForegroundColor Cyan
+    Push-Location $Root
+    try {
+        $proc = Start-Process -FilePath $ExtractorGuiExe -NoNewWindow -PassThru
+        return $proc.Id
+    } finally { Pop-Location }
+}
+
+# WiiDiscExtractor: pure-.NET ISO/WBFS extractor (main.dol + StaticR.rel).
+# Builds and runs it when -DiscSource points at a disc image file rather than an
+# already-extracted directory. GUI lives under Launcher/WiiDiscExtractorGui/.
+$ExtractorCsproj = Join-Path $Root "Launcher\WiiDiscExtractor\WiiDiscExtractor.csproj"
+$ExtractorExe = Join-Path $Root "Launcher\WiiDiscExtractor\bin\Release\net8.0-windows\WiiDiscExtractor.exe"
+$ExtractorGuiExe = Join-Path $Root "Launcher\WiiDiscExtractorGui\bin\Release\net8.0-windows\WiiCompiledAndroidBuilder.exe"
+
+# Shortcut entry points (powerShell-side wrappers, reused by the pipeline and by a
+# future `disc-extract`/`disc-gui` task). The real extraction logic lives in
+# WiiDiscImage.cs (shared library) so both the CLI and the GUI call the same code.
+
+function Invoke-DiscExtract([string]$ImagePath, [string]$OutputDir = "", [switch]$Staging) {
+    if (-not $ImagePath) { Fail "Invoke-DiscExtract: -ImagePath is required." }
+    $out = if ($OutputDir) { $OutputDir } else { "" }
+    $rc = Invoke-ExtractorCli -ImagePath $ImagePath -OutputDir $out -Staging:$Staging -CancelAfter 0
+    return $rc
+}
+
+function Invoke-DiscGui() {
+    $pid = Invoke-ExtractorGui
+    Write-Host "Disc extractor GUI running (process id $pid)." -ForegroundColor Green
+    return $pid
+}
 
 function Write-Step($Title, $Sub = "") {
     Write-Host ""
@@ -215,6 +299,96 @@ function Get-GameFileStatus {
     return @($missing)
 }
 
+function Resolve-DiscSource {
+    param([string]$DiscSource)
+    # Returns a hashtable:
+    #   Kind      = "dir" | "image"
+    #   Source    = the directory to copy main.dol + StaticR.rel from
+    #   Cleanup   = if true, caller should delete Source after staging
+    #
+    # Kind "dir"  — the user passed a directory that already contains the two files.
+    # Kind "image" — the user passed an ISO/WBFS; the extractor produced Source as a
+    #                 staging folder with both files side-by-side.
+    if (-not $DiscSource) { return $null }
+
+    $ds = $DiscSource
+    if ($ds.StartsWith("~")) { $ds = Join-Path $HOME $ds.Substring(1) }
+    $ds = [System.IO.Path]::GetFullPath($ds)
+
+    if (-not (Test-Path $ds)) {
+        Fail "DiscSource path not found: $DiscSource"
+    }
+
+    # Directory case: must contain both game files.
+    $dolIn = Join-Path $ds "main.dol"
+    $relIn = Join-Path $ds "StaticR.rel"
+    if ((Test-Path $dolIn) -and (Test-Path $relIn)) {
+        return @{ Kind = "dir"; Source = $ds; Cleanup = $false }
+    }
+
+    # Image case: any supported Wii container extension — build + run the extractor.
+    $ext = [System.IO.Path]::GetExtension($ds).ToLowerInvariant()
+    $supported = @(".iso", ".gcm", ".gcz", ".ciso", ".chd", ".wbfs", ".wia", ".rvz")
+    if ($supported -contains $ext) {
+        $staging = Extract-DiscImage $ds
+        return @{ Kind = "image"; Source = $staging; Cleanup = $true }
+    }
+
+    # Anything else — treat as a directory the user expects us to check.
+    Fail "DiscSource '$DiscSource' is not a directory containing main.dol + StaticR.rel " +
+         "and is not a supported disc image (.iso/.gcm/.gcz/.ciso/.chd/.wbfs/.wia/.rvz)."
+}
+
+function Extract-DiscImage([string]$ImagePath) {
+    if (-not (Has-DotNet8)) {
+        Fail "Extracting from a disc image requires the .NET 8 SDK (to build WiiDiscExtractor). " +
+             "Install from https://dotnet.microsoft.com/download/dotnet/8.0"
+    }
+
+    Write-Host "Building WiiDiscExtractor..." -ForegroundColor Yellow
+    Push-Location $Root
+    try {
+        & dotnet build $ExtractorCsproj -c Release --nologo -v q
+        if ($LASTEXITCODE -ne 0) { Fail "WiiDiscExtractor build failed (dotnet build exit code $LASTEXITCODE)." }
+    } finally { Pop-Location }
+
+    if (-not (Test-Path $ExtractorExe)) {
+        Fail "WiiDiscExtractor.exe not found after build at $ExtractorExe"
+    }
+
+    # Output folder: a staging dir named <imagename>_extracted next to the image,
+    # inside which main.dol + StaticR.rel sit side-by-side (the --staging mode).
+    $imageName = [System.IO.Path]::GetFileNameWithoutExtension($ImagePath)
+    $imageDir = [System.IO.Path]::GetDirectoryName($ImagePath)
+    $stagingDir = Join-Path $imageDir "${imageName}_extracted"
+
+    Write-Host "Extracting from $ImagePath -> $stagingDir" -ForegroundColor Cyan
+    Push-Location $Root
+    try {
+        $proc = Start-Process -FilePath $ExtractorExe -ArgumentList @(
+            "-i", $ImagePath,
+            "-a", $stagingDir,
+            "--staging",
+            "--cancel-after", "0"
+        ) -NoNewWindow -Wait -PassThru
+
+        if ($proc.ExitCode -ne 0) {
+            # The CLI prints its own ERROR line; surface both.
+            Fail "WiiDiscExtractor failed (exit $($proc.ExitCode)). Check its output above."
+        }
+    } finally { Pop-Location }
+
+    # Verify the staging dir actually contains the two files.
+    foreach ($f in $GameFiles) {
+        $p = Join-Path $stagingDir $f
+        if (-not (Test-Path $p)) {
+            Fail "Extraction produced no $f in $stagingDir."
+        }
+    }
+
+    return $stagingDir
+}
+
 function Stage-GameFiles([string]$sourceDir) {
     if (-not (Test-Path $sourceDir)) { Fail "Disc source directory not found: $sourceDir" }
     foreach ($f in $GameFiles) {
@@ -334,8 +508,12 @@ if ($Only -eq "" -or $Only -eq "Assets") {
     if ($missing.Count -gt 0) {
         Write-Host "Missing in $AssetsDir : $($missing -join ', ')" -ForegroundColor DarkYellow
         if ($DiscSource) {
-            Write-Host "Copying from -DiscSource $DiscSource"
-            Stage-GameFiles $DiscSource
+            $ds = Resolve-DiscSource $DiscSource
+            Write-Host "Staging from -DiscSource $DiscSource ($($ds.Kind))" -ForegroundColor Cyan
+            Stage-GameFiles $ds.Source
+            if ($ds.Cleanup) {
+                Write-Host "Disc image staged; extracted tree left at $($ds.Source). Remove it when done." -ForegroundColor DarkYellow
+            }
         } elseif (-not $SkipEnter) {
             $src = Read-Host "Directory containing your RMCP01 PAL main.dol + StaticR.rel (disc dump)"
             Stage-GameFiles $src
@@ -345,6 +523,23 @@ if ($Only -eq "" -or $Only -eq "Assets") {
     } else {
         Write-Host "All game files present." -ForegroundColor Green
     }
+}
+
+if ($Only -eq "" -or $Only -eq "DiscExtract") {
+    Write-Step "Extracting disc image (WiiDiscExtractor)"
+    if (-not $DiscSource) {
+        Fail "DiscExtract requires -DiscSource <image>. Pass a Wii ISO/WBFS path."
+    }
+    $ds = Resolve-DiscSource $DiscSource
+    if ($null -eq $ds) {
+        Fail "Could not resolve -DiscSource. Provide a supported disc image path."
+    }
+    if ($ds.Kind -eq "dir") {
+        Write-Host "DiscSource is already an extracted directory; nothing to extract." -ForegroundColor DarkYellow
+        Write-Host "main.dol and StaticR.rel are present at $DiscSource" -ForegroundColor Green
+    }
+    # If Kind == "image", Extract-DiscImage already ran inside Resolve-DiscSource and
+    # printed its own progress. Nothing further to do here.
 }
 
 if ($Only -eq "" -or $Only -eq "Translate") {

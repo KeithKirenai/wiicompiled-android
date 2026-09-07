@@ -72,18 +72,10 @@ public class SDLControllerManager
      * This method is called by SDL using JNI.
      */
     static void pollInputDevices() {
-        Log.i("SDLControllerManager", "static pollInputDevices() called from native JNI");
-        try {
-            if (mJoystickHandler == null) {
-                initialize();
-            }
-            if (mJoystickHandler != null) {
-                mJoystickHandler.pollInputDevices();
-            }
-        } catch (Throwable t) {
-            Log.w("SDLControllerManager", "Error in static pollInputDevices: " + t.getMessage(), t);
-        }
+        // No-op: Controller polling via SDL JNI from inside guest fibers triggers ART CheckJNI aborts.
     }
+
+    
 
     /**
      * This method is called by SDL using JNI.
@@ -1001,3 +993,4 @@ class SDLGenericMotionListener_API29 extends SDLGenericMotionListener_API26 {
         return penDevice.isExternal() ? SDL_PEN_DEVICE_TYPE_INDIRECT : SDL_PEN_DEVICE_TYPE_DIRECT;
     }
 }
+

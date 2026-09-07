@@ -90,10 +90,16 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         super.onCreate(savedInstanceState)
         try {
             val sdlClass = Class.forName("org.libsdl.app.SDL")
-            sdlClass.getMethod("setContext", android.app.Activity::class.java).invoke(null, this)
-            sdlClass.getMethod("setupJNI").invoke(null)
+            val setContextMethod = sdlClass.getDeclaredMethod("setContext", android.app.Activity::class.java)
+            setContextMethod.isAccessible = true
+            setContextMethod.invoke(null, this)
+            val setupJNIMethod = sdlClass.getDeclaredMethod("setupJNI")
+            setupJNIMethod.isAccessible = true
+            setupJNIMethod.invoke(null)
             val sdlCtrlMgrClass = Class.forName("org.libsdl.app.SDLControllerManager")
-            sdlCtrlMgrClass.getMethod("initialize").invoke(null)
+            val ctrlInitMethod = sdlCtrlMgrClass.getDeclaredMethod("initialize")
+            ctrlInitMethod.isAccessible = true
+            ctrlInitMethod.invoke(null)
             android.util.Log.i("WiiCompiled", "SDL.setContext, setupJNI and SDLControllerManager.initialize completed successfully")
         } catch (e: Throwable) {
             android.util.Log.e("WiiCompiled", "SDL setup failed: ${e.message}", e)

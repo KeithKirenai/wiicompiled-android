@@ -4,30 +4,32 @@
              x:Class="WiiCompiled.Setup.Android.Views.BuildView"
              x:DataType="vm:BuildViewModel">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="28" Spacing="20">
-            <!-- Title block -->
+        <StackPanel Margin="28" Spacing="18">
             <StackPanel Spacing="6">
                 <TextBlock Text="Build the Android app" FontSize="24" FontWeight="Bold" Foreground="#f3f5f8"/>
-                <TextBlock Text="Your own clean PAL RMCP01 disc image is extracted, translated and compiled on this computer. Nothing is uploaded."
+                <TextBlock Text="Your clean PAL RMCP01 disc image is extracted, translated, and compiled on this computer. Nothing is uploaded."
                            TextWrapping="Wrap" Foreground="#8f99ab" FontSize="13" LineHeight="18"/>
             </StackPanel>
-
-            <!-- Build Tools Card -->
             <Border Background="#2a3040" CornerRadius="8" Padding="18,14">
                 <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" Spacing="6" VerticalAlignment="Center">
                         <TextBlock Text="Build tools" FontSize="13" FontWeight="SemiBold" Foreground="#d2d9e5"/>
-                        <Border Background="#00b074" CornerRadius="5" HorizontalAlignment="Left" Padding="10,5">
+                        <Border Background="{Binding ToolStatusColor}" CornerRadius="5" HorizontalAlignment="Left" Padding="10,5">
                             <TextBlock Text="{Binding ToolStatusText}" Foreground="#ffffff" FontWeight="SemiBold" FontSize="12"/>
                         </Border>
+                        <TextBlock Text="{Binding ToolchainDetails}" Foreground="#9aa5b8" FontSize="11" TextWrapping="Wrap"/>
                     </StackPanel>
                     <Button Grid.Column="1" Content="Check again" Background="#384156" Foreground="#e1e7f0"
                             CornerRadius="6" Padding="14,8" VerticalAlignment="Center" Command="{Binding CheckToolsCommand}"/>
                 </Grid>
             </Border>
-
-            <!-- Disc Image Picker -->
-            <StackPanel Spacing="8">
+            <Border Background="#1c202b" BorderBrush="#2a3040" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <PathIcon Data="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm6 12H6v-1c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1z" Foreground="{Binding DataStatusColor}" Width="15" Height="15" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding DataStatusText}" Foreground="{Binding DataStatusColor}" FontSize="12" FontWeight="Medium" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <StackPanel Spacing="6">
                 <TextBlock Text="Disc image" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
                 <Grid ColumnDefinitions="*,10,Auto">
                     <TextBox Grid.Column="0" Text="{Binding DiscImagePath}" PlaceholderText="Select your clean PAL RMCP01 disc (.iso / .wbfs)"/>
@@ -38,9 +40,7 @@
                     </Button>
                 </Grid>
             </StackPanel>
-
-            <!-- Output Folder Picker -->
-            <StackPanel Spacing="8">
+            <StackPanel Spacing="6">
                 <TextBlock Text="Output folder" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
                 <Grid ColumnDefinitions="*,10,Auto">
                     <TextBox Grid.Column="0" Text="{Binding OutputFolderPath}"/>
@@ -51,31 +51,51 @@
                     </Button>
                 </Grid>
             </StackPanel>
-
-            <!-- Product Selector -->
-            <StackPanel Spacing="8">
-                <TextBlock Text="Product" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
-                <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProduct}" HorizontalAlignment="Stretch"/>
-            </StackPanel>
-
-            <!-- Advanced Disclosure -->
+            <Grid ColumnDefinitions="*,16,*">
+                <StackPanel Grid.Column="0" Spacing="6">
+                    <TextBlock Text="Product" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                    <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProduct}" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Text="Build Variant" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                    <ComboBox ItemsSource="{Binding BuildTypes}" SelectedItem="{Binding BuildType}" HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </Grid>
             <Expander Background="#252a37" BorderBrush="#323849" CornerRadius="6" HorizontalAlignment="Stretch">
                 <Expander.Header>
-                    <TextBlock Text="Advanced" FontWeight="Medium" Foreground="#cfd7e5"/>
+                    <TextBlock Text="Advanced Options" FontWeight="Medium" Foreground="#cfd7e5"/>
                 </Expander.Header>
                 <StackPanel Spacing="10" Margin="12">
-                    <CheckBox IsChecked="{Binding CleanBuild}" Content="Clean intermediate translated build cache" Foreground="#cfd7e5"/>
-                    <CheckBox IsChecked="{Binding SustainedPerf}" Content="Enable sustained performance mode by default" Foreground="#cfd7e5"/>
+                    <CheckBox IsChecked="{Binding FastBuild}" Content="Fast incremental build (skip unmodified translation files)" Foreground="#cfd7e5"/>
+                    <CheckBox IsChecked="{Binding ForceReTranslate}" Content="Force complete re-translation from disc binaries" Foreground="#cfd7e5"/>
+                    <CheckBox IsChecked="{Binding AutoInstall}" Content="Automatically install to first connected ADB device after build" Foreground="#cfd7e5"/>
                 </StackPanel>
             </Expander>
-
-            <!-- Build Button -->
-            <Button Classes="accent" Command="{Binding StartBuildCommand}" HorizontalAlignment="Left" Padding="20,10">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <PathIcon Data="M8 5v14l11-7z" Width="13" Height="13" Foreground="#ffffff" VerticalAlignment="Center"/>
-                    <TextBlock Text="Build" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
-                </StackPanel>
-            </Button>
+            <Grid ColumnDefinitions="Auto,*">
+                <Button Grid.Column="0" Classes="accent" Command="{Binding StartBuildCommand}" IsEnabled="{Binding !IsBuilding}" Padding="20,10">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="M8 5v14l11-7z" Width="13" Height="13" Foreground="#ffffff" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding BuildButtonText}" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+                <TextBlock Grid.Column="1" Text="{Binding ProgressStatus}" VerticalAlignment="Center" Margin="16,0,0,0"
+                           Foreground="#9aa5b8" FontSize="12" TextTrimming="CharacterEllipsis"/>
+            </Grid>
+            <ProgressBar Value="{Binding ProgressPercentage}" Minimum="0" Maximum="100" Height="6" CornerRadius="3"
+                         Foreground="#00d68f" Background="#1a1d26" IsVisible="{Binding IsBuilding}"/>
+            <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="Build Output &amp; Logs" FontSize="12" FontWeight="SemiBold" Foreground="#8f99ab"/>
+                    <Button Grid.Column="1" Content="Clear" Background="Transparent" Foreground="#6b7589" FontSize="11" Padding="6,2"
+                            Command="{Binding ClearLogsCommand}"/>
+                </Grid>
+                <Border Background="#12151c" BorderBrush="#252b3a" BorderThickness="1" CornerRadius="6" Padding="10">
+                    <TextBox Text="{Binding LogOutput}" Height="180" Background="Transparent" BorderThickness="0"
+                             Foreground="#6ee7b7" FontFamily="Consolas, Cascadia Code, Courier New, monospace" FontSize="11"
+                             IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                </Border>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

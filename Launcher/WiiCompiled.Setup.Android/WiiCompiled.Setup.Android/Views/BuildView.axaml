@@ -1,0 +1,81 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WiiCompiled.Setup.Android.ViewModels"
+             x:Class="WiiCompiled.Setup.Android.Views.BuildView"
+             x:DataType="vm:BuildViewModel">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28" Spacing="20">
+            <!-- Title block -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="Build the Android app" FontSize="24" FontWeight="Bold" Foreground="#f3f5f8"/>
+                <TextBlock Text="Your own clean PAL RMCP01 disc image is extracted, translated and compiled on this computer. Nothing is uploaded."
+                           TextWrapping="Wrap" Foreground="#8f99ab" FontSize="13" LineHeight="18"/>
+            </StackPanel>
+
+            <!-- Build Tools Card -->
+            <Border Background="#2a3040" CornerRadius="8" Padding="18,14">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="Build tools" FontSize="13" FontWeight="SemiBold" Foreground="#d2d9e5"/>
+                        <Border Background="#00b074" CornerRadius="5" HorizontalAlignment="Left" Padding="10,5">
+                            <TextBlock Text="{Binding ToolStatusText}" Foreground="#ffffff" FontWeight="SemiBold" FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Check again" Background="#384156" Foreground="#e1e7f0"
+                            CornerRadius="6" Padding="14,8" VerticalAlignment="Center" Command="{Binding CheckToolsCommand}"/>
+                </Grid>
+            </Border>
+
+            <!-- Disc Image Picker -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Disc image" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                <Grid ColumnDefinitions="*,10,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding DiscImagePath}" PlaceholderText="Select your clean PAL RMCP01 disc (.iso / .wbfs)"/>
+                    <Button Grid.Column="2" Width="42" Height="36" Background="#2a3040" Foreground="#cad3e2"
+                            CornerRadius="6" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            Command="{Binding BrowseDiscCommand}">
+                        <PathIcon Data="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" Width="16" Height="16"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <!-- Output Folder Picker -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Output folder" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                <Grid ColumnDefinitions="*,10,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding OutputFolderPath}"/>
+                    <Button Grid.Column="2" Width="42" Height="36" Background="#2a3040" Foreground="#cad3e2"
+                            CornerRadius="6" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            Command="{Binding BrowseOutputCommand}">
+                        <PathIcon Data="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" Width="16" Height="16"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <!-- Product Selector -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Product" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProduct}" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+
+            <!-- Advanced Disclosure -->
+            <Expander Background="#252a37" BorderBrush="#323849" CornerRadius="6" HorizontalAlignment="Stretch">
+                <Expander.Header>
+                    <TextBlock Text="Advanced" FontWeight="Medium" Foreground="#cfd7e5"/>
+                </Expander.Header>
+                <StackPanel Spacing="10" Margin="12">
+                    <CheckBox IsChecked="{Binding CleanBuild}" Content="Clean intermediate translated build cache" Foreground="#cfd7e5"/>
+                    <CheckBox IsChecked="{Binding SustainedPerf}" Content="Enable sustained performance mode by default" Foreground="#cfd7e5"/>
+                </StackPanel>
+            </Expander>
+
+            <!-- Build Button -->
+            <Button Classes="accent" Command="{Binding StartBuildCommand}" HorizontalAlignment="Left" Padding="20,10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="M8 5v14l11-7z" Width="13" Height="13" Foreground="#ffffff" VerticalAlignment="Center"/>
+                    <TextBlock Text="Build" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

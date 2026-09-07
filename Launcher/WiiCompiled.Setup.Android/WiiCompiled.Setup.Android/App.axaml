@@ -1,0 +1,35 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:WiiCompiled.Setup.Android"
+             x:Class="WiiCompiled.Setup.Android.App"
+             RequestedThemeVariant="Dark">
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Styles>
+        <FluentTheme />
+        <Style Selector="Button.accent">
+            <Setter Property="Background" Value="#00b074"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Padding" Value="14,8"/>
+        </Style>
+        <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#00c985"/>
+        </Style>
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#1d222d"/>
+            <Setter Property="BorderBrush" Value="#2f3747"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Foreground" Value="#dce2ec"/>
+        </Style>
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="#1d222d"/>
+            <Setter Property="BorderBrush" Value="#2f3747"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="Foreground" Value="#dce2ec"/>
+        </Style>
+    </Application.Styles>
+</Application>

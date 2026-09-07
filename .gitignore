@@ -90,3 +90,6 @@ extracted/
 /screen_*.png
 /screen_opt*.png
 
+
+Launcher/**/bin/
+Launcher/**/obj/

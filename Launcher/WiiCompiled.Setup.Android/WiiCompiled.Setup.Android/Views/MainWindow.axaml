@@ -1,0 +1,54 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:WiiCompiled.Setup.Android.ViewModels"
+        x:Class="WiiCompiled.Setup.Android.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="WiiCompiled Android"
+        Width="960" Height="650"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Background="#161922">
+    <Grid ColumnDefinitions="240,*">
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="#1c202b" BorderBrush="#252b3a" BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,Auto,*">
+                <!-- App Title -->
+                <TextBlock Grid.Row="0" Text="WiiCompiled Android" FontSize="18" FontWeight="Bold" Foreground="#ffffff" Margin="24,24,20,8"/>
+                
+                <!-- Category Section -->
+                <TextBlock Grid.Row="1" Text="Setup" FontSize="12" FontWeight="SemiBold" Foreground="#6b7589" Margin="24,12,20,10"/>
+
+                <!-- Navigation List -->
+                <ListBox Grid.Row="2" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNavItem}"
+                         Background="Transparent" BorderThickness="0" Margin="12,0">
+                    <ListBox.Styles>
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="14,10"/>
+                            <Setter Property="CornerRadius" Value="6"/>
+                            <Setter Property="Margin" Value="0,3"/>
+                            <Setter Property="Background" Value="Transparent"/>
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#252c3c"/>
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="vm:NavItem">
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <PathIcon Data="{Binding PathData}" Width="16" Height="16" Foreground="{Binding AccentColor}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium" Foreground="{Binding TextColor}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <!-- Right Content Body -->
+        <Border Grid.Column="1" Background="#161922" Padding="20">
+            <Border Background="#202430" CornerRadius="10" BorderBrush="#2a3040" BorderThickness="1" ClipToBounds="True">
+                <ContentControl Content="{Binding CurrentView}"/>
+            </Border>
+        </Border>
+    </Grid>
+</Window>

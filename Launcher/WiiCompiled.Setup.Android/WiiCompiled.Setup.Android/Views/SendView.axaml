@@ -1,0 +1,69 @@
+﻿<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:WiiCompiled.Setup.Android.ViewModels"
+             x:Class="WiiCompiled.Setup.Android.Views.SendView"
+             x:DataType="vm:SendViewModel">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="28" Spacing="20">
+            <!-- Header -->
+            <StackPanel Spacing="6">
+                <TextBlock Text="Send to Device" FontSize="24" FontWeight="Bold" Foreground="#f3f5f8"/>
+                <TextBlock Text="Copies Config.toml and the game data into the app's storage over USB. Install the APK first."
+                           TextWrapping="Wrap" Foreground="#8f99ab" FontSize="13" LineHeight="18"/>
+            </StackPanel>
+
+            <!-- Device Selector Card -->
+            <Border Background="#2a3040" CornerRadius="8" Padding="18,16">
+                <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Text="Device" FontSize="13" FontWeight="SemiBold" Foreground="#d2d9e5" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Width="36" Height="32" Background="#384156" Foreground="#e1e7f0"
+                                CornerRadius="6" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                Command="{Binding RefreshDevicesCommand}">
+                            <PathIcon Data="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" Width="14" Height="14"/>
+                        </Button>
+                    </Grid>
+                    <ComboBox ItemsSource="{Binding ConnectedDevices}" SelectedItem="{Binding SelectedDevice}" HorizontalAlignment="Stretch"/>
+                    <TextBlock Text="{Binding StatusText}" Foreground="#00d68f" FontWeight="Medium" FontSize="12"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Product Dropdown -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Product" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                <ComboBox ItemsSource="{Binding Products}" SelectedItem="{Binding SelectedProduct}" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+
+            <!-- Payload Folder Picker -->
+            <StackPanel Spacing="8">
+                <TextBlock Text="Payload folder" FontSize="13" FontWeight="Medium" Foreground="#cfd7e5"/>
+                <Grid ColumnDefinitions="*,10,Auto">
+                    <TextBox Grid.Column="0" Text="{Binding PayloadFolderPath}"/>
+                    <Button Grid.Column="2" Width="42" Height="36" Background="#2a3040" Foreground="#cad3e2"
+                            CornerRadius="6" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                            Command="{Binding BrowsePayloadCommand}">
+                        <PathIcon Data="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z" Width="16" Height="16"/>
+                    </Button>
+                </Grid>
+            </StackPanel>
+
+            <!-- Send Action Button -->
+            <Button Classes="accent" Command="{Binding SendCommand}" HorizontalAlignment="Left" Padding="20,10">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <PathIcon Data="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z" Width="14" Height="14" Foreground="#ffffff" VerticalAlignment="Center"/>
+                    <TextBlock Text="Send" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Bottom Instruction Box -->
+            <Border Background="#202532" BorderBrush="#2e3546" BorderThickness="1" CornerRadius="8" Padding="18,16">
+                <StackPanel Spacing="10">
+                    <TextBlock Text="Before sending" FontWeight="SemiBold" Foreground="#e1e7f0" FontSize="13"/>
+                    <TextBlock Text="1. Install the debug APK directly via ADB or Android Studio." Foreground="#8f99ab" FontSize="12" TextWrapping="Wrap"/>
+                    <TextBlock Text="2. Ensure USB Debugging is active and tap 'Always allow from this computer' on your phone." Foreground="#8f99ab" FontSize="12" TextWrapping="Wrap"/>
+                    <TextBlock Text="3. Click Send to transfer Config.toml and the NAND payload to /data/user/0/com.wiicompiled.mkw/files." Foreground="#8f99ab" FontSize="12" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

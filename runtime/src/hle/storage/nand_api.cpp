@@ -4,6 +4,10 @@
 
 #include "nand_internal.h"
 
+bool SeedBlankSystemSave(const std::filesystem::path& hostPath);
+#include "console_identity.h"
+#include "mii_seed_database.h"
+
 // ============================================================================
 // Local helpers
 // ============================================================================
@@ -54,6 +58,39 @@ extern "C" int32_t NANDInit_HLE(void) {
     // Mark NAND as initialized (0x80386848 = 2)
     Memory::Write32(0x80386848, 2);
 
+    // Pre-seed FaceLib files (RFL_DB.dat and optionally RFL_Res.dat) so the
+    // game's NANDSafeOpen/NANDOpen calls find them immediately on a managed
+    // NAND. This runs after DiscoverNandRootPath has created setting.txt,
+    // which RuntimeConsoleIdentity::Current() requires.
+    const auto nandRoot = GetNandBasePath();
+    const auto faceLibDbPath = nandRoot / "shared2/menu/FaceLib/RFL_DB.dat";
+    if (!PathExists(faceLibDbPath)) {
+        const auto mac = RuntimeConsoleIdentity::Current().mac;
+        const auto database = RuntimeMii::CreateSeedDatabase(mac);
+        if (CreateParentDirectories(faceLibDbPath)) {
+            std::ofstream out(faceLibDbPath, std::ios::binary);
+            if (out) {
+                out.write(reinterpret_cast<const char*>(database.data()),
+                          static_cast<std::streamsize>(database.size()));
+                out.close();
+                LogNandWarning("NANDInit", "Pre-seeded RFL_DB.dat (%zu bytes)",
+                               database.size());
+            } else {
+                LogNandError("NANDInit", "Failed to pre-seed RFL_DB.dat");
+            }
+        }
+    }
+
+    // Pre-seed a blank rksys.dat save file for Mario Kart Wii (PAL, RMCP01).
+    // The game validates the "RKSD0006" magic header on boot; without it the
+    // NANDSafeOpen / check-save path treats the save as corrupt and the guest
+    // shows "Could not write to/read from Wii System Memory".
+    const auto rksysPath = nandRoot / "title/00010004/524d4350/data/rksys.dat";
+    if (!PathExists(rksysPath)) {
+        if (!SeedBlankSystemSave(rksysPath)) {
+            LogNandError("NANDInit", "Failed to seed valid blank rksys.dat");
+        }
+    }
     return NAND_RESULT_OK;
 }
 PPC_NATIVE_OVERRIDE(8019E18C, NANDInit_HLE, int32_t, (void), ());
@@ -145,6 +182,19 @@ extern "C" int32_t NANDOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint32_t
     else if (mode == 3) fopenMode = "r+b";
     
     FILE* file = NandFopen(hostPath, fopenMode);
+    if (!file && mode == 1 && std::strcmp(path, "/shared2/sys/SYSCONF") == 0) {
+        // SC APIs are HLE-backed on this port; provide an empty read stream so
+        // the SDK's raw SYSCONF probe does not turn into a Wii memory fatal.
+        file = std::tmpfile();
+#if defined(__ANDROID__)
+        if (!file) {
+            file = std::fopen("/dev/null", "rb");
+        }
+#endif
+        if (file) {
+            LogNandWarning("NANDOpen", "using HLE-backed offline SYSCONF stream");
+        }
+    }
     if (!file && mode >= 2) {
         // Try creating for write modes
         file = NandFopen(hostPath, "w+b");
@@ -157,8 +207,13 @@ extern "C" int32_t NANDOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint32_t
 
     if (!file) {
         int err = errno;
-        if (IsFaceLibSeedPath(path) && SeedFaceLibFile(path, hostPath)) {
-            file = NandFopen(hostPath, fopenMode);
+        if (IsFaceLibSeedPath(path)) {
+            LogNandWarning("NANDOpen", "FaceLib seed needed for path='%s' errno=%d", path, err);
+            bool seeded = SeedFaceLibFile(path, hostPath);
+            LogNandWarning("NANDOpen", "SeedFaceLibFile returned %d for path='%s'", seeded ? 1 : 0, path);
+            if (seeded) {
+                file = NandFopen(hostPath, fopenMode);
+            }
         }
         if (!file) {
             LogNandError("NANDOpen", "FAILED to open '%s' (host: '%s', mode: %u, fopenMode: '%s', errno=%d: %s)",
@@ -242,6 +297,11 @@ extern "C" int32_t NANDWrite_HLE(uint32_t fileInfoPtr, uint32_t bufferPtr, uint3
     }
 
     size_t bytesWritten = std::fwrite(buffer, 1, length, handle->file);
+    if (bytesWritten != length) {
+        LogNandError("NANDWrite", "FAILED path='%s' requested=%u written=%u errno=%d: %s",
+                     HostPathText(handle->path).c_str(), length,
+                     static_cast<unsigned>(bytesWritten), errno, strerror(errno));
+    }
     std::fflush(handle->file);
     return static_cast<int32_t>(bytesWritten);
 }
@@ -292,15 +352,19 @@ extern "C" int32_t NANDCreate_HLE(uint32_t pathPtr, uint32_t perm, uint32_t attr
 
     // Check if file already exists
     if (PathExists(hostPath)) {
+        LogNandWarning("NANDCreate", "already exists path='%s'", HostPathText(hostPath).c_str());
         return NAND_RESULT_EXISTS;
     }
     
     // Create empty file
     FILE* f = NandFopen(hostPath, "wb");
     if (!f) {
+        LogNandError("NANDCreate", "FAILED path='%s' errno=%d: %s",
+                     HostPathText(hostPath).c_str(), errno, strerror(errno));
         return NAND_RESULT_UNKNOWN;
     }
     std::fclose(f);
+    LogNandWarning("NANDCreate", "created path='%s'", HostPathText(hostPath).c_str());
     
     return NAND_RESULT_OK;
 }
@@ -470,3 +534,6 @@ extern "C" int32_t contentReadNAND_HLE(uint32_t handlePtr, uint32_t buffer, uint
     return ISFS_EINVAL;
 }
 PPC_NATIVE_OVERRIDE(8015BCF8, contentReadNAND_HLE, int32_t, (uint32_t handlePtr, uint32_t buffer, uint32_t length, uint32_t outReadPtr), (handlePtr, buffer, length, outReadPtr));
+
+
+

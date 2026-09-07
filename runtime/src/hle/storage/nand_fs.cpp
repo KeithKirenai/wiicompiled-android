@@ -1,3 +1,4 @@
+#include "rksys_template.h"
 // NAND/ISFS HLE: redirects Wii NAND paths (e.g. /title/00010004/524d4350/data/rksys.dat) to
 // <nand_root>\title\00010004\524d4350\data\rksys.dat on the host.
 
@@ -406,7 +407,7 @@ bool SeedFaceLibResource(const std::filesystem::path& hostPath) {
         LogNandError("FaceLibSeed", "Failed to write %s", HostPathText(hostPath).c_str());
         return false;
     }
-
+    LogNandWarning("FaceLibSeed", "Successfully created %s (%zu bytes)", HostPathText(hostPath).c_str(), payload.size());
     return true;
 }
 
@@ -426,16 +427,84 @@ bool SeedFaceLibFile(const char* path, const std::filesystem::path& hostPath) {
         return false;
     }
 
-    const auto database = RuntimeMii::CreateSeedDatabase(RuntimeConsoleIdentity::Current().mac);
-    CreateParentDirectories(hostPath);
+    LogNandWarning("FaceLibSeed", "Seeding RFL_DB.dat, hostPath='%s'", HostPathText(hostPath).c_str());
+    const auto identity = RuntimeConsoleIdentity::Current();
+    LogNandWarning("FaceLibSeed", "Console identity serial='%s' mac='%02X:%02X:%02X:%02X:%02X:%02X'",
+        identity.serial.c_str(),
+        identity.mac[0], identity.mac[1], identity.mac[2],
+        identity.mac[3], identity.mac[4], identity.mac[5]);
+    const auto database = RuntimeMii::CreateSeedDatabase(identity.mac);
+    LogNandWarning("FaceLibSeed", "CreateSeedDatabase returned %zu bytes", database.size());
+    bool dirsCreated = CreateParentDirectories(hostPath);
+    LogNandWarning("FaceLibSeed", "CreateParentDirectories returned %d", dirsCreated ? 1 : 0);
     std::ofstream out(hostPath, std::ios::binary);
     if (!out) {
-        LogNandError("FaceLibSeed", "Failed to create %s", HostPathText(hostPath).c_str());
+        LogNandError("FaceLibSeed", "Failed to create %s (dir exists=%d)", HostPathText(hostPath).c_str(),
+            IsDirectory(hostPath.parent_path()) ? 1 : 0);
         return false;
     }
     out.write(reinterpret_cast<const char*>(database.data()),
               static_cast<std::streamsize>(database.size()));
-    return static_cast<bool>(out);
+    bool writeOk = static_cast<bool>(out);
+    if (!writeOk) {
+        LogNandError("FaceLibSeed", "Failed to write %zu bytes to %s", database.size(),
+            HostPathText(hostPath).c_str());
+    } else {
+        LogNandWarning("FaceLibSeed", "Successfully wrote %zu bytes to %s", database.size(),
+            HostPathText(hostPath).c_str());
+    }
+    return writeOk;
+}
+
+// Blank Mario Kart Wii system save (rksys.dat format) for write-mode NANDSafeOpen
+// when the target save file does not exist on disk. Mirrors the pre-seed written by
+// NANDInit_HLE so the guest sees a valid "RKSD0006" save it can patch in place.
+//
+// The save layout is the fixed-size PAL RMCP01 rksys.dat: 8-byte header ("RKSD" + "0006")
+// followed by a zero-filled remainder up to kNandSystemSaveSize bytes.
+static constexpr std::size_t kNandSystemSaveSize = 0x2BC000;
+
+bool SeedBlankSystemSave(const std::filesystem::path& hostPath) {
+    if (!CreateParentDirectories(hostPath)) {
+        LogNandError("SeedBlankSystemSave", "FAILED to create parent dirs for '%s'",
+                     HostPathText(hostPath).c_str());
+        return false;
+    }
+
+    std::ofstream out(hostPath, std::ios::binary | std::ios::trunc);
+    if (!out) {
+        LogNandError("SeedBlankSystemSave", "FAILED to create '%s'",
+                     HostPathText(hostPath).c_str());
+        return false;
+    }
+
+    // Write the valid initial 160 KB block containing default licenses and valid CRCs
+    const auto initialBlock = CreateInitialRksysBlock();
+    out.write(reinterpret_cast<const char*>(initialBlock.data()), initialBlock.size());
+    if (!out) {
+        LogNandError("SeedBlankSystemSave", "FAILED to write initial template block to '%s'",
+                     HostPathText(hostPath).c_str());
+        return false;
+    }
+
+    // Zero-fill the remaining space up to 2,867,200 bytes
+    constexpr std::size_t chunkSize = 65536;
+    std::vector<char> zeroBuf(chunkSize, 0);
+    std::size_t remaining = kNandSystemSaveSize - initialBlock.size();
+    while (remaining > 0) {
+        std::size_t toWrite = std::min(remaining, chunkSize);
+        out.write(zeroBuf.data(), static_cast<std::streamsize>(toWrite));
+        if (!out) {
+            LogNandError("SeedBlankSystemSave", "FAILED to write save body to '%s'",
+                         HostPathText(hostPath).c_str());
+            return false;
+        }
+        remaining -= toWrite;
+    }
+
+    LogNandWarning("SeedBlankSystemSave", "Created valid initial PAL save '%s' (%zu bytes)",
+                   HostPathText(hostPath).c_str(), kNandSystemSaveSize);
+    return true;
 }
 
 std::optional<int32_t> NandCheckSystemSaveRead(const char* who,
@@ -509,3 +578,4 @@ NandFileExtent NandProbeFileExtent(FILE* file) {
     std::fseek(file, extent.position, SEEK_SET);
     return extent;
 }
+

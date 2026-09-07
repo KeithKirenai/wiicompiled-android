@@ -114,6 +114,11 @@ bool IsFaceLibResourcePath(const char* path);
 bool SeedFaceLibFile(const char* path, const std::filesystem::path& hostPath);
 bool IsFaceLibSeedPath(const char* path);
 
+// Create a blank Mario Kart Wii system save (rksys.dat format: "RKSD"+"0006" header,
+// zero-filled to kNandSystemSaveSize bytes). Used by NANDSafeOpen when a write-mode open
+// targets a save file that does not yet exist on disk.
+bool SeedBlankSystemSave(const std::filesystem::path& hostPath);
+
 // ============================================================================
 // stdio helpers shared by the NAND* library and the IOS_* device layer
 // ============================================================================

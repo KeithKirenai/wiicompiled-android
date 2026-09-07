@@ -20,7 +20,7 @@ class RemapperActivity : AppCompatActivity() {
     private lateinit var btnSaveRemapper: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        DynamicColors.applyIfAvailable(this)
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_remapper)
 

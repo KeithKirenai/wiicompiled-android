@@ -29,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var selectDiscBtn: Button
     private lateinit var launchBtn: Button
     private lateinit var exportLogsBtn: Button
+    private lateinit var btnWipeSaveData: Button
 
     // Graphics & Engine
     private lateinit var spinnerGraphicsApi: Spinner
@@ -69,7 +70,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        DynamicColors.applyIfAvailable(this)
+        DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
@@ -80,6 +81,7 @@ class MainActivity : AppCompatActivity() {
         selectDiscBtn = findViewById(R.id.selectDiscBtn)
         launchBtn = findViewById(R.id.launchBtn)
         exportLogsBtn = findViewById(R.id.exportLogsBtn)
+        btnWipeSaveData = findViewById(R.id.btnWipeSaveData)
         val btnRemapper = findViewById<Button>(R.id.btnRemapper)
 
         // Graphics & Engine bindings
@@ -132,6 +134,70 @@ class MainActivity : AppCompatActivity() {
         exportLogsBtn.setOnClickListener {
             exportLogs()
         }
+
+        btnWipeSaveData.setOnClickListener {
+            wipeSaveData()
+        }
+    }
+
+    private fun wipeSaveData() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Wipe Save Data")
+            .setMessage("This will delete the save file (rksys.dat) and FaceLib database files (RFL_DB.dat, RFL_Res.dat) from the NAND. This simulates a fresh install. Continue?")
+            .setPositiveButton("Wipe Data") { _, _ ->
+                try {
+                    // The NAND root is typically at <app_data>/Wiicompiled/NAND/
+                    val nandDir = File(filesDir, "WiiCompiled/NAND")
+                    // MKW save file location: title/00010004/524d4350/data/rksys.dat
+                    val saveFile = File(nandDir, "title/00010004/524d4350/data/rksys.dat")
+                    // Also check legacy location shared2/menu/rksys/rksys.bin
+                    val legacySaveFile = File(nandDir, "shared2/menu/rksys/rksys.bin")
+                    val faceLibDir = File(nandDir, "shared2/menu/FaceLib")
+                    val rflDbFile = File(faceLibDir, "RFL_DB.dat")
+                    val rflResFile = File(faceLibDir, "RFL_Res.dat")
+
+                    val deletedFiles = mutableListOf<String>()
+                    val failedFiles = mutableListOf<String>()
+
+                    fun deleteFile(file: File, label: String) {
+                        if (file.exists()) {
+                            try {
+                                if (file.delete()) {
+                                    deletedFiles.add(label)
+                                } else {
+                                    failedFiles.add("$label (delete failed)")
+                                }
+                            } catch (e: SecurityException) {
+                                failedFiles.add("$label (${e.message})")
+                            }
+                        } else {
+                            deletedFiles.add("$label (not present)")
+                        }
+                    }
+
+                    deleteFile(saveFile, "rksys.dat (save file)")
+                    deleteFile(legacySaveFile, "shared2/menu/rksys/rksys.bin (legacy save)")
+                    deleteFile(rflDbFile, "FaceLib/RFL_DB.dat")
+                    deleteFile(rflResFile, "FaceLib/RFL_Res.dat")
+
+                    val summary = "Deleted:\n" + deletedFiles.joinToString("\n") { "  ✓ $it" } +
+                            "\n\nFailed:\n" + (if (failedFiles.isEmpty()) "  (none)" else failedFiles.joinToString("\n") { "  ✗ $it" })
+
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Data Wiped")
+                        .setMessage(summary)
+                        .setPositiveButton("OK", null)
+                        .show()
+                } catch (e: Exception) {
+                    MaterialAlertDialogBuilder(this)
+                        .setTitle("Wipe Error")
+                        .setMessage("Failed to wipe save data: ${e.message}")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun exportLogs() {

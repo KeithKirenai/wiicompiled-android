@@ -1073,5 +1073,17 @@
             android:textSize="13sp"
             android:textColor="@color/md_theme_dark_onSurfaceVariant" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnWipeSaveData"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginBottom="44dp"
+            android:text="Wipe Save Data (Fresh Run)"
+            android:textSize="14sp"
+            android:textColor="@color/md_theme_dark_secondary"
+            android:strokeColor="@color/md_theme_dark_secondary"
+            app:cornerRadius="26dp" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

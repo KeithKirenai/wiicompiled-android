@@ -414,8 +414,18 @@ extern "C" int32_t NANDSafeOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint
         if (const auto result = NandCheckSystemSaveRead("NANDSafeOpen", hostPath, mode))
             return *result;
         FILE* file = NandFopen(hostPath, "rb");
-        if (!file && IsFaceLibSeedPath(path) && SeedFaceLibFile(path, hostPath)) {
-            file = NandFopen(hostPath, "rb");
+        if (!file) {
+            LogNandWarning("NANDSafeOpen", "File does not exist, checking FaceLib seed: path='%s'", path);
+            LogNandWarning("NANDSafeOpen", "IsFaceLibSeedPath('%s')=%d", path, IsFaceLibSeedPath(path) ? 1 : 0);
+            if (IsFaceLibSeedPath(path)) {
+                LogNandWarning("NANDSafeOpen", "Calling SeedFaceLibFile for path='%s'", path);
+                bool seeded = SeedFaceLibFile(path, hostPath);
+                LogNandWarning("NANDSafeOpen", "SeedFaceLibFile returned %d", seeded ? 1 : 0);
+                if (seeded) {
+                    file = NandFopen(hostPath, "rb");
+                    LogNandWarning("NANDSafeOpen", "Re-open after seed: file=%p", file);
+                }
+            }
         }
         if (!file) {
             LogNandError("NANDSafeOpen", "FAILED to open '%s' for reading",
@@ -430,11 +440,23 @@ extern "C" int32_t NANDSafeOpen_HLE(uint32_t pathPtr, uint32_t fileInfoPtr, uint
     }
 
     // Write modes. The library queries the attributes of the original first, so a safe
-    // open of a file that does not exist fails instead of creating one.
+    // open of a file that does not exist creates a freshly-seeded blank save that the
+    // guest then patches in place via the scratch/commit cycle below.
     if (!PathExists(hostPath)) {
-        LogNandError("NANDSafeOpen", "FAILED: '%s' does not exist, safe open never creates it",
+        LogNandWarning("NANDSafeOpen", "save file does not exist, seeding new save: '%s'",
                 HostPathText(hostPath).c_str());
-        return NAND_RESULT_NOEXISTS;
+        if (!CreateParentDirectories(hostPath)) {
+            LogNandError("NANDSafeOpen", "FAILED to create parent dirs for '%s'",
+                    HostPathText(hostPath).c_str());
+            return NAND_RESULT_ACCESS;
+        }
+        if (!SeedBlankSystemSave(hostPath)) {
+            LogNandError("NANDSafeOpen", "FAILED to seed blank save '%s'",
+                    HostPathText(hostPath).c_str());
+            return NAND_RESULT_UNKNOWN;
+        }
+        LogNandWarning("NANDSafeOpen", "seeded blank save '%s' (%zu bytes)",
+                HostPathText(hostPath).c_str(), std::filesystem::file_size(hostPath));
     }
     if (IsDirectory(hostPath)) {
         LogNandError("NANDSafeOpen", "FAILED: '%s' is a directory", HostPathText(hostPath).c_str());

@@ -398,7 +398,9 @@ extern "C" int32_t NAND_IOS_Open_HLE(uint32_t pathPtr, uint32_t mode) {
     // Seed FaceLib resources before the existence check so every open mode can
     // still find them on a fresh managed NAND.
     if (!PathExists(hostPath) && IsFaceLibSeedPath(path)) {
-        SeedFaceLibFile(path, hostPath);
+        LogNandWarning("IOS_Open", "FaceLib seed needed for path='%s'", path);
+        bool seeded = SeedFaceLibFile(path, hostPath);
+        LogNandWarning("IOS_Open", "SeedFaceLibFile returned %d for path='%s'", seeded ? 1 : 0, path);
     }
 
     // Determine file mode. IOS never creates files on open - creation happens
@@ -581,6 +583,8 @@ extern "C" int32_t NAND_IOS_Ioctl_HLE(
                 }
                 const char* path = (const char*)Memory::GetPointer(inBufPtr + 6);
                 const std::filesystem::path hostPath = TranslateNandPath(path);
+                LogNandWarning("IOS_Ioctl", "CREATEDIR path='%s' host='%s'", path,
+                               HostPathText(hostPath).c_str());
                 
                 if (CreateDirectoryPath(hostPath)) {
                     return ISFS_OK;
@@ -639,6 +643,8 @@ extern "C" int32_t NAND_IOS_Ioctl_HLE(
                 const char* path = (const char*)Memory::GetPointer(inBufPtr + 6);
                 const std::filesystem::path hostPath = TranslateNandPath(path);
                 CreateParentDirectories(hostPath);
+                LogNandWarning("IOS_Ioctl", "CREATEFILE path='%s' host='%s'", path,
+                               HostPathText(hostPath).c_str());
 
                 // Create empty file
                 FILE* f = NandFopen(hostPath, "wb");
@@ -646,6 +652,8 @@ extern "C" int32_t NAND_IOS_Ioctl_HLE(
                     std::fclose(f);
                     return ISFS_OK;
                 }
+                LogNandError("IOS_Ioctl", "CREATEFILE FAILED errno=%d: %s", errno,
+                             strerror(errno));
                 return ISFS_EIO;
             }
             

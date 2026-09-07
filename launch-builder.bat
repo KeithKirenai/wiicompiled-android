@@ -5,7 +5,7 @@ echo [WiiCompiled Android] Starting Desktop Builder GUI
 echo ===================================================
 
 set "SCRIPT_DIR=%~dp0"
-if exist "%SCRIPT_DIR%Wiicompiled" (
+if exist "%SCRIPT_DIR%Wiicompiled\Launcher\WiiDiscExtractorGui\WiiDiscExtractorGui.csproj" (
     set "MKW_DIR=%SCRIPT_DIR%Wiicompiled"
 ) else (
     set "MKW_DIR=%SCRIPT_DIR%"

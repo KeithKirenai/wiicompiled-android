@@ -25,11 +25,12 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private object _currentView = null!;
 
-    public ObservableCollection<NavItem> NavItems { get; } = new();
+        public ObservableCollection<NavItem> NavItems { get; } = new();
+    public BuildViewModel BuildVm { get; }
 
     public MainViewModel()
     {
-        var buildVm = new BuildViewModel();
+        BuildVm = new BuildViewModel(); var buildVm = BuildVm;
         var sendVm = new SendViewModel();
 
         // Wrench / Build Icon

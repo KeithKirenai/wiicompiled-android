@@ -206,7 +206,8 @@ public sealed class WiiDiscImage : IDisposable
     public ExtractionReport Extract(
         string outputRoot,
         IProgress<ProgressRecord>? progress = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        bool codeOnly = false)
     {
         var report = new ExtractionReport();
         try
@@ -372,7 +373,13 @@ public sealed class WiiDiscImage : IDisposable
 
                 if (isDir != 0)
                 {
-                    Directory.CreateDirectory(Path.Combine(filesDir, entryName));
+                    if (!codeOnly)
+                        Directory.CreateDirectory(Path.Combine(filesDir, entryName));
+                    continue;
+                }
+
+                if (codeOnly && !entryName.Equals("StaticR.rel", StringComparison.OrdinalIgnoreCase))
+                {
                     continue;
                 }
 

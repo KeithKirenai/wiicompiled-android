@@ -72,7 +72,8 @@ public sealed class BuildPipelineService
                         {
                             _progress(new BuildProgress(1, 4, Math.Min(25, 5 + p.Percent / 5), $"Extracting: {p.Message}"));
                         }),
-                        ct
+                        ct,
+                        codeOnly: true
                     ), ct);
 
                     if (!report.Success)

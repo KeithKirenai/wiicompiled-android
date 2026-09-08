@@ -105,6 +105,15 @@ public partial class BuildViewModel : ObservableObject {
         var f = await w.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Select Output Folder", AllowMultiple = false });
         if (f.Count > 0) { OutputFolderPath = f[0].Path.LocalPath; Log("Output folder: " + OutputFolderPath); }
     }
+        [RelayCommand]
+    public void CancelBuild() {
+        if (IsBuilding && _buildCts != null && !_buildCts.IsCancellationRequested) {
+            Log("Stopping build and terminating compilation processes...");
+            ProgressStatus = "Cancelling build...";
+            _buildCts.Cancel();
+        }
+    }
+
     [RelayCommand]
     private async Task StartBuildAsync() {
         if (IsBuilding) return;
@@ -126,7 +135,7 @@ public partial class BuildViewModel : ObservableObject {
             CheckExistingData();
         } catch (OperationCanceledException) { ProgressStatus = "Cancelled"; Log("Build cancelled."); }
         catch (Exception ex) { ProgressStatus = "Failed"; Log("Error: " + ex.Message); }
-        finally { IsBuilding = false; BuildButtonText = "Build"; }
+        finally { IsBuilding = false; BuildButtonText = "Build"; _buildCts?.Dispose(); _buildCts = null; }
     }
     private static Avalonia.Controls.Window? GetWindow() => (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 }

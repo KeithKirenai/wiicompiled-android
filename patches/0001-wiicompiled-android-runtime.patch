@@ -1,4 +1,4 @@
-﻿diff --git a/runtime/CMakeLists.txt b/runtime/CMakeLists.txt
+diff --git a/runtime/CMakeLists.txt b/runtime/CMakeLists.txt
 index 6fd79e2..9cc3ebb 100644
 --- a/runtime/CMakeLists.txt
 +++ b/runtime/CMakeLists.txt

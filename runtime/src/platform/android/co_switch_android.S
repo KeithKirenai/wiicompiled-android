@@ -1,4 +1,4 @@
-﻿.text
+.text
 .align 2
 
 // AArch64 Linux/Android cooperative context frame (240 bytes):

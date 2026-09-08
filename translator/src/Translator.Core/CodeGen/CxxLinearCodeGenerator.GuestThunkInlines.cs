@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Translator.Core.Analysis;
 using Translator.Core.Analysis.Representation;
 using Translator.Core.Representation;

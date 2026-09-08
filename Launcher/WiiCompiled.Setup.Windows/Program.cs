@@ -1,4 +1,4 @@
-﻿namespace WiiCompiled.Setup.Windows;
+namespace WiiCompiled.Setup.Windows;
 
 using System.Runtime.InteropServices;
 

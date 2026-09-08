@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using System.Threading.Tasks;
 using Translator.Cli.Configuration;
 using Translator.Core.Mods;

@@ -1,4 +1,4 @@
-﻿# On-Device ARM64 Recompilation Pipeline (Mario Kart Wii)
+# On-Device ARM64 Recompilation Pipeline (Mario Kart Wii)
 
 ## Current Status (Working & Verified)
 1. **Translator Environment (Termux + PRoot Debian)**:

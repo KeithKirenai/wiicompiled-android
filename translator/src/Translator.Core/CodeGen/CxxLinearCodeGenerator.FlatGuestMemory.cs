@@ -1,4 +1,4 @@
-﻿namespace Translator.Core.CodeGen;
+namespace Translator.Core.CodeGen;
 
 /// <summary>
 /// Selects the runtime helper family for guest memory accesses. Checked helpers resolve through the 1 MiB page

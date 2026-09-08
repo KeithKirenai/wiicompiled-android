@@ -1,4 +1,4 @@
-﻿#include "android_disc_extractor.h"
+#include "android_disc_extractor.h"
 
 #include <filesystem>
 #include <fstream>

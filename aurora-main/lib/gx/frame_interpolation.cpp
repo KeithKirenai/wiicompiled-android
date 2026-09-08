@@ -1,4 +1,4 @@
-﻿#include "frame_interpolation.hpp"
+#include "frame_interpolation.hpp"
 
 #include "../internal.hpp"
 #include "aurora/gfx.h"

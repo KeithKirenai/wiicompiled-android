@@ -1,4 +1,4 @@
-﻿using Translator.Core.Analysis;
+using Translator.Core.Analysis;
 using Translator.Core.Analysis.Representation;
 using Translator.Core.Analysis.Ssa;
 using Translator.Core.CodeGen;

@@ -1,4 +1,4 @@
-﻿// gx_texture.cpp - Texture Object and TLUT Functions
+// gx_texture.cpp - Texture Object and TLUT Functions
 #include "gx_internal.h"
 #include "runtime_log.h"
 

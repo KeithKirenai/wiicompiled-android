@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Translator.Core.Analysis.Representation;
 using Translator.Core.Analysis.Ssa;

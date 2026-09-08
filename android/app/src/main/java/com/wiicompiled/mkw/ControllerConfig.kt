@@ -1,4 +1,4 @@
-﻿package com.wiicompiled.mkw
+package com.wiicompiled.mkw
 
 import android.content.Context
 import android.content.SharedPreferences

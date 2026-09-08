@@ -59,21 +59,28 @@ jobs:
 
       - name: Validate TOML files
         run: |
-          python3 -c "
-          import tomli, sys, glob
+          python3 - << 'EOF'
+          try:
+              import tomllib
+          except ModuleNotFoundError:
+              import tomli as tomllib
+          import glob, sys
+
           errors = []
-          for f in glob.glob('**/*.toml', recursive=True):
+          for path in glob.glob('**/*.toml', recursive=True):
               try:
-                  with open(f, 'rb') as fh:
-                      tomli.load(fh)
+                  with open(path, 'rb') as fh:
+                      tomllib.load(fh)
               except Exception as e:
-                  errors.append(f'{f}: {e}')
+                  errors.append((path, str(e)))
+
           if errors:
-              for e in errors:
-                  print(f'::error file={e.split(\":\")[0]}::{e}')
+              for path, err in errors:
+                  print(f'::error file={path}::{err}')
               sys.exit(1)
+
           print('All TOML files valid.')
-          "
+          EOF
 
   trailing-whitespace:
     name: Trailing whitespace & EOF

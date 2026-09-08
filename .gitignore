@@ -93,3 +93,8 @@ extracted/
 
 Launcher/**/bin/
 Launcher/**/obj/
+
+# Compiled native static archives
+*.a
+android/app/src/main/jniLibs/arm64-v8a/*.a
+*.bak

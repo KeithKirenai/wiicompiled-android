@@ -136,7 +136,7 @@ You can build the APK either using the **Desktop Builder GUI** (recommended, zer
 
 #### Option A — Desktop Builder GUI (Recommended)
 
-Double-click **`launch-setup.bat`** in the repository root — this is the Avalonia-based launcher with the polished UI. The older WinForms launcher (`launch-builder.bat`) is kept for reference as a legacy option.
+Double-click **`launcher.bat`** in the repository root — this is the Avalonia-based launcher with the polished UI. The older WinForms launcher (`launcher-legacy.bat`) is kept for reference as a legacy option.
 
 1. The GUI automatically checks your toolchain (Android SDK, NDK, CMake, Ninja, .NET 8, and connected ADB device).
 2. **Drag and drop** or browse your Mario Kart Wii PAL (`.iso` or `.wbfs`) disc dump. The builder verifies the header and game ID (`RMCP01`).

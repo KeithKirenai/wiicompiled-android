@@ -198,28 +198,19 @@ Individual bootstrap stages (optional):
 
 #### Option C — On-Device ARM64 Build (Termux + PRoot)
 
-##### On-Device ARM64 Recompilation Pipeline (Mario Kart Wii)
+From a fresh Termux install on the phone, one script runs the entire pipeline end-to-end:
 
-###### Current Status (Working & Verified)
-1. **Translator Environment (Termux + PRoot Debian)**:
-   - CoreCLR `.NET 8` runtime executing `Translator.Cli` directly on Android aarch64.
-   - Fixed memory exhaustion by applying heap boundaries:
-     `DOTNET_gcServer=0`, `DOTNET_GCHeapHardLimit=0x80000000`, `threads=4`.
-2. **Translation & Shard Generation**:
-   - Decompiled 29,637 functions in 225s.
-   - Generated `data_sections_init.cpp`, `guest_symbol_table.cpp`, and 72 balanced compilation shards (`MKW_BASE_COMMON_SHARDS`).
-3. **Compilation Pipeline**:
-   - Native Clang 21.1.8 / Ninja compiling C++20 targets with `-O3 -DNDEBUG -fPIC`.
-   - Verified initial `libmkw_base_shared.a` creation and valid `elf64-littleaarch64` ABI.
+```bash
+cd ~/wiicompiled-android/tools/android-on-device
+chmod +x build-mkwii.sh
+./build-mkwii.sh
+```
 
-###### Pending Items
-1. **Archive Target Refinement**:
-   - `libmkw_base_shared.a` must strictly contain the 72 `MKW_BASE_COMMON_SHARDS`.
-   - `data_sections_init.cpp`, `guest_symbol_table.cpp`, and `base_registration/` must NOT be bundled in `.a` because `android/app/src/main/cpp/CMakeLists.txt` links them directly, avoiding duplicate symbols under `--whole-archive`.
-2. **Build Resumption**:
-   - Re-run `ninja -j4` on phone with updated `CMakeLists.txt` to produce the 72-member archive.
-   - Copy to `android/app/src/main/jniLibs/arm64-v8a/libmkw_base_shared.a` and verify clean link of `libmkw_android.so`.
+`build-mkwii.sh` covers: Termux deps (`pkg install`), Debian PRoot + `.NET 8 SDK`, repo clone, self-contained `Translator.Cli` publish, translate + shard emission under memory-capped CoreCLR (`DOTNET_gcServer=0`, `DOTNET_GCHeapHardLimit=0x80000000`, `DOTNET_GCHeapHardLimitPercent=50`, `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`, `--threads 4`), compile the 72-shard `libmkw_base_shared.a` via native Clang/Ninja, validate the object count with `llvm-objdump`, and stage the archive into `dist/` and `android/app/src/main/jniLibs/arm64-v8a/`.
 
+**Assets are manual.** The script never extracts ISOs/WBFS on-device. Before running it, place your own PAL `RMCP01` `main.dol` + `StaticR.rel` into `~/wiicompiled-android/Assets/` (e.g. `cp /sdcard/Download/main.dol ~/wiicompiled-android/Assets/`). The full guide, including idempotent behaviour and asset setup, is in [`tools/android-on-device/ON_DEVICE_STATUS.md`](tools/android-on-device/ON_DEVICE_STATUS.md).
+
+---
 
 ### In the app
 

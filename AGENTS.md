@@ -19,7 +19,7 @@ This repository is the **Android port of WiiCompiled** (Mario Kart Wii PowerPC s
   * `Config.toml` — App-level TOML configuration.
 * **`cmake/shards/`** — CMake build for the translated shard archive.
 * **`runtime/`**, **`translator/`**, **`aurora-main/`**, **`projects/`**, **`Assets/`** — Upstream WiiCompiled components.
-* **Root build helpers** — `android-bootstrap.ps1/.bat`, `build-shards.bat`, `build-app.bat`, `install-app.bat` — Windows build/install automation for this port.
+* **Root build helpers** — `android-bootstrap.ps1/.bat`, `launch-builder.bat`, `launch-setup.bat` — Windows build/install automation for this port.
 
 ## Build System
 
@@ -30,9 +30,9 @@ Target: Android NDK 28, ABI `arm64-v8a`. The translated shard archive `libmkw_ba
 ### Workflow
 
 1. **Bootstrap (fresh clone)** — `.\android-bootstrap.bat` auto-detects the SDK/NDK/CMake/Ninja, writes `android\local.properties`, stages `Assets\main.dol` + `StaticR.rel` (own RMCP01 dump), and runs the translator if `generated\build_shards\shards.cmake` is missing. `-Install` also pushes the APK to a connected phone.
-2. **Shards** — `.\build-shards.bat` compiles the C++ shards with CMake+Ninja and copies `libmkw_base_shared.a` into `jniLibs/arm64-v8a/`. It skips compilation if the archive already exists.
-3. **App** — `.\build-app.bat` builds a **debug** or **release** APK. It triggers `build-shards.bat` automatically if the prebuilt archive is missing; otherwise it skips straight to Gradle (`gradlew.bat assembleDebug` / `assembleRelease`).
-4. **Install** — `.\install-app.bat` installs a built APK over ADB.
+2. **Shards** — `.\android-bootstrap.bat -Only Shards` compiles the C++ shards with CMake+Ninja and copies `libmkw_base_shared.a` into `jniLibs/arm64-v8a/`. It skips compilation if the archive already exists.
+3. **App** — `.\android-bootstrap.bat -Only App` builds an APK. It triggers shard compilation automatically if the prebuilt archive is missing; otherwise it skips straight to Gradle (`gradlew.bat assembleDebug` / `assembleRelease`).
+4. **Install** — `.\android-bootstrap.bat -Install` installs a built APK over ADB.
 
 `build-shards.bat` resolves the NDK/CMake/Ninja from `ANDROID_HOME`/`ANDROID_NDK_HOME` env vars, `local.properties`, and well-known SDK install locations — never hardcoded. `build.gradle.kts` only enables the `ccache` compiler launcher when ccache is on PATH.
 

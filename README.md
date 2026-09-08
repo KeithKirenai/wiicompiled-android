@@ -198,9 +198,9 @@ Individual bootstrap stages (optional):
 
 #### Option C — On-Device ARM64 Build (Termux + PRoot)
 
-# On-Device ARM64 Recompilation Pipeline (Mario Kart Wii)
+##### On-Device ARM64 Recompilation Pipeline (Mario Kart Wii)
 
-## Current Status (Working & Verified)
+###### Current Status (Working & Verified)
 1. **Translator Environment (Termux + PRoot Debian)**:
    - CoreCLR `.NET 8` runtime executing `Translator.Cli` directly on Android aarch64.
    - Fixed memory exhaustion by applying heap boundaries:
@@ -212,7 +212,7 @@ Individual bootstrap stages (optional):
    - Native Clang 21.1.8 / Ninja compiling C++20 targets with `-O3 -DNDEBUG -fPIC`.
    - Verified initial `libmkw_base_shared.a` creation and valid `elf64-littleaarch64` ABI.
 
-## Pending Items
+###### Pending Items
 1. **Archive Target Refinement**:
    - `libmkw_base_shared.a` must strictly contain the 72 `MKW_BASE_COMMON_SHARDS`.
    - `data_sections_init.cpp`, `guest_symbol_table.cpp`, and `base_registration/` must NOT be bundled in `.a` because `android/app/src/main/cpp/CMakeLists.txt` links them directly, avoiding duplicate symbols under `--whole-archive`.

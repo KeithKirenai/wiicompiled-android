@@ -208,6 +208,11 @@ chmod +x build-mkwii.sh
 
 `build-mkwii.sh` covers: Termux deps (`pkg install`), Debian PRoot + `.NET 8 SDK`, repo clone, self-contained `Translator.Cli` publish, translate + shard emission under memory-capped CoreCLR (`DOTNET_gcServer=0`, `DOTNET_GCHeapHardLimit=0x80000000`, `DOTNET_GCHeapHardLimitPercent=50`, `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`, `--threads 4`), compile the 72-shard `libmkw_base_shared.a` via native Clang/Ninja, validate the object count with `llvm-objdump`, and stage the archive into `dist/` and `android/app/src/main/jniLibs/arm64-v8a/`.
 
+> [!WARNING]
+> **This on-device path is unofficial, unsupported, and untested by the maintainers.** It is offered only as an option for users who cannot use a PC. If it works for your device and Termux/Debian/PRoot setup, fine; if it does not, you are on your own and should expect to do manual troubleshooting — PRoot quirks, Termux package availability, Clang/Ninja versions, and CoreCLR memory behaviour on Android are all outside the supported desktop bootstrap (`android-bootstrap.bat`).
+>
+> The supported ways to build are **Option A** (Desktop Builder GUI) and **Option B** (command-line `android-bootstrap.bat`).
+
 **Assets are manual.** The script never extracts ISOs/WBFS on-device. Before running it, place your own PAL `RMCP01` `main.dol` + `StaticR.rel` into `~/wiicompiled-android/Assets/` (e.g. `cp /sdcard/Download/main.dol ~/wiicompiled-android/Assets/`). The full guide, including idempotent behaviour and asset setup, is in [`tools/android-on-device/ON_DEVICE_STATUS.md`](tools/android-on-device/ON_DEVICE_STATUS.md).
 
 ---

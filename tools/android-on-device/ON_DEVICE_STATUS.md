@@ -1,5 +1,10 @@
 # On-Device ARM64 Recompilation Pipeline (Mario Kart Wii)
 
+> [!WARNING]
+> **This on-device path is unofficial, unsupported, and untested by the maintainers.** It exists only as an option for users who cannot use a PC. If it works on your device/Termux/Debian/PRoot setup, that's fine; if it doesn't, you are on your own and should expect to do manual troubleshooting — PRoot quirks, Termux package availability, Clang/Ninja versions, and CoreCLR memory behaviour on Android are all outside the supported desktop bootstrap (`android-bootstrap.bat`).
+>
+> The supported build paths are **Option A** (Desktop Builder GUI) and **Option B** (command-line `android-bootstrap.bat`) in the README.
+
 ## Pipeline Architecture & Status
 1. **Translator Environment (Termux + PRoot Debian)**:
    - CoreCLR `.NET 8` runtime executing `Translator.Cli` directly on Android aarch64.

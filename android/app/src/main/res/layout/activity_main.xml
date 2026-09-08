@@ -1064,6 +1064,19 @@
             app:strokeColor="@color/md_theme_dark_outlineVariant"
             android:textColor="@color/md_theme_dark_secondary" />
 
+        <!-- Clear Logs Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnClearLogs"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="6dp"
+            android:text="Clear Crash Logs (0 MB)"
+            android:textSize="13sp"
+            app:cornerRadius="24dp"
+            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+            android:textColor="@color/md_theme_dark_error" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/exportLogsBtn"
             style="@style/Widget.Material3.Button.TextButton"

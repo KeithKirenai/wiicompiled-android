@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.color.DynamicColors
@@ -29,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var selectDiscBtn: Button
     private lateinit var launchBtn: Button
     private lateinit var exportLogsBtn: Button
+    private lateinit var btnClearLogs: Button
     private lateinit var btnWipeSaveData: Button
 
     // Graphics & Engine
@@ -81,6 +83,8 @@ class MainActivity : AppCompatActivity() {
         selectDiscBtn = findViewById(R.id.selectDiscBtn)
         launchBtn = findViewById(R.id.launchBtn)
         exportLogsBtn = findViewById(R.id.exportLogsBtn)
+        btnClearLogs = findViewById(R.id.btnClearLogs)
+        updateLogsButtonSize()
         btnWipeSaveData = findViewById(R.id.btnWipeSaveData)
         val btnRemapper = findViewById<Button>(R.id.btnRemapper)
 
@@ -133,6 +137,30 @@ class MainActivity : AppCompatActivity() {
 
         exportLogsBtn.setOnClickListener {
             exportLogs()
+        }
+
+        btnClearLogs.setOnClickListener {
+            val logsDir = File(filesDir, "WiiCompiled/Logs")
+            val currentBytes = getFolderSize(logsDir)
+
+            if (currentBytes == 0L) {
+                Toast.makeText(this, "Logs are already empty", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            MaterialAlertDialogBuilder(this)
+                .setTitle("Clear Crash Logs?")
+                .setMessage("This will delete all stored core dumps and diagnostic logs (${formatSize(currentBytes)}). Saved games and settings are untouched.")
+                .setPositiveButton("Clear") { _, _ ->
+                    if (logsDir.exists()) {
+                        logsDir.deleteRecursively()
+                        logsDir.mkdirs()
+                    }
+                    updateLogsButtonSize()
+                    Toast.makeText(this, "Crash logs deleted!", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
         }
 
         btnWipeSaveData.setOnClickListener {
@@ -547,6 +575,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getFolderSize(dir: File): Long {
+        if (!dir.exists()) return 0L
+        var size = 0L
+        val files = dir.listFiles() ?: return 0L
+        for (file in files) {
+            size += if (file.isDirectory) getFolderSize(file) else file.length()
+        }
+        return size
+    }
+
+    private fun formatSize(bytes: Long): String {
+        return when {
+            bytes >= 1024 * 1024 * 1024 -> "%.1f GB".format(bytes.toDouble() / (1024 * 1024 * 1024))
+            bytes >= 1024 * 1024 -> "%.1f MB".format(bytes.toDouble() / (1024 * 1024))
+            bytes >= 1024 -> "%.1f KB".format(bytes.toDouble() / 1024)
+            else -> "$bytes B"
+        }
+    }
+
+    private fun updateLogsButtonSize() {
+        val logsDir = File(filesDir, "WiiCompiled/Logs")
+        val bytes = getFolderSize(logsDir)
+        btnClearLogs.text = "Clear Crash Logs (${formatSize(bytes)})"
+    }
+
     override fun onPause() {
         super.onPause()
         if (!isExtracting) {
@@ -556,6 +609,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (::btnClearLogs.isInitialized) {
+            updateLogsButtonSize()
+        }
         if (!isExtracting) {
             checkPermissionsAndData()
         }

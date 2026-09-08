@@ -1,7 +1,7 @@
 # WiiCompiled Android: Technical Progress & Optimization Report
 
 **Target Device:** Honor 90 (Qualcomm Snapdragon 7 Gen 1 / Adreno 710 / 8 Cores: 1x A710 Prime @ 2.5GHz, 3x A710 Gold @ 2.36GHz, 4x A510 Silver @ 1.8GHz, Android 15)  
-**Permanent Safe Project Path:** `C:\Users\Carlos\Projects\wiicompiled-android`  
+**Permanent Safe Project Path:** `%USERPROFILE%\Projects\wiicompiled-android`  
 **Remote Git Repository:** `https://github.com/KeithKirenai/wiicompiled-android.git` (Branch: `main`)
 
 ---
@@ -93,5 +93,5 @@ All commits have been pushed upstream and a full copy is stored in your permanen
   - `ba7fe72`: `feat(ui,perf): minimalist fast UI, translucent on-screen controls, MKW-PERF logging and Adreno log storm suppression`
 - **Upstream Repository:** `https://github.com/KeithKirenai/wiicompiled-android.git`
 - **Permanent Safe Directory:**
-  `C:\Users\Carlos\Projects\wiicompiled-android\`
+  `%USERPROFILE%\Projects\wiicompiled-android\`
   *(Synchronized via robocopy with full `.git` history, all C++ source trees, Aurora graphics library, translator, and Android build targets).*

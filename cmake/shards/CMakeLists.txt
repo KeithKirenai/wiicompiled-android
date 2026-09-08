@@ -18,9 +18,6 @@ target_include_directories(mkw_base_shared PRIVATE
     "${MKW_ROOT}"
     "${MKW_AURORA_DIR}/include"
 )
-if(NOT DEFINED SHARD_OPT_FLAG)
-    set(SHARD_OPT_FLAG "-O2")
-endif()
 target_compile_definitions(mkw_base_shared PRIVATE TARGET_PC NOMINMAX ANDROID NDEBUG)
 target_compile_features(mkw_base_shared PRIVATE cxx_std_20)
-target_compile_options(mkw_base_shared PRIVATE ${SHARD_OPT_FLAG} -g0 -fno-stack-protector -fno-fast-math -ffp-contract=off -w -pipe)
+target_compile_options(mkw_base_shared PRIVATE -O3 -fno-fast-math -ffp-contract=off -w -pipe)

@@ -69,21 +69,7 @@
                     <CheckBox IsChecked="{Binding FastBuild}" Content="Fast incremental build (skip unmodified translation files)" Foreground="#cfd7e5"/>
                     <CheckBox IsChecked="{Binding ForceReTranslate}" Content="Force complete re-translation from disc binaries" Foreground="#cfd7e5"/>
                     <CheckBox IsChecked="{Binding AutoInstall}" Content="Automatically install to first connected ADB device after build" Foreground="#cfd7e5"/>
-                
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Text="Compilation Optimization Preset" FontSize="12" FontWeight="SemiBold" Foreground="#cfd7e5"/>
-                <TextBlock Grid.Column="1" Text="{Binding OptimizationIndex, StringFormat='Level {0}'}" FontSize="12" FontWeight="Bold" Foreground="#00d68f"/>
-            </Grid>
-            <Slider Minimum="0" Maximum="2" Value="{Binding OptimizationIndex}" TickFrequency="1" IsSnapToTickEnabled="True" Margin="0,2"/>
-            <Grid ColumnDefinitions="*,*,*">
-                <TextBlock Grid.Column="0" Text="0: Fast Test (-O0)" FontSize="10" Foreground="#8f99ab"/>
-                <TextBlock Grid.Column="1" Text="1: Balanced (-O2)" FontSize="10" Foreground="#00d68f" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="2" Text="2: Max (-O3)" FontSize="10" Foreground="#8f99ab" HorizontalAlignment="Right"/>
-            </Grid>
-            <Border Background="#12151c" BorderBrush="#252b3a" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,4,0,0">
-                <TextBlock Text="{Binding OptimizationDescription}" Foreground="#9aa5b8" FontSize="11" TextWrapping="Wrap"/>
-            </Border>
-        </StackPanel>
+                </StackPanel>
 </Expander>
             <Grid ColumnDefinitions="Auto,Auto,*">
     <Button Grid.Column="0" Classes="accent" Command="{Binding StartBuildCommand}" IsEnabled="{Binding !IsBuilding}" Padding="20,10">

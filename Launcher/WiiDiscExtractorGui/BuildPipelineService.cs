@@ -16,8 +16,7 @@ public record BuildOptions(
     bool FastBuild,
     bool ForceReTranslate,
     bool AutoInstall,
-    string? SelectedDevice,
-    int OptimizationLevel = 1
+    string? SelectedDevice
 );
 
 public record BuildProgress(int Step, int TotalSteps, int Percentage, string Message);
@@ -190,9 +189,7 @@ public sealed class BuildPipelineService
 
             string toolchainFile = Path.Combine(ndk, "build", "cmake", "android.toolchain.cmake");
 
-                        string optFlag = options.OptimizationLevel switch { 0 => "-O0", 2 => "-O3", _ => "-O2" };
             string cmakeArgs =
-                $"-DSHARD_OPT_FLAG=\"{optFlag}\" " +
                 $"-H\"{shardsCmakeDir}\" " +
                 $"-B\"{buildArm64Dir}\" " +
                 "-GNinja " +

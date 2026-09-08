@@ -7,19 +7,21 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fPIC")
 
-include(generated/build_shards/shards.cmake)
+set(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
+include(${REPO_ROOT}/generated/build_shards/shards.cmake)
 
 # Strictly the 72 base function shards to prevent duplicate symbols in Android CMake
 add_library(mkw_base_shared STATIC ${MKW_BASE_COMMON_SHARDS})
 
 target_include_directories(mkw_base_shared PRIVATE
-    runtime/include
-    runtime/src
-    runtime/src/core
-    runtime/src/hle
-    runtime/src/hle/gx
-    generated/build_shards/base_common
-    generated
+    ${REPO_ROOT}/runtime/include
+    ${REPO_ROOT}/runtime/src
+    ${REPO_ROOT}/runtime/src/core
+    ${REPO_ROOT}/runtime/src/hle
+    ${REPO_ROOT}/runtime/src/hle/gx
+    ${REPO_ROOT}/generated/build_shards/base_common
+    ${REPO_ROOT}/generated
 )
 
 target_compile_definitions(mkw_base_shared PRIVATE

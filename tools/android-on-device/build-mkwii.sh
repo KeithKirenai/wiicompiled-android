@@ -2,7 +2,7 @@
 set -euo pipefail
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORK_DIR="$BASE_DIR"
+WORK_DIR="$(cd "$BASE_DIR/../.." && pwd)"
 CLI_PATH="/data/data/com.termux/files/home/Translator.Cli"
 MANIFEST="$WORK_DIR/projects/mkwii/recomp.yml"
 METADATA_OUT="$WORK_DIR/generated/base_translation_output.json"
@@ -50,10 +50,10 @@ proot-distro run debian --work-dir "$WORK_DIR" -- env \
 
 echo "[5/5] Compiling and archiving libmkw_base_shared.a via native Clang/Ninja..."
 mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
+cd "$WORK_DIR"
 
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
-ninja -j4
+cmake -G Ninja -B "$BUILD_DIR" -S "$BASE_DIR" -DCMAKE_BUILD_TYPE=Release
+ninja -C "$BUILD_DIR" -j4
 
 cp "$BUILD_DIR/libmkw_base_shared.a" "$OUTPUT_DIR/"
 

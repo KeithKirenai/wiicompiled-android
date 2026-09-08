@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+WiiCompiled MKW launcher icon (vector drawable).
+
+Simplified from the supplied SVG: same identity — centered tachometer/Turbo gauge
+with a cyan->indigo->pink "speed arc", PPC->ARM64 translation brackets, octagon hub,
+radial micro-grid, velocity needle, terminal dots, and a specular top glare arc.
+
+Android VectorDrawable notes:
+- No SVG filter effects (feDropShadow / feGaussianBlur / feComposite) — neon glow
+  is approximated by a soft underlay stroke, not a blur.
+- No stroke gradients — the rainbow arc is drawn as several discreet colored segments.
+- The background squircle is intentionally left out: Android applies the system icon
+  background(s) for adaptive/launcher presentation.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Radial micro-grid (very subtle) -->
+    <group android:fillAlpha="0.08">
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#00F0FF"
+            android:strokeWidth="1.5"
+            android:pathData="M 256,36 m -220,0 a 220,220 0 1,0 440,0 a 220,220 0 1,0 -440,0" />
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#00F0FF"
+            android:strokeWidth="1.5"
+            android:pathData="M 256,86 m -170,0 a 170,170 0 1,0 340,0 a 170,170 0 1,0 -340,0" />
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#00F0FF"
+            android:strokeWidth="1.5"
+            android:pathData="M 256,136 m -120,0 a 120,120 0 1,0 240,0 a 120,120 0 1,0 -240,0" />
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#00F0FF"
+            android:strokeWidth="1.5"
+            android:pathData="M 256,36 L 256,476" />
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#00F0FF"
+            android:strokeWidth="1.5"
+            android:pathData="M 36,256 L 476,256" />
+    </group>
+
+    <!-- Soft underlay to hint the neon glow (no blur available) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00F0FF"
+        android:strokeWidth="22"
+        android:pathData="M 142.84,369.14 A 160,160 0 1,1 369.16,369.14"
+        android:strokeLineCap="round"
+        android:fillAlpha="0.18" />
+
+    <!-- Speed arc: cyan -> indigo -> pink, drawn as discreet segments -->
+    <!--
+        Arc from 135deg to 405deg (270deg sweep) at radius 160 around (256,256).
+        Segment breakdown (approx):
+          cyan     : 135 -> 207  ( ~72deg )
+          cyan-indigo: 207 -> 261 ( ~54deg )
+          indigo   : 261 -> 315  ( ~54deg )
+          indigo-pink : 315 -> 369 ( ~54deg )
+          pink     : 369 -> 405  ( ~36deg )
+    -->
+    <!-- cyan segment -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00F0FF"
+        android:strokeWidth="16"
+        android:pathData="M 142.84,369.14 A 160,160 0 1,1 213.14,152.09"
+        android:strokeLineCap="round" />
+    <!-- cyan-indigo blend (teal-ish) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#30A0FF"
+        android:strokeWidth="16"
+        android:pathData="M 213.14,152.09 A 160,160 0 1,1 256.0,108.0"
+        android:strokeLineCap="round" />
+    <!-- indigo segment -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#7000FF"
+        android:strokeWidth="16"
+        android:pathData="M 256.0,108.0 A 160,160 0 1,1 300.0,117.06"
+        android:strokeLineCap="round" />
+    <!-- indigo-pink blend (purple-pink) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#B000D0"
+        android:strokeWidth="16"
+        android:pathData="M 300.0,117.06 A 160,160 0 1,1 339.74,167.72"
+        android:strokeLineCap="round" />
+    <!-- pink segment -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FF007A"
+        android:strokeWidth="16"
+        android:pathData="M 339.74,167.72 A 160,160 0 1,1 369.16,369.14"
+        android:strokeLineCap="round" />
+
+    <!-- Tick marks (7 ticks, r=112 -> r=128, every 45deg across the 270deg span) -->
+    <g android:strokeColor="#FFFFFF"
+       android:strokeWidth="2.5"
+       android:fillAlpha="0.45"
+       android:strokeLineCap="round">
+        <path android:fillColor="@android:color/transparent" android:pathData="M 127.91,209.53 L 139.55,196.24" />
+        <path android:fillColor="@android:color/transparent" android:pathData="M 184.0,144.0 L 192.0,152.0" />
+        <path android:fillColor="@android:color/transparent" android:pathData="M 238.45,131.24 L 250.09,136.78" />
+        <path android:fillColor="@android:color/transparent" android:pathData="M 320.0,144.0 L 312.0,152.0" />
+        <path android:fillColor="@android:color/transparent" android:pathData="M 380.09,196.24 L 391.73,209.53" />
+    </g>
+
+    <!-- Octagon hub (outer) -->
+    <path
+        android:fillColor="#243048"
+        android:strokeColor="#2E3C56"
+        android:strokeWidth="3"
+        android:pathData="M 292.45,171.15 L 256,168 L 219.55,171.15 L 193.85,193.85 L 168,256 L 193.85,318.15 L 256,344 L 318.15,318.15 L 344,256 L 318.15,193.85 Z" />
+
+    <!-- Inner octagon track (tinted turbo mid) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#9C00C0"
+        android:strokeWidth="2"
+        android:pathData="M 287.48,182.52 L 256,180 L 224.52,182.52 L 202.26,202.26 L 180,256 L 202.26,309.74 L 256,332 L 309.74,309.74 L 332,256 L 309.74,202.26 Z"
+        android:fillAlpha="0.75" />
+
+    <!-- Translation brackets: < (cyan) | > (pink) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#00F0FF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 226,232 L 202,256 L 226,280" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FF007A"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M 286,232 L 310,256 L 286,280" />
+
+    <!-- Velocity needle (pointing forward/up) + pivot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 256,208 L 262,252 L 256,268 L 250,252 Z" />
+    <path
+        android:fillColor="#00F0FF"
+        android:pathData="M 251,251 A 5,5 0 1,0 261,251 A 5,5 0 1,0 251,251 Z" />
+
+    <!-- Terminal nodes at arc ends -->
+    <path
+        android:fillColor="#00F0FF"
+        android:pathData="M 135.84,362.14 A 7,7 0 1,0 149.84,376.14 A 7,7 0 1,0 135.84,362.14 Z" />
+    <path
+        android:fillColor="#FF007A"
+        android:pathData="M 362.16,362.14 A 7,7 0 1,0 376.16,376.14 A 7,7 0 1,0 362.16,362.14 Z" />
+
+    <!-- Specular top glare arc (white, soft opacity) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillAlpha="0.22"
+        android:pathData="M 171.07,171.07 A 148,148 0 0,1 340.93,171.07" />
+</vector>

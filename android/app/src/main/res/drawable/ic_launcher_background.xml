@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+WiiCompiled MKW launcher icon background (solid dark squircle).
+Matches the icon foreground's base tone so the two read as one unit on the home screen.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#111620" />
+    <corners android:radius="118dp" />
+</shape>

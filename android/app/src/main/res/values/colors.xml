@@ -42,4 +42,5 @@
     <!-- General Utility -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+    <color name="md_theme_dark_error">#ffb4ab</color>
 </resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+WiiCompiled MKW launcher icon fallback (pre-API 26).
+Shown as a plain bitmap on older devices; resolves to the foreground vector.
+-->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_launcher_foreground"
+    android:gravity="center"
+    android:tint="#00000000" />

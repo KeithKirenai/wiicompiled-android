@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+WiiCompiled MKW round launcher icon fallback (pre-API 26).
+-->
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/ic_launcher_foreground"
+    android:gravity="center"
+    android:tint="#00000000" />

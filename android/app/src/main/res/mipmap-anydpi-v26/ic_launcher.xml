@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+WiiCompiled MKW adaptive launcher icon (API 26+).
+Foreground: ic_launcher_foreground.xml (tachometer + PPC->ARM64 brackets + octagon hub).
+Background: ic_launcher_background.xml (dark squircle).
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

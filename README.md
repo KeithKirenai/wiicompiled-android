@@ -19,12 +19,21 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/ui_pc_builder.png" alt="PC Builder UI" width="48%" />
-  &nbsp;
-  <img src="docs/assets/ui_ingame_live.png" alt="In-Game Running on Device" width="48%" />
+  <img src="docs/assets/ui_pc_builder.png" alt="PC Builder UI" width="550" />
+  <br>
+  <em>Desktop Setup & Build Launcher</em>
 </p>
+
 <p align="center">
-  <img src="docs/assets/ui_app_launcher.png" alt="Android App Launcher Settings" width="36%" />
+  <img src="docs/assets/ui_ingame_live.png" alt="In-Game Running on Device" width="550" />
+  <br>
+  <em>In-Game Gameplay — <strong>Tested on Redmi 9</strong> (Helio G80)</em>
+</p>
+
+<p align="center">
+  <img src="docs/assets/ui_app_launcher.png" alt="Android App Launcher Settings" width="280" />
+  <br>
+  <em>Android App Launcher & Settings UI</em>
 </p>
 
 ---

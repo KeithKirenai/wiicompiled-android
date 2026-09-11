@@ -13,9 +13,35 @@
   <img src="https://img.shields.io/badge/Platform-Android%209%2B%20(API%2028%2B)-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android" />
   <img src="https://img.shields.io/badge/Arch-ARM64--v8a-blue?style=flat-square" alt="Arch" />
   <img src="https://img.shields.io/badge/Graphics-Vulkan-ED1B24?style=flat-square&logo=vulkan&logoColor=white" alt="Vulkan" />
+  <img src="https://img.shields.io/badge/Tested%20on-Redmi%209%20(MediaTek%20Helio%20G80)-orange?style=flat-square&logo=xiaomi&logoColor=white" alt="Tested on Redmi 9" />
   <img src="https://img.shields.io/badge/Target%20Game-Mario%20Kart%20Wii%20(RMCP01)-E60012?style=flat-square&logo=nintendo&logoColor=white" alt="Game" />
   <img src="https://img.shields.io/badge/License-GPL--2.0%20%2F%20MIT-informational?style=flat-square" alt="License" />
 </p>
+
+<p align="center">
+  <img src="docs/assets/ui_pc_builder.png" alt="PC Builder UI" width="48%" />
+  &nbsp;
+  <img src="docs/assets/ui_ingame_live.png" alt="In-Game Running on Device" width="48%" />
+</p>
+<p align="center">
+  <img src="docs/assets/ui_app_launcher.png" alt="Android App Launcher Settings" width="36%" />
+</p>
+
+---
+
+## ⚡ Quick Start
+
+Building and playing on your phone in 3 steps:
+
+1. **Prerequisites**: Install **.NET 8 SDK**, **Android Studio / SDK** (NDK `28.2.13676358`, CMake `4.1.2`), and have your legal PAL MKWii disc dump (`RMCP01.iso` or `RMCP01.wbfs`).
+2. **Build with Desktop GUI**:
+   - Double-click `launcher.bat` in the repository root.
+   - Choose your `RMCP01.iso` / `.wbfs` file.
+   - Connect your phone via USB with USB Debugging enabled, check **Install APK to phone over ADB**, and click **Build**.
+3. **Launch & Play**:
+   - Open **WheelDroid** on your phone.
+   - Tap **Launch Game** (or select your disc if prompted).
+   - Race using on-screen touch controls or tilt steering!
 
 ---
 
@@ -67,7 +93,7 @@ Android only transports it.
 
 ## Status
 
-What works today, verified on a physical Android 15 device (`arm64-v8a`) via adb:
+What works today, verified on a physical **Xiaomi Redmi 9** (MediaTek Helio G80, Mali-G52 MC2, `arm64-v8a`) via adb:
 
 - App installs and launches.
 - `RMCP01.wbfs` / `.iso` import flow.

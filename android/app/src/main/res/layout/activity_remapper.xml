@@ -1,78 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/md_theme_dark_background"
-    android:fillViewport="true"
     android:fitsSystemWindows="true">
 
-    <LinearLayout
+    <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingHorizontal="20dp"
-        android:paddingTop="28dp"
-        android:paddingBottom="36dp">
+        android:background="@color/md_theme_dark_background"
+        app:elevation="0dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Controller Remapper"
-            android:textColor="@color/md_theme_dark_onBackground"
-            android:textSize="28sp"
-            android:fontFamily="sans-serif"
-            android:letterSpacing="-0.02" />
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            app:navigationIcon="@drawable/ic_arrow_back"
+            app:navigationIconTint="@color/md_theme_dark_onBackground"
+            app:title="Controller Remapper"
+            app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
+            app:titleTextColor="@color/md_theme_dark_onBackground" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Tap any game action, then press the controller button to bind it."
-            android:textColor="@color/md_theme_dark_onSurfaceVariant"
-            android:textSize="13sp"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="20dp" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <com.google.android.material.card.MaterialCardView
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
-            app:cardCornerRadius="24dp"
-            app:cardElevation="0dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="@color/md_theme_dark_outlineVariant">
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="36dp">
 
+            <!-- Device Connection Status Banner -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardControllerStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/md_theme_dark_outlineVariant">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="16dp"
+                    android:paddingVertical="14dp">
+
+                    <ImageView
+                        android:id="@+id/ivControllerIcon"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:src="@drawable/ic_controller"
+                        android:contentDescription="Controller status"
+                        android:layout_marginEnd="14dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvControllerName"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Gamepad Status"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvControllerHint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tap any game action below to bind a controller button."
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Dynamic categorized mapping cards injected here -->
             <LinearLayout
                 android:id="@+id/remapperContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp" />
-        </com.google.android.material.card.MaterialCardView>
+                android:orientation="vertical" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSaveRemapper"
-            android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:text="Save &amp; Return"
-            android:textSize="15sp"
-            android:textStyle="bold"
-            app:cornerRadius="27dp"
-            android:layout_marginBottom="10dp"
-            app:backgroundTint="@color/md_theme_dark_primary"
-            android:textColor="@color/md_theme_dark_onPrimary" />
+            <!-- Action Buttons -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveRemapper"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="10dp"
+                android:text="Save &amp; Return"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="27dp"
+                app:backgroundTint="@color/md_theme_dark_primary"
+                android:textColor="@color/md_theme_dark_onPrimary" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnResetDefaults"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="Reset to Standard Controller Defaults"
-            android:textSize="13sp"
-            app:cornerRadius="24dp"
-            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
-            android:textColor="@color/md_theme_dark_onSurface" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnResetDefaults"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Reset to Standard Controller Defaults"
+                android:textSize="13sp"
+                app:icon="@drawable/ic_restore"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconSize="18dp"
+                app:iconTint="@color/md_theme_dark_onSurface"
+                app:cornerRadius="24dp"
+                app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+                android:textColor="@color/md_theme_dark_onSurface" />
 
-    </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

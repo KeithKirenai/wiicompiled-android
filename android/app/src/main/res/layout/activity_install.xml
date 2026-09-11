@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/md_theme_dark_background"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="24dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxWidth="480dp"
+        app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="@color/md_theme_dark_outlineVariant">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="28dp">
+
+            <!-- Wizard Icon -->
+            <ImageView
+                android:id="@+id/installerIcon"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@drawable/ic_disc"
+                app:tint="@color/md_theme_dark_primary"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Wizard Title -->
+            <TextView
+                android:id="@+id/installerTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Game Data Setup"
+                android:textColor="@color/md_theme_dark_onBackground"
+                android:textSize="22sp"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Wizard Description -->
+            <TextView
+                android:id="@+id/installerDescription"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mario Kart Wii game data (RMCP01) is required. Please select a disc image (.wbfs or .iso) to install."
+                android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                android:textSize="13sp"
+                android:lineSpacingExtra="3dp"
+                android:gravity="center"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Extraction Progress Indicator (Linear) -->
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/installerProgressBar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:indicatorColor="@color/md_theme_dark_primary"
+                app:trackColor="@color/md_theme_dark_surfaceContainerHighest"
+                app:trackCornerRadius="4dp"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Extraction Status Text -->
+            <TextView
+                android:id="@+id/installerStatusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ready to install"
+                android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                android:textSize="12sp"
+                android:visibility="gone"
+                android:gravity="center"
+                android:layout_marginBottom="24dp" />
+
+            <!-- Select Disc Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSelectDisc"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Select Disc (.wbfs / .iso)"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:icon="@drawable/ic_disc"
+                app:iconGravity="textStart"
+                app:cornerRadius="14dp"
+                android:backgroundTint="@color/md_theme_dark_primary"
+                android:textColor="@color/md_theme_dark_onPrimary"
+                app:iconTint="@color/md_theme_dark_onPrimary" />
+
+            <!-- Done / Continue Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDone"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Continue to Launcher"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:icon="@drawable/ic_check_circle"
+                app:iconGravity="textStart"
+                app:cornerRadius="14dp"
+                android:visibility="gone"
+                android:backgroundTint="@color/status_ready"
+                android:textColor="@color/black"
+                app:iconTint="@color/black" />
+
+            <!-- Cancel Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancel"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="Back to Launcher"
+                android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                android:textSize="13sp"
+                android:layout_marginTop="8dp" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</LinearLayout>

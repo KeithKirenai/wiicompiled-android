@@ -47,6 +47,13 @@
             android:configChanges="orientation|screenSize|keyboardHidden">
         </activity>
 
+        <activity
+            android:name=".InstallActivity"
+            android:exported="true"
+            android:label="Game Setup Assistant"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

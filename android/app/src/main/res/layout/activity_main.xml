@@ -1197,6 +1197,17 @@
                             android:textSize="12sp" />
                     </LinearLayout>
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnFpsSettings"
+                        style="@style/Widget.Material3.Button.IconButton"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_marginEnd="4dp"
+                        app:icon="@drawable/ic_settings"
+                        app:iconTint="@color/md_theme_dark_onSurfaceVariant"
+                        app:iconSize="22dp"
+                        android:contentDescription="Configure FPS Overlay Elements" />
+
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/switchShowFps"
                         android:layout_width="wrap_content"

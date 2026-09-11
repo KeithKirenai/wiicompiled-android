@@ -14,4 +14,6 @@ void NotifyStrapInputAccepted() noexcept;
 void AdvancePresentedFrame() noexcept;
 void RecordFrameStart() noexcept;
 void RecordFrameEnd() noexcept;
+void SetShowFpsEnabled(bool enabled) noexcept;
+bool IsShowFpsEnabled() noexcept;
 } // namespace settings_overlay

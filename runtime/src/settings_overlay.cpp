@@ -104,6 +104,12 @@ int g_displayMode = [] {
 bool g_skipUnreadyPipelines = RuntimeConfigFile::SkipUnreadyPipelines(true);
 bool g_disableCopyFilter = RuntimeConfigFile::DisableCopyFilter(true);
 bool g_showFps = RuntimeConfigFile::ShowFps(true);
+bool g_showFpsCpu = RuntimeConfigFile::ShowFpsCpu(true);
+bool g_showFpsGpu = RuntimeConfigFile::ShowFpsGpu(true);
+bool g_showFpsPasses = RuntimeConfigFile::ShowFpsPasses(false);
+bool g_showFpsDraws = RuntimeConfigFile::ShowFpsDraws(false);
+bool g_showFpsBandwidth = RuntimeConfigFile::ShowFpsBandwidth(false);
+bool g_showFpsBuilds = RuntimeConfigFile::ShowFpsBuilds(true);
 uint32_t g_disabledPostProcessingPaths = RuntimeConfigFile::DisabledPostProcessingPaths(0);
 std::array<int32_t, PAD_MAX_CONTROLLERS> g_configuredControllerIndices = [] {
     std::array<int32_t, PAD_MAX_CONTROLLERS> indices{};
@@ -858,38 +864,45 @@ void DrawFpsOverlay() {
             ImGui::SameLine();
             ImGui::Text("(%.1fms)", presentTiming.averageFrameTimeMs);
 
-            // CPU and GPU frame times
-            ImGui::SameLine();
-            ImGui::TextDisabled("|");
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "CPU: %.1fms", s_cpuTimeMs);
-
-            ImGui::SameLine();
-            ImGui::TextDisabled("|");
-            ImGui::SameLine();
-            const float gpuMs = static_cast<float>(presentTiming.averageFrameTimeMs);
-            ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "GPU: %.1fms", gpuMs);
-
-            // Per-pass encoder breakdown (CPU command-encode ms, native frame only)
-            AuroraGpuPassTimings gpuPassTimings;
-            aurora_get_gpu_pass_timings(&gpuPassTimings);
-            if (gpuPassTimings.count > 0) {
+            // CPU frame time
+            if (g_showFpsCpu) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("|");
                 ImGui::SameLine();
-                char passSummary[256];
-                int off =
-                    snprintf(passSummary, sizeof(passSummary), "%u passes: %.2f",
-                             gpuPassTimings.count, static_cast<float>(gpuPassTimings.totalUs) / 1000.0f);
-                for (uint32_t p = 0; p < gpuPassTimings.count && p < 6 && off > 0 &&
-                                    off < (int)sizeof(passSummary);
-                     ++p) {
-                    off += snprintf(passSummary + off, sizeof(passSummary) - off, " %.2f(%ux%u,%u)",
-                                    static_cast<float>(gpuPassTimings.passUs[p]) / 1000.0f,
-                                    gpuPassTimings.passWidth[p], gpuPassTimings.passHeight[p],
-                                    gpuPassTimings.passDraws[p]);
+                ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "CPU: %.1fms", s_cpuTimeMs);
+            }
+
+            // GPU frame time
+            const float gpuMs = static_cast<float>(presentTiming.averageFrameTimeMs);
+            if (g_showFpsGpu) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("|");
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "GPU: %.1fms", gpuMs);
+            }
+
+            // Per-pass encoder breakdown (CPU command-encode ms, native frame only)
+            if (g_showFpsPasses) {
+                AuroraGpuPassTimings gpuPassTimings;
+                aurora_get_gpu_pass_timings(&gpuPassTimings);
+                if (gpuPassTimings.count > 0) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine();
+                    char passSummary[256];
+                    int off =
+                        snprintf(passSummary, sizeof(passSummary), "%u passes: %.2f",
+                                 gpuPassTimings.count, static_cast<float>(gpuPassTimings.totalUs) / 1000.0f);
+                    for (uint32_t p = 0; p < gpuPassTimings.count && p < 6 && off > 0 &&
+                                        off < (int)sizeof(passSummary);
+                         ++p) {
+                        off += snprintf(passSummary + off, sizeof(passSummary) - off, " %.2f(%ux%u,%u)",
+                                        static_cast<float>(gpuPassTimings.passUs[p]) / 1000.0f,
+                                        gpuPassTimings.passWidth[p], gpuPassTimings.passHeight[p],
+                                        gpuPassTimings.passDraws[p]);
+                    }
+                    ImGui::TextDisabled("%s", passSummary);
                 }
-                ImGui::TextDisabled("%s", passSummary);
             }
 
             // True motion detection (when frame interpolation diverges)
@@ -900,35 +913,37 @@ void DrawFpsOverlay() {
 
             if (stats) {
                 // Graphics dispatch & CPU submission bottleneck metrics
-                ImGui::SameLine();
-                ImGui::TextDisabled("|");
-                ImGui::SameLine();
-                ImGui::Text("Draws: %u", stats->drawCallCount);
-
-                if (stats->mergedDrawCallCount > 0) {
-                    ImGui::SameLine();
-                    ImGui::TextDisabled("(+%u merged)", stats->mergedDrawCallCount);
-                }
-
-                // Bandwidth metrics: Geometry + Texture upload
-                const float vertKb = static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f;
-                const float texKb = static_cast<float>(stats->lastTextureUploadSize) / 1024.0f;
-                ImGui::SameLine();
-                ImGui::TextDisabled("|");
-                ImGui::SameLine();
-                ImGui::Text("Geom: %.0fKB", vertKb);
-
-                if (texKb > 1.0f) {
+                if (g_showFpsDraws) {
                     ImGui::SameLine();
                     ImGui::TextDisabled("|");
                     ImGui::SameLine();
-                    ImGui::Text("TexUpload: %.0fKB", texKb);
+                    ImGui::Text("Draws: %u", stats->drawCallCount);
+
+                    if (stats->mergedDrawCallCount > 0) {
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("(+%u merged)", stats->mergedDrawCallCount);
+                    }
                 }
 
-                // Pipeline build indicator. Queued builds resolve through the Dawn blob cache
-                // when possible: cached entries replay precompiled driver blobs instead of
-                // recompiling shaders, so "cache 100%" means replaying, not compiling.
-                if (stats->queuedPipelines > 0) {
+                // Bandwidth metrics: Geometry + Texture upload
+                if (g_showFpsBandwidth) {
+                    const float vertKb = static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f;
+                    const float texKb = static_cast<float>(stats->lastTextureUploadSize) / 1024.0f;
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine();
+                    ImGui::Text("Geom: %.0fKB", vertKb);
+
+                    if (texKb > 1.0f) {
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("|");
+                        ImGui::SameLine();
+                        ImGui::Text("TexUpload: %.0fKB", texKb);
+                    }
+                }
+
+                // Pipeline build indicator.
+                if (g_showFpsBuilds && stats->queuedPipelines > 0) {
                     const auto* blob = aurora_get_blob_cache_stats();
                     const uint32_t cachePct = (blob && blob->lookups > 0)
                                                   ? static_cast<uint32_t>((blob->hits * 100) / blob->lookups)
@@ -1259,5 +1274,13 @@ void RecordFrameEnd() noexcept {
         s_cpuTimeMs = std::chrono::duration<float, std::milli>(now - s_frameStartTime).count();
     }
     s_lastPresentEndTime = now;
+}
+
+void SetShowFpsEnabled(bool enabled) noexcept {
+    g_showFps = enabled;
+}
+
+bool IsShowFpsEnabled() noexcept {
+    return g_showFps;
 }
 } // namespace settings_overlay

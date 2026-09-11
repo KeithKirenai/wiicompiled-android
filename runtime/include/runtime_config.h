@@ -46,6 +46,13 @@ struct RuntimeUserConfig {
     std::optional<bool> textureReplacements;
     std::optional<bool> textureDumps;
     std::optional<bool> showFps;
+    std::optional<bool> showFpsDetailed;
+    std::optional<bool> showFpsCpu;
+    std::optional<bool> showFpsGpu;
+    std::optional<bool> showFpsPasses;
+    std::optional<bool> showFpsDraws;
+    std::optional<bool> showFpsBandwidth;
+    std::optional<bool> showFpsBuilds;
     std::optional<uint32_t> disabledPostProcessingPaths;
     std::optional<float> audioVolume;
     std::optional<float> audioMusicVolume;
@@ -464,6 +471,13 @@ inline RuntimeUserConfig ParseConfigDocument(const toml::value& document) {
     config.skipUnreadyPipelines = FindConfigValue<bool>(document, "video", "skip_unready_pipelines");
     config.disableCopyFilter = FindConfigValue<bool>(document, "video", "disable_copy_filter");
     config.showFps = FindConfigValue<bool>(document, "video", "show_fps");
+    config.showFpsDetailed = FindConfigValue<bool>(document, "video", "show_fps_detailed");
+    config.showFpsCpu = FindConfigValue<bool>(document, "video", "show_fps_cpu");
+    config.showFpsGpu = FindConfigValue<bool>(document, "video", "show_fps_gpu");
+    config.showFpsPasses = FindConfigValue<bool>(document, "video", "show_fps_passes");
+    config.showFpsDraws = FindConfigValue<bool>(document, "video", "show_fps_draws");
+    config.showFpsBandwidth = FindConfigValue<bool>(document, "video", "show_fps_bandwidth");
+    config.showFpsBuilds = FindConfigValue<bool>(document, "video", "show_fps_builds");
     config.textureReplacements = FindConfigValue<bool>(document, "video", "texture_replacements");
     config.textureDumps = FindConfigValue<bool>(document, "video", "texture_dumps");
     if (auto value = FindConfigUint(document, "video", "disabled_post_processing_paths");
@@ -915,6 +929,34 @@ inline bool DisableCopyFilter(bool fallback = true) {
 
 inline bool ShowFps(bool fallback = true) {
     return Get().showFps.value_or(fallback);
+}
+
+inline bool ShowFpsDetailed(bool fallback = true) {
+    return Get().showFpsDetailed.value_or(fallback);
+}
+
+inline bool ShowFpsCpu(bool fallback = true) {
+    return Get().showFpsCpu.value_or(fallback);
+}
+
+inline bool ShowFpsGpu(bool fallback = true) {
+    return Get().showFpsGpu.value_or(fallback);
+}
+
+inline bool ShowFpsPasses(bool fallback = false) {
+    return Get().showFpsPasses.value_or(fallback);
+}
+
+inline bool ShowFpsDraws(bool fallback = false) {
+    return Get().showFpsDraws.value_or(fallback);
+}
+
+inline bool ShowFpsBandwidth(bool fallback = false) {
+    return Get().showFpsBandwidth.value_or(fallback);
+}
+
+inline bool ShowFpsBuilds(bool fallback = true) {
+    return Get().showFpsBuilds.value_or(fallback);
 }
 
 inline bool TextureReplacements(bool fallback = false) {

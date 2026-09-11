@@ -18,6 +18,7 @@
 
 #include "android_touch_input.h"
 #include "android_disc_extractor.h"
+#include "settings_overlay.h"
 #include <aurora/gfx.h>
 #include <aurora/cpu_topology.hpp>
 
@@ -513,6 +514,16 @@ Java_com_wiicompiled_mkw_GameActivity_nativeGetPerfStats(JNIEnv* env, jobject th
                  fps, ftMs, queued);
     }
     return env->NewStringUTF(buf);
+}
+
+JNIEXPORT void JNICALL
+Java_com_wiicompiled_mkw_GameActivity_nativeSetShowFps(JNIEnv* env, jobject thiz, jboolean enabled) {
+    settings_overlay::SetShowFpsEnabled(enabled == JNI_TRUE);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_wiicompiled_mkw_GameActivity_nativeIsShowFps(JNIEnv* env, jobject thiz) {
+    return settings_overlay::IsShowFpsEnabled() ? JNI_TRUE : JNI_FALSE;
 }
 
 } // extern "C"

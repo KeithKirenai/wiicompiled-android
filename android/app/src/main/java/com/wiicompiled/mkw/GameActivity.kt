@@ -37,11 +37,13 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private lateinit var menuTouchControls: Button
     private lateinit var menuTiltControls: Button
     private lateinit var menuNotch: Button
+    private lateinit var menuShowFps: Button
     private lateinit var menuExit: Button
     private lateinit var touchOverlayContainer: View
     private var touchControlsEnabled = true
     private var tiltControlsEnabled = true
     private var extendToNotchEnabled = true
+    private var showFpsEnabled = false
     private var menuOpen = false
     private var gamePaused = false
 
@@ -82,6 +84,8 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private external fun nativeTouchEvent(action: Int, x: Float, y: Float, pointerId: Int)
     /** Called only when the Activity is truly being destroyed (user exiting the app). */
     private external fun nativeDestroy()
+    private external fun nativeSetShowFps(enabled: Boolean)
+    private external fun nativeIsShowFps(): Boolean
 
     private var activeResMultiplier: Float = 1.0f
 
@@ -219,15 +223,19 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         menuTouchControls = findViewById(R.id.menuTouchControls)
         menuTiltControls = findViewById(R.id.menuTiltControls)
         menuNotch = findViewById(R.id.menuNotch)
+        menuShowFps = findViewById(R.id.menuShowFps)
         menuExit = findViewById(R.id.menuExit)
         menuPause.setOnClickListener { togglePause() }
         menuTouchControls.setOnClickListener { toggleTouchControls() }
         menuTiltControls.setOnClickListener { toggleTiltControls() }
         menuNotch.setOnClickListener { toggleNotchExtension() }
+        menuShowFps.setOnClickListener { toggleFpsOverlay() }
         menuExit.setOnClickListener { exitToLauncher() }
         menuTouchControls.text = if (touchControlsEnabled) "Touch Controls: On" else "Touch Controls: Off"
         menuTiltControls.text = if (tiltControlsEnabled) "Tilt Steering: On" else "Tilt Steering: Off"
         menuNotch.text = if (extendToNotchEnabled) "Notch Area: Extend" else "Notch Area: Inset"
+        showFpsEnabled = prefs.getBoolean("show_fps", false)
+        menuShowFps.text = if (showFpsEnabled) "FPS Overlay: On" else "FPS Overlay: Off"
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -498,6 +506,20 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         applyCutoutMode(extendToNotchEnabled)
         menuNotch.text = if (extendToNotchEnabled) "Notch Area: Extend" else "Notch Area: Inset"
         android.util.Log.i("WiiCompiled", "In-game extend into display cutout: $extendToNotchEnabled")
+    }
+
+    private fun toggleFpsOverlay() {
+        if (!menuOpen) return
+        showFpsEnabled = !showFpsEnabled
+        val prefs = getSharedPreferences("wiicompiled_settings", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("show_fps", showFpsEnabled).apply()
+
+        try {
+            nativeSetShowFps(showFpsEnabled)
+        } catch (_: Throwable) {}
+
+        menuShowFps.text = if (showFpsEnabled) "FPS Overlay: On" else "FPS Overlay: Off"
+        android.util.Log.i("WiiCompiled", "In-game FPS overlay: $showFpsEnabled")
     }
 
     private fun applyCutoutMode(extend: Boolean) {

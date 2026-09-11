@@ -48,6 +48,10 @@ class MainActivity : AppCompatActivity() {
             launchGame()
         }
 
+        binding.btnFpsSettings.setOnClickListener {
+            showFpsAdvancedSettingsDialog()
+        }
+
         binding.btnRemapper.setOnClickListener {
             startActivity(Intent(this, RemapperActivity::class.java))
         }
@@ -211,6 +215,45 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton("OK", null)
                 .show()
         }
+    }
+
+    private fun showFpsAdvancedSettingsDialog() {
+        val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
+        val items = arrayOf(
+            "CPU Frame Time (ms)",
+            "GPU Frame Time (ms)",
+            "Pass Breakdown (Encoder ms)",
+            "Draw Calls & Merged Batches",
+            "Bandwidth (Geometry / Textures)",
+            "Pipeline Shader Builds & Cache %"
+        )
+        val keys = arrayOf(
+            "show_fps_cpu",
+            "show_fps_gpu",
+            "show_fps_passes",
+            "show_fps_draws",
+            "show_fps_bandwidth",
+            "show_fps_builds"
+        )
+        val defaults = booleanArrayOf(true, true, false, false, false, true)
+        val checked = BooleanArray(keys.size) { i -> prefs.getBoolean(keys[i], defaults[i]) }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("FPS Overlay Elements")
+            .setMultiChoiceItems(items, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton("Save") { _, _ ->
+                val editor = prefs.edit()
+                for (i in keys.indices) {
+                    editor.putBoolean(keys[i], checked[i])
+                }
+                editor.apply()
+                saveConfigOptions()
+                Toast.makeText(this, "FPS overlay settings saved!", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun launchGame() {
@@ -482,6 +525,12 @@ class MainActivity : AppCompatActivity() {
                 |disable_copy_filter = $disableCopyFilter
                 |disabled_post_processing_paths = $postProcessingPaths
                 |show_fps = $showFps
+                |show_fps_cpu = ${prefs.getBoolean("show_fps_cpu", true)}
+                |show_fps_gpu = ${prefs.getBoolean("show_fps_gpu", true)}
+                |show_fps_passes = ${prefs.getBoolean("show_fps_passes", false)}
+                |show_fps_draws = ${prefs.getBoolean("show_fps_draws", false)}
+                |show_fps_bandwidth = ${prefs.getBoolean("show_fps_bandwidth", false)}
+                |show_fps_builds = ${prefs.getBoolean("show_fps_builds", true)}
                 |texture_replacements = $textureReplacements
                 |texture_dumps = false
                 |

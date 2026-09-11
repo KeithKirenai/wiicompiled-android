@@ -25,9 +25,9 @@
             android:layout_marginBottom="22dp">
 
             <ImageView
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:src="@mipmap/ic_launcher"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:src="@drawable/ic_wheeldroid_header"
                 android:contentDescription="WheelDroid App Icon"
                 android:layout_marginEnd="14dp" />
 

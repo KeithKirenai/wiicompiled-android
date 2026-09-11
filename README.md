@@ -1,4 +1,23 @@
-# WheelDroid — WiiCompiled Mario Kart Wii Android Port
+<p align="center">
+  <img src="docs/assets/wheeldroid_banner.png" alt="WheelDroid Banner" width="220" style="border-radius: 28px;" />
+</p>
+
+<h1 align="center">WheelDroid</h1>
+
+<p align="center">
+  <strong>Native Mario Kart Wii Android Port via Static Recompilation (WiiCompiled)</strong><br>
+  <em>Zero Emulation • Pure AArch64 Native Execution • Vulkan Hardware Acceleration</em>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android%209%2B%20(API%2028%2B)-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Android" />
+  <img src="https://img.shields.io/badge/Arch-ARM64--v8a-blue?style=flat-square" alt="Arch" />
+  <img src="https://img.shields.io/badge/Graphics-Vulkan-ED1B24?style=flat-square&logo=vulkan&logoColor=white" alt="Vulkan" />
+  <img src="https://img.shields.io/badge/Target%20Game-Mario%20Kart%20Wii%20(RMCP01)-E60012?style=flat-square&logo=nintendo&logoColor=white" alt="Game" />
+  <img src="https://img.shields.io/badge/License-GPL--2.0%20%2F%20MIT-informational?style=flat-square" alt="License" />
+</p>
+
+---
 
 **WheelDroid** is the native Android port of **[WiiCompiled](https://github.com/patchzyy/Wiicompiled)**,
 the static-recompilation project that runs **Mario Kart Wii** natively on ARM64 with no emulator,

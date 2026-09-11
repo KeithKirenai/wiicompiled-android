@@ -42,6 +42,21 @@ Two data sets from Dolphin's `Data/Sys` tree are redistributed here under GPL-2.
 Neither contains Nintendo executable code or game assets; both are redistributed under
 GPL-2.0-or-later from Dolphin's `Data/Sys` tree.
 
+#### Android in-game settings menu pattern - GPL-2.0-or-later
+
+The Android in-game settings overlay in `android/` is adapted from the Dolphin Emulator
+Android port's [`EmulationActivity.kt`](https://github.com/dolphin-emu/dolphin/blob/master/Source/android/app/src/main/java/org/dolphinemu/dolphinemu/activities/EmulationActivity.kt),
+under GPL-2.0-or-later. The adapted behavior:
+
+| Behavior | Dolphin source | WiiCompiled file |
+| --- | --- | --- |
+| Back button/gesture toggles the slide-in menu | `onBackPressed() -> toggleMenu()` | `android/app/src/main/java/com/wiicompiled/mkw/GameActivity.kt` (`onBackPressed`, menu block) |
+| Long-press Back exits emulation | `onKeyLongPress(KEYCODE_BACK) -> stopEmulation()` | `GameActivity.kt` (`onKeyLongPress -> exitToLauncher`) |
+
+The menu layout (`android/app/src/main/res/layout/activity_game.xml`) and button wiring
+(`GameActivity.kt`) are original to this project; only the input-toggle interaction pattern is
+derived from Dolphin. It is attributed in the source header of `GameActivity.kt`.
+
 SHA-256 hashes for the WiiConnect24 bootstrap tree:
 
 | File | SHA-256 |

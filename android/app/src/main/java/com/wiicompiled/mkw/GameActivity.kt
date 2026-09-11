@@ -15,8 +15,9 @@ import android.view.SurfaceView
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import org.libsdl.app.SDL
+import org.libsdl.app.SDLControllerManager
 
 class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventListener {
 
@@ -29,6 +30,18 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
+
+    // Dolphin-style in-game settings menu (opened with the Back button)
+    private lateinit var ingameMenu: View
+    private lateinit var menuPause: Button
+    private lateinit var menuTouchControls: Button
+    private lateinit var menuTiltControls: Button
+    private lateinit var menuExit: Button
+    private lateinit var touchOverlayContainer: View
+    private var touchControlsEnabled = true
+    private var tiltControlsEnabled = true
+    private var menuOpen = false
+    private var gamePaused = false
 
     companion object {
         const val BTN_A = 0
@@ -47,24 +60,9 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         const val BTN_DPAD_RIGHT = 13
 
         init {
-            for (sdlClass in listOf(
-                "org.libsdl.app.SDL",
-                "org.libsdl.app.SDLActivity",
-                "org.libsdl.app.SDLAudioManager",
-                "org.libsdl.app.SDLControllerManager",
-                "org.libsdl.app.SDLInputConnection",
-                "org.libsdl.app.HIDDeviceManager"
-            )) {
-                try {
-                    Class.forName(sdlClass)
-                } catch (e: Throwable) {
-                    android.util.Log.w("WiiCompiled", "Preload $sdlClass failed: ${e.message}")
-                }
-            }
             System.loadLibrary("mkw_android")
             try {
-                val sdlClass = Class.forName("org.libsdl.app.SDL")
-                sdlClass.getMethod("initialize").invoke(null)
+                SDL.initialize()
             } catch (e: Throwable) {
                 android.util.Log.w("WiiCompiled", "SDL.initialize error: ${e.message}")
             }
@@ -80,7 +78,6 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private external fun nativeSetStick(stickX: Float, stickY: Float)
     private external fun nativeTiltEvent(angle: Float)
     private external fun nativeTouchEvent(action: Int, x: Float, y: Float, pointerId: Int)
-    private external fun nativeGetPerfStats(): String
     /** Called only when the Activity is truly being destroyed (user exiting the app). */
     private external fun nativeDestroy()
 
@@ -89,17 +86,9 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
-            val sdlClass = Class.forName("org.libsdl.app.SDL")
-            val setContextMethod = sdlClass.getDeclaredMethod("setContext", android.app.Activity::class.java)
-            setContextMethod.isAccessible = true
-            setContextMethod.invoke(null, this)
-            val setupJNIMethod = sdlClass.getDeclaredMethod("setupJNI")
-            setupJNIMethod.isAccessible = true
-            setupJNIMethod.invoke(null)
-            val sdlCtrlMgrClass = Class.forName("org.libsdl.app.SDLControllerManager")
-            val ctrlInitMethod = sdlCtrlMgrClass.getDeclaredMethod("initialize")
-            ctrlInitMethod.isAccessible = true
-            ctrlInitMethod.invoke(null)
+            SDL.setContext(this)
+            SDL.setupJNI()
+            SDLControllerManager.initialize()
             android.util.Log.i("WiiCompiled", "SDL.setContext, setupJNI and SDLControllerManager.initialize completed successfully")
         } catch (e: Throwable) {
             android.util.Log.e("WiiCompiled", "SDL setup failed: ${e.message}", e)
@@ -149,15 +138,15 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         btnPause = findViewById(R.id.btnPause)
         steeringArea = findViewById(R.id.steeringArea)
 
-        val touchOverlayContainer = findViewById<View>(R.id.touchOverlayContainer)
+        touchOverlayContainer = findViewById<View>(R.id.touchOverlayContainer)
 
         // Universal hardware scaling for mobile GPUs:
         // Configures the SurfaceView buffer resolution so lower-end GPUs don't choke on 1080p/1440p panels,
         // letting the device's hardware display processor (DPU) scale the surface with zero GPU overhead.
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
         val resIdx = prefs.getInt("resolution_idx", 0)
-        val touchControlsEnabled = prefs.getBoolean("touch_controls", true)
-        val tiltControlsEnabled = prefs.getBoolean("tilt_controls", true)
+        touchControlsEnabled = prefs.getBoolean("touch_controls", true)
+        tiltControlsEnabled = prefs.getBoolean("tilt_controls", true)
 
         activeResMultiplier = when (resIdx) {
             1 -> 1.5f
@@ -210,13 +199,32 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
         surfaceView.holder.addCallback(this)
         surfaceView.setOnTouchListener(null)
-        if (touchControlsEnabled) {
-            setupButtonTouch(btnGas, BTN_A)
-            setupButtonTouch(btnDrift, BTN_B)
-            setupButtonTouch(btnItem, BTN_L)
-            setupButtonTouch(btnPause, BTN_START)
-            setupSteeringTouch(steeringArea)
-        }
+        // Always wire the touch targets; visibility is managed by touchOverlayContainer
+        // so the in-game menu can toggle touch controls at runtime.
+        setupButtonTouch(btnGas, BTN_A)
+        setupButtonTouch(btnDrift, BTN_B)
+        setupButtonTouch(btnItem, BTN_L)
+        setupButtonTouch(btnPause, BTN_START)
+        setupSteeringTouch(steeringArea)
+
+        // Wire up the Dolphin-style in-game settings menu
+        ingameMenu = findViewById(R.id.ingameMenu)
+        menuPause = findViewById(R.id.menuPause)
+        menuTouchControls = findViewById(R.id.menuTouchControls)
+        menuTiltControls = findViewById(R.id.menuTiltControls)
+        menuExit = findViewById(R.id.menuExit)
+        menuPause.setOnClickListener { togglePause() }
+        menuTouchControls.setOnClickListener { toggleTouchControls() }
+        menuTiltControls.setOnClickListener { toggleTiltControls() }
+        menuExit.setOnClickListener { exitToLauncher() }
+        menuTouchControls.text = if (touchControlsEnabled) "Touch Controls: On" else "Touch Controls: Off"
+        menuTiltControls.text = if (tiltControlsEnabled) "Tilt Steering: On" else "Tilt Steering: Off"
+
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                onBackPressed()
+            }
+        })
 
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         if (tiltControlsEnabled) {
@@ -410,6 +418,88 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
+    // ---- In-game settings menu ----
+    // Pattern adapted from the Dolphin Emulator Android port, EmulationActivity.kt
+    // (Back button toggles the menu, long-press Back exits emulation), distributed
+    // under GPL-2.0-or-later. Source: https://github.com/dolphin-emu/dolphin
+    // See THIRD-PARTY-NOTICES.md for full attribution.
+
+    override fun onBackPressed() {
+        menuOpen = !menuOpen
+        ingameMenu.visibility = if (menuOpen) View.VISIBLE else View.GONE
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: android.view.KeyEvent?): Boolean {
+        // Long-pressing Back exits live to the launcher (Dolphin: stop emulation).
+        if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            exitToLauncher()
+            return true
+        }
+        return super.onKeyLongPress(keyCode, event)
+    }
+
+    private fun togglePause() {
+        if (!menuOpen) return
+        gamePaused = !gamePaused
+        if (gamePaused) {
+            nativeOnAppPause()
+            menuPause.text = "Resume"
+        } else {
+            nativeOnAppResume()
+            menuPause.text = "Pause"
+        }
+    }
+
+    private fun toggleTouchControls() {
+        if (!menuOpen) return
+        touchControlsEnabled = !touchControlsEnabled
+        val prefs = getSharedPreferences("wiicompiled_settings", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("touch_controls", touchControlsEnabled).apply()
+        touchOverlayContainer.visibility = if (touchControlsEnabled) View.VISIBLE else View.GONE
+        menuTouchControls.text = if (touchControlsEnabled) "Touch Controls: On" else "Touch Controls: Off"
+        android.util.Log.i("WiiCompiled", "In-game touch controls: $touchControlsEnabled")
+    }
+
+    private fun toggleTiltControls() {
+        if (!menuOpen) return
+        tiltControlsEnabled = !tiltControlsEnabled
+        val prefs = getSharedPreferences("wiicompiled_settings", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("tilt_controls", tiltControlsEnabled).apply()
+        if (tiltControlsEnabled) {
+            if (accelerometer == null) {
+                accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+            }
+            accelerometer?.let {
+                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+            }
+        } else {
+            sensorManager.unregisterListener(this)
+            accelerometer = null
+        }
+        menuTiltControls.text = if (tiltControlsEnabled) "Tilt Steering: On" else "Tilt Steering: Off"
+        android.util.Log.i("WiiCompiled", "In-game tilt steering: $tiltControlsEnabled")
+    }
+
+    private fun exitToLauncher() {
+        android.util.Log.i("WiiCompiled", "Exiting to launcher cleanly...")
+        try {
+            nativeOnAppPause()
+        } catch (_: Throwable) {}
+
+        val intent = android.content.Intent(this, MainActivity::class.java).apply {
+            flags = android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        startActivity(intent)
+        finishAndRemoveTask()
+
+        // Clean up the isolated :game process so audio devices and guest execution threads terminate immediately
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            android.os.Process.killProcess(android.os.Process.myPid())
+        }, 150)
+    }
+
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent?): Boolean {
         if (event != null && (event.source and android.view.InputDevice.SOURCE_GAMEPAD == android.view.InputDevice.SOURCE_GAMEPAD ||
             event.source and android.view.InputDevice.SOURCE_JOYSTICK == android.view.InputDevice.SOURCE_JOYSTICK)) {
@@ -419,9 +509,8 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
                 return true
             }
         }
-        // Intercept BACK button (often sent by controller B or back button) so it doesn't close the game
         if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
-            nativeSetButton(BTN_B, true)
+            event?.startTracking()
             return true
         }
         return super.onKeyDown(keyCode, event)
@@ -437,7 +526,9 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             }
         }
         if (keyCode == android.view.KeyEvent.KEYCODE_BACK) {
-            nativeSetButton(BTN_B, false)
+            if (event != null && !event.isCanceled) {
+                onBackPressed()
+            }
             return true
         }
         return super.onKeyUp(keyCode, event)

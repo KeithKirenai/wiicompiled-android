@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
@@ -102,5 +103,76 @@
         </RelativeLayout>
 
     </FrameLayout>
+
+    <!-- Dolphin-style In-Game Settings Menu (slides in from the start edge).
+         Toggled with the Back button; hidden by default. -->
+    <LinearLayout
+        android:id="@+id/ingameMenu"
+        android:layout_width="290dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:layout_gravity="start"
+        android:visibility="gone"
+        android:background="#E61D221F">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="In-Game Settings"
+            android:textColor="#FFFFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="14dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/menuPause"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginBottom="10dp"
+            android:text="Pause"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="27dp"
+            app:backgroundTint="@color/md_theme_dark_primary"
+            android:textColor="@color/md_theme_dark_onPrimary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/menuTouchControls"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginBottom="10dp"
+            android:text="Touch Controls"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="27dp"
+            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+            android:textColor="@color/md_theme_dark_onSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/menuTiltControls"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginBottom="10dp"
+            android:text="Tilt Steering"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="27dp"
+            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+            android:textColor="@color/md_theme_dark_onSurface" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/menuExit"
+            android:layout_width="match_parent"
+            android:layout_height="54dp"
+            android:layout_marginTop="24dp"
+            android:text="Exit to Launcher"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            app:cornerRadius="27dp"
+            app:backgroundTint="@color/md_theme_dark_secondaryContainer"
+            android:textColor="@color/md_theme_dark_onSecondaryContainer" />
+
+    </LinearLayout>
 
 </FrameLayout>

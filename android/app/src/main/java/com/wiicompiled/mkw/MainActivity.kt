@@ -7,62 +7,18 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowManager
 import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.Spinner
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.materialswitch.MaterialSwitch
-import com.google.android.material.progressindicator.LinearProgressIndicator
-import com.google.android.material.slider.Slider
+import com.wiicompiled.mkw.databinding.ActivityMainBinding
 import com.wiicompiled.mkw.extractor.WiiDiscExtractor
 import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var statusTitle: TextView
-    private lateinit var statusText: TextView
-    private lateinit var statusIndicator: View
-    private lateinit var progressBar: LinearProgressIndicator
-    private lateinit var selectDiscBtn: Button
-    private lateinit var launchBtn: Button
-    private lateinit var exportLogsBtn: Button
-    private lateinit var btnClearLogs: Button
-    private lateinit var btnWipeSaveData: Button
-
-    // Graphics & Engine
-    private lateinit var spinnerGraphicsApi: Spinner
-    private lateinit var spinnerResolution: Spinner
-    private lateinit var switchWidescreen: MaterialSwitch
-    private lateinit var switchSkipUnreadyPipelines: MaterialSwitch
-    private lateinit var switchDisableCopyFilter: MaterialSwitch
-    private lateinit var switchDisableBloom: MaterialSwitch
-    private lateinit var switchSustainedPerf: MaterialSwitch
-    private lateinit var switchAudioMixer: MaterialSwitch
-
-    // Input Controls
-    private lateinit var switchTouchControls: MaterialSwitch
-    private lateinit var switchTiltControls: MaterialSwitch
-
-    // Audio Volume & Controls
-    private lateinit var textMasterVolume: TextView
-    private lateinit var sliderMasterVolume: Slider
-    private lateinit var textMusicVolume: TextView
-    private lateinit var sliderMusicVolume: Slider
-    private lateinit var textSfxVolume: TextView
-    private lateinit var sliderSfxVolume: Slider
-    private lateinit var switchAudioMuted: MaterialSwitch
-
-    // Features & Network
-    private lateinit var spinnerFrameInterpolation: Spinner
-    private lateinit var switchRumble: MaterialSwitch
-    private lateinit var switchTextureReplacements: MaterialSwitch
-    private lateinit var switchShowFps: MaterialSwitch
-    private lateinit var switchNetworkEnabled: MaterialSwitch
-
+    private lateinit var binding: ActivityMainBinding
     private var isExtracting = false
 
     private val selectDiscLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -74,72 +30,33 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         DynamicColors.applyToActivityIfAvailable(this)
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        statusTitle = findViewById(R.id.statusTitle)
-        statusText = findViewById(R.id.statusText)
-        statusIndicator = findViewById(R.id.statusIndicator)
-        progressBar = findViewById(R.id.progressBar)
-        selectDiscBtn = findViewById(R.id.selectDiscBtn)
-        launchBtn = findViewById(R.id.launchBtn)
-        exportLogsBtn = findViewById(R.id.exportLogsBtn)
-        btnClearLogs = findViewById(R.id.btnClearLogs)
         updateLogsButtonSize()
-        btnWipeSaveData = findViewById(R.id.btnWipeSaveData)
-        val btnRemapper = findViewById<Button>(R.id.btnRemapper)
-
-        // Graphics & Engine bindings
-        spinnerGraphicsApi = findViewById(R.id.spinnerGraphicsApi)
-        spinnerResolution = findViewById(R.id.spinnerResolution)
-        switchWidescreen = findViewById(R.id.switchWidescreen)
-        switchSkipUnreadyPipelines = findViewById(R.id.switchSkipUnreadyPipelines)
-        switchDisableCopyFilter = findViewById(R.id.switchDisableCopyFilter)
-        switchDisableBloom = findViewById(R.id.switchDisableBloom)
-        switchSustainedPerf = findViewById(R.id.switchSustainedPerf)
-        switchAudioMixer = findViewById(R.id.switchAudioMixer)
-
-        // Input controls
-        switchTouchControls = findViewById(R.id.switchTouchControls)
-        switchTiltControls = findViewById(R.id.switchTiltControls)
-
-        // Audio controls
-        textMasterVolume = findViewById(R.id.textMasterVolume)
-        sliderMasterVolume = findViewById(R.id.sliderMasterVolume)
-        textMusicVolume = findViewById(R.id.textMusicVolume)
-        sliderMusicVolume = findViewById(R.id.sliderMusicVolume)
-        textSfxVolume = findViewById(R.id.textSfxVolume)
-        sliderSfxVolume = findViewById(R.id.sliderSfxVolume)
-        switchAudioMuted = findViewById(R.id.switchAudioMuted)
-
-        // Features & Network
-        spinnerFrameInterpolation = findViewById(R.id.spinnerFrameInterpolation)
-        switchRumble = findViewById(R.id.switchRumble)
-        switchTextureReplacements = findViewById(R.id.switchTextureReplacements)
-        switchShowFps = findViewById(R.id.switchShowFps)
-        switchNetworkEnabled = findViewById(R.id.switchNetworkEnabled)
 
         setupConfigOptions()
         checkPermissionsAndData()
 
-        selectDiscBtn.setOnClickListener {
+        binding.selectDiscBtn.setOnClickListener {
             if (!isExtracting) {
                 selectDiscLauncher.launch(arrayOf("*/*"))
             }
         }
 
-        launchBtn.setOnClickListener {
+        binding.launchBtn.setOnClickListener {
             launchGame()
         }
 
-        btnRemapper.setOnClickListener {
+        binding.btnRemapper.setOnClickListener {
             startActivity(Intent(this, RemapperActivity::class.java))
         }
 
-        exportLogsBtn.setOnClickListener {
+        binding.exportLogsBtn.setOnClickListener {
             exportLogs()
         }
 
-        btnClearLogs.setOnClickListener {
+        binding.btnClearLogs.setOnClickListener {
             val logsDir = File(filesDir, "WiiCompiled/Logs")
             val currentBytes = getFolderSize(logsDir)
 
@@ -163,7 +80,7 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        btnWipeSaveData.setOnClickListener {
+        binding.btnWipeSaveData.setOnClickListener {
             wipeSaveData()
         }
     }
@@ -299,7 +216,7 @@ class MainActivity : AppCompatActivity() {
     private fun launchGame() {
         saveConfigOptions()
         val intent = Intent(this, GameActivity::class.java).apply {
-            putExtra("SUSTAINED_PERF", switchSustainedPerf.isChecked)
+            putExtra("SUSTAINED_PERF", binding.switchSustainedPerf.isChecked)
         }
         startActivity(intent)
     }
@@ -314,7 +231,7 @@ class MainActivity : AppCompatActivity() {
             "Auto (System Preferred)"
         )
         val backendAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, backendOptions)
-        spinnerGraphicsApi.adapter = backendAdapter
+        binding.spinnerGraphicsApi.adapter = backendAdapter
         val savedBackend = prefs.getString("graphics_api", "vulkan") ?: "vulkan"
         val backendIdx = when (savedBackend) {
             "vulkan" -> 0
@@ -322,7 +239,7 @@ class MainActivity : AppCompatActivity() {
             "auto" -> 2
             else -> 0
         }
-        spinnerGraphicsApi.setSelection(backendIdx)
+        binding.spinnerGraphicsApi.setSelection(backendIdx)
 
         // 2. Resolution
         val resOptions = arrayOf(
@@ -332,45 +249,45 @@ class MainActivity : AppCompatActivity() {
             "3.0x (QHD 1440p/1584p)"
         )
         val resAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, resOptions)
-        spinnerResolution.adapter = resAdapter
+        binding.spinnerResolution.adapter = resAdapter
         val savedResIdx = prefs.getInt("resolution_idx", 0)
-        spinnerResolution.setSelection(savedResIdx.coerceIn(0, resOptions.size - 1))
+        binding.spinnerResolution.setSelection(savedResIdx.coerceIn(0, resOptions.size - 1))
 
         // 2. Graphics toggles
-        switchWidescreen.isChecked = prefs.getBoolean("widescreen", true)
-        switchSkipUnreadyPipelines.isChecked = prefs.getBoolean("skip_unready_pipelines", true)
-        switchDisableCopyFilter.isChecked = prefs.getBoolean("disable_copy_filter", true)
-        switchDisableBloom.isChecked = prefs.getBoolean("disable_bloom", true)
-        switchSustainedPerf.isChecked = prefs.getBoolean("sustained_perf", true)
-        switchAudioMixer.isChecked = prefs.getBoolean("audio_mixer", true)
+        binding.switchWidescreen.isChecked = prefs.getBoolean("widescreen", true)
+        binding.switchSkipUnreadyPipelines.isChecked = prefs.getBoolean("skip_unready_pipelines", true)
+        binding.switchDisableCopyFilter.isChecked = prefs.getBoolean("disable_copy_filter", true)
+        binding.switchDisableBloom.isChecked = prefs.getBoolean("disable_bloom", true)
+        binding.switchSustainedPerf.isChecked = prefs.getBoolean("sustained_perf", true)
+        binding.switchAudioMixer.isChecked = prefs.getBoolean("audio_mixer", true)
 
         // 3. Input controls
-        switchTouchControls.isChecked = prefs.getBoolean("touch_controls", true)
-        switchTiltControls.isChecked = prefs.getBoolean("tilt_controls", true)
+        binding.switchTouchControls.isChecked = prefs.getBoolean("touch_controls", true)
+        binding.switchTiltControls.isChecked = prefs.getBoolean("tilt_controls", true)
 
         // 4. Audio controls
         val masterVol = prefs.getInt("audio_volume", 100)
-        sliderMasterVolume.value = masterVol.toFloat()
-        textMasterVolume.text = "$masterVol%"
-        sliderMasterVolume.addOnChangeListener { _, value, _ ->
-            textMasterVolume.text = "${value.toInt()}%"
+        binding.sliderMasterVolume.value = masterVol.toFloat()
+        binding.textMasterVolume.text = "$masterVol%"
+        binding.sliderMasterVolume.addOnChangeListener { _, value, _ ->
+            binding.textMasterVolume.text = "${value.toInt()}%"
         }
 
         val musicVol = prefs.getInt("audio_music_volume", 100)
-        sliderMusicVolume.value = musicVol.toFloat()
-        textMusicVolume.text = "$musicVol%"
-        sliderMusicVolume.addOnChangeListener { _, value, _ ->
-            textMusicVolume.text = "${value.toInt()}%"
+        binding.sliderMusicVolume.value = musicVol.toFloat()
+        binding.textMusicVolume.text = "$musicVol%"
+        binding.sliderMusicVolume.addOnChangeListener { _, value, _ ->
+            binding.textMusicVolume.text = "${value.toInt()}%"
         }
 
         val sfxVol = prefs.getInt("audio_sfx_volume", 100)
-        sliderSfxVolume.value = sfxVol.toFloat()
-        textSfxVolume.text = "$sfxVol%"
-        sliderSfxVolume.addOnChangeListener { _, value, _ ->
-            textSfxVolume.text = "${value.toInt()}%"
+        binding.sliderSfxVolume.value = sfxVol.toFloat()
+        binding.textSfxVolume.text = "$sfxVol%"
+        binding.sliderSfxVolume.addOnChangeListener { _, value, _ ->
+            binding.textSfxVolume.text = "${value.toInt()}%"
         }
 
-        switchAudioMuted.isChecked = prefs.getBoolean("audio_muted", false)
+        binding.switchAudioMuted.isChecked = prefs.getBoolean("audio_muted", false)
 
         // 5. Features & Network
         val hfrOptions = arrayOf(
@@ -379,29 +296,27 @@ class MainActivity : AppCompatActivity() {
             "180 FPS Interpolation"
         )
         val hfrAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, hfrOptions)
-        spinnerFrameInterpolation.adapter = hfrAdapter
+        binding.spinnerFrameInterpolation.adapter = hfrAdapter
         val savedHfrIdx = prefs.getInt("hfr_idx", 0)
-        spinnerFrameInterpolation.setSelection(savedHfrIdx.coerceIn(0, hfrOptions.size - 1))
+        binding.spinnerFrameInterpolation.setSelection(savedHfrIdx.coerceIn(0, hfrOptions.size - 1))
 
-        switchRumble.isChecked = prefs.getBoolean("rumble", true)
-        switchTextureReplacements.isChecked = prefs.getBoolean("texture_replacements", false)
-        switchShowFps.isChecked = prefs.getBoolean("show_fps", false)
-        switchNetworkEnabled.isChecked = prefs.getBoolean("network_enabled", false)
+        binding.switchRumble.isChecked = prefs.getBoolean("rumble", true)
+        binding.switchTextureReplacements.isChecked = prefs.getBoolean("texture_replacements", false)
+        binding.switchShowFps.isChecked = prefs.getBoolean("show_fps", false)
 
         val autoSaveChecked = android.widget.CompoundButton.OnCheckedChangeListener { _, _ -> saveConfigOptions() }
-        switchWidescreen.setOnCheckedChangeListener(autoSaveChecked)
-        switchSkipUnreadyPipelines.setOnCheckedChangeListener(autoSaveChecked)
-        switchDisableCopyFilter.setOnCheckedChangeListener(autoSaveChecked)
-        switchDisableBloom.setOnCheckedChangeListener(autoSaveChecked)
-        switchSustainedPerf.setOnCheckedChangeListener(autoSaveChecked)
-        switchAudioMixer.setOnCheckedChangeListener(autoSaveChecked)
-        switchTouchControls.setOnCheckedChangeListener(autoSaveChecked)
-        switchTiltControls.setOnCheckedChangeListener(autoSaveChecked)
-        switchAudioMuted.setOnCheckedChangeListener(autoSaveChecked)
-        switchRumble.setOnCheckedChangeListener(autoSaveChecked)
-        switchTextureReplacements.setOnCheckedChangeListener(autoSaveChecked)
-        switchShowFps.setOnCheckedChangeListener(autoSaveChecked)
-        switchNetworkEnabled.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchWidescreen.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchSkipUnreadyPipelines.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchDisableCopyFilter.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchDisableBloom.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchSustainedPerf.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchAudioMixer.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchTouchControls.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchTiltControls.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchAudioMuted.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchRumble.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchTextureReplacements.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchShowFps.setOnCheckedChangeListener(autoSaveChecked)
 
         val autoSaveSelected = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -409,8 +324,8 @@ class MainActivity : AppCompatActivity() {
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
-        spinnerResolution.onItemSelectedListener = autoSaveSelected
-        spinnerFrameInterpolation.onItemSelectedListener = autoSaveSelected
+        binding.spinnerResolution.onItemSelectedListener = autoSaveSelected
+        binding.spinnerFrameInterpolation.onItemSelectedListener = autoSaveSelected
 
         val autoSaveSlider = object : com.google.android.material.slider.Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: com.google.android.material.slider.Slider) {}
@@ -418,37 +333,37 @@ class MainActivity : AppCompatActivity() {
                 saveConfigOptions()
             }
         }
-        sliderMasterVolume.addOnSliderTouchListener(autoSaveSlider)
-        sliderMusicVolume.addOnSliderTouchListener(autoSaveSlider)
-        sliderSfxVolume.addOnSliderTouchListener(autoSaveSlider)
+        binding.sliderMasterVolume.addOnSliderTouchListener(autoSaveSlider)
+        binding.sliderMusicVolume.addOnSliderTouchListener(autoSaveSlider)
+        binding.sliderSfxVolume.addOnSliderTouchListener(autoSaveSlider)
     }
 
     private fun saveConfigOptions() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
 
-        val resIdx = spinnerResolution.selectedItemPosition
-        val widescreen = switchWidescreen.isChecked
-        val skipUnreadyPipelines = switchSkipUnreadyPipelines.isChecked
-        val disableCopyFilter = switchDisableCopyFilter.isChecked
-        val disableBloom = switchDisableBloom.isChecked
-        val sustainedPerf = switchSustainedPerf.isChecked
-        val audioMixer = switchAudioMixer.isChecked
+        val resIdx = binding.spinnerResolution.selectedItemPosition
+        val widescreen = binding.switchWidescreen.isChecked
+        val skipUnreadyPipelines = binding.switchSkipUnreadyPipelines.isChecked
+        val disableCopyFilter = binding.switchDisableCopyFilter.isChecked
+        val disableBloom = binding.switchDisableBloom.isChecked
+        val sustainedPerf = binding.switchSustainedPerf.isChecked
+        val audioMixer = binding.switchAudioMixer.isChecked
 
-        val touchControls = switchTouchControls.isChecked
-        val tiltControls = switchTiltControls.isChecked
+        val touchControls = binding.switchTouchControls.isChecked
+        val tiltControls = binding.switchTiltControls.isChecked
 
-        val masterVol = sliderMasterVolume.value.toInt()
-        val musicVol = sliderMusicVolume.value.toInt()
-        val sfxVol = sliderSfxVolume.value.toInt()
-        val audioMuted = switchAudioMuted.isChecked
+        val masterVol = binding.sliderMasterVolume.value.toInt()
+        val musicVol = binding.sliderMusicVolume.value.toInt()
+        val sfxVol = binding.sliderSfxVolume.value.toInt()
+        val audioMuted = binding.switchAudioMuted.isChecked
 
-        val hfrIdx = spinnerFrameInterpolation.selectedItemPosition
-        val rumble = switchRumble.isChecked
-        val textureReplacements = switchTextureReplacements.isChecked
-        val showFps = switchShowFps.isChecked
-        val networkEnabled = switchNetworkEnabled.isChecked
+        val hfrIdx = binding.spinnerFrameInterpolation.selectedItemPosition
+        val rumble = binding.switchRumble.isChecked
+        val textureReplacements = binding.switchTextureReplacements.isChecked
+        val showFps = binding.switchShowFps.isChecked
+        val networkEnabled = false // Disabled until native Wiimmfi netplay is implemented (see unimplemented_features.md)
 
-        val backendIdx = spinnerGraphicsApi.selectedItemPosition
+        val backendIdx = binding.spinnerGraphicsApi.selectedItemPosition
         val graphicsApi = when (backendIdx) {
             0 -> "vulkan"
             1 -> "opengles"
@@ -540,35 +455,51 @@ class MainActivity : AppCompatActivity() {
         val dvdRoot = customDvdRoot ?: prefs.getString("dvd_root", null)
 
         try {
-            val content = "# WiiCompiled Android configuration (configured via launcher)\n\n" +
-                (if (!dvdRoot.isNullOrEmpty()) "[paths]\ndvd_root = \"$dvdRoot\"\n\n" else "") +
-                "[video]\n" +
-                "widescreen = " + (if (widescreen) "true" else "false") + "\n" +
-                "resolution_multiplier = " + resolutionMultiplier + "\n" +
-                "frame_interpolation_fps = " + frameInterpolationFps + "\n" +
-                "display_mode = \"windowed\"\n" +
-                "graphics_api = \"" + graphicsApi + "\"\n" +
-                "skip_unready_pipelines = " + (if (skipUnreadyPipelines) "true" else "false") + "\n" +
-                "disable_copy_filter = " + (if (disableCopyFilter) "true" else "false") + "\n" +
-                "disabled_post_processing_paths = " + (if (disableBloom) "16" else "0") + "\n" +
-                "show_fps = " + (if (showFps) "true" else "false") + "\n" +
-                "texture_replacements = " + (if (textureReplacements) "true" else "false") + "\n" +
-                "texture_dumps = false\n\n" +
-                "[audio]\n" +
-                "volume = " + String.format(java.util.Locale.US, "%.2f", masterVolume) + "\n" +
-                "music_volume = " + String.format(java.util.Locale.US, "%.2f", musicVolume) + "\n" +
-                "sound_effects_volume = " + String.format(java.util.Locale.US, "%.2f", sfxVolume) + "\n" +
-                "ui_volume = 1.0\n" +
-                "voices_volume = 1.0\n" +
-                "muted = " + (if (audioMuted) "true" else "false") + "\n" +
-                "mix_worker = " + (if (audioMixer) "true" else "false") + "\n\n" +
-                "[controller]\n" +
-                "rumble = " + (if (rumble) "true" else "false") + "\n" +
-                "wii_remotes = false\n\n" +
-                "[network]\n" +
-                "enabled = " + (if (networkEnabled) "true" else "false") + "\n\n" +
-                "[discord]\n" +
-                "enabled = false\n"
+            val pathsSection = if (!dvdRoot.isNullOrEmpty()) {
+                "|[paths]\n|dvd_root = \"$dvdRoot\"\n|\n"
+            } else ""
+
+            val audioVolStr = String.format(java.util.Locale.US, "%.2f", masterVolume)
+            val musicVolStr = String.format(java.util.Locale.US, "%.2f", musicVolume)
+            val sfxVolStr = String.format(java.util.Locale.US, "%.2f", sfxVolume)
+            val postProcessingPaths = if (disableBloom) 16 else 0
+
+            val content = """
+                |# WiiCompiled Android configuration (configured via launcher)
+                |
+                $pathsSection|[video]
+                |widescreen = $widescreen
+                |resolution_multiplier = $resolutionMultiplier
+                |frame_interpolation_fps = $frameInterpolationFps
+                |display_mode = "windowed"
+                |graphics_api = "$graphicsApi"
+                |skip_unready_pipelines = $skipUnreadyPipelines
+                |disable_copy_filter = $disableCopyFilter
+                |disabled_post_processing_paths = $postProcessingPaths
+                |show_fps = $showFps
+                |texture_replacements = $textureReplacements
+                |texture_dumps = false
+                |
+                |[audio]
+                |volume = $audioVolStr
+                |music_volume = $musicVolStr
+                |sound_effects_volume = $sfxVolStr
+                |ui_volume = 1.0
+                |voices_volume = 1.0
+                |muted = $audioMuted
+                |mix_worker = $audioMixer
+                |
+                |[controller]
+                |rumble = $rumble
+                |wii_remotes = false
+                |
+                |[network]
+                |enabled = $networkEnabled
+                |
+                |[discord]
+                |enabled = false
+            """.trimMargin() + "\n"
+
             configFile.writeText(content)
         } catch (e: Exception) {
             android.util.Log.e("WiiCompiled", "Failed to update Config.toml: " + e.message)
@@ -577,12 +508,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun getFolderSize(dir: File): Long {
         if (!dir.exists()) return 0L
-        var size = 0L
-        val files = dir.listFiles() ?: return 0L
-        for (file in files) {
-            size += if (file.isDirectory) getFolderSize(file) else file.length()
-        }
-        return size
+        return dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
     }
 
     private fun formatSize(bytes: Long): String {
@@ -594,10 +520,44 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun pruneOldLogs(keepCount: Int = 3) {
+        val logsDir = File(filesDir, "WiiCompiled/Logs")
+        if (!logsDir.exists() || !logsDir.isDirectory) return
+
+        try {
+            val sessionDirs = logsDir.listFiles { file -> file.isDirectory }
+                ?.sortedByDescending { it.lastModified() }
+                ?: return
+
+            // If more than keepCount session folders exist, remove the oldest ones
+            if (sessionDirs.size > keepCount) {
+                for (oldDir in sessionDirs.drop(keepCount)) {
+                    oldDir.deleteRecursively()
+                    android.util.Log.i("WiiCompiled", "Pruned old log directory: ${oldDir.name}")
+                }
+            }
+
+            // Also clean up any orphan guest memory crash dumps (.bin / .mem2) older than the latest session
+            logsDir.walkTopDown().forEach { file ->
+                if (file.isFile && (file.name.endsWith(".bin") || file.name.endsWith(".mem2"))) {
+                    // Only keep dumps from the latest session if needed
+                    val isInsideLatest = sessionDirs.take(1).any { file.absolutePath.startsWith(it.absolutePath) }
+                    if (!isInsideLatest) {
+                        file.delete()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("WiiCompiled", "Log pruning encountered an error: ${e.message}")
+        }
+    }
+
     private fun updateLogsButtonSize() {
+        if (!::binding.isInitialized) return
+        pruneOldLogs(keepCount = 3)
         val logsDir = File(filesDir, "WiiCompiled/Logs")
         val bytes = getFolderSize(logsDir)
-        btnClearLogs.text = "Clear Crash Logs (${formatSize(bytes)})"
+        binding.btnClearLogs.text = "Clear Crash Logs (${formatSize(bytes)})"
     }
 
     override fun onPause() {
@@ -609,7 +569,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::btnClearLogs.isInitialized) {
+        if (::binding.isInitialized) {
             updateLogsButtonSize()
         }
         if (!isExtracting) {
@@ -653,24 +613,22 @@ class MainActivity : AppCompatActivity() {
         val hasInternalData = internalSys.exists() && internalFiles.isDirectory && (internalFiles.list()?.isNotEmpty() == true)
 
         if (isConfiguredValid || hasSdcardData || hasInternalData) {
-            val activeDir = when {
-                isConfiguredValid -> configuredRoot!!.absolutePath
-                hasSdcardData -> "/sdcard/Download/wiicompiled_data"
-                else -> File(filesDir, "game_data").absolutePath
-            }
-            statusTitle.text = "Ready"
-            statusTitle.setTextColor(0xFF4CAF50.toInt())
-            statusText.text = "Disc Data Verified\n$activeDir"
-            statusIndicator.setBackgroundColor(0xFF4CAF50.toInt())
-            launchBtn.isEnabled = true
-            selectDiscBtn.text = "SELECT DIFFERENT DISC (.WBFS / .ISO)"
+            binding.statusTitle.text = "Ready"
+            binding.statusTitle.setTextColor(0xFF4CAF50.toInt())
+            binding.statusText.text = "Mario Kart Wii (RMCP01) Verified"
+            binding.statusIcon.setImageResource(R.drawable.ic_check_circle)
+            binding.statusBadge.visibility = View.VISIBLE
+            binding.statusBadge.text = "RMCP01"
+            binding.launchBtn.isEnabled = true
+            binding.selectDiscBtn.text = "Select Different Disc (.wbfs / .iso)"
         } else {
-            statusTitle.text = "Disc Image Required"
-            statusTitle.setTextColor(0xFFFF9800.toInt())
-            statusIndicator.setBackgroundColor(0xFFFF9800.toInt())
-            launchBtn.isEnabled = false
-            statusText.text = "No disc data found.\nPlease select a valid Wii disc image (.wbfs / .iso)."
-            selectDiscBtn.text = "SELECT DISC IMAGE (.WBFS / .ISO)"
+            binding.statusTitle.text = "Disc Required"
+            binding.statusTitle.setTextColor(0xFFFF9800.toInt())
+            binding.statusText.text = "Select a valid Wii disc image (.wbfs / .iso)"
+            binding.statusIcon.setImageResource(R.drawable.ic_warning)
+            binding.statusBadge.visibility = View.GONE
+            binding.launchBtn.isEnabled = false
+            binding.selectDiscBtn.text = "Select Disc Image (.wbfs / .iso)"
         }
     }
 
@@ -688,17 +646,19 @@ class MainActivity : AppCompatActivity() {
         isExtracting = true
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        progressBar.isIndeterminate = false
-        progressBar.max = 100
-        progressBar.progress = 0
-        progressBar.visibility = View.VISIBLE
-        selectDiscBtn.isEnabled = false
-        launchBtn.isEnabled = false
+        binding.progressBar.isIndeterminate = false
+        binding.progressBar.max = 100
+        binding.progressBar.progress = 0
+        binding.progressBar.visibility = View.VISIBLE
+        binding.selectDiscBtn.isEnabled = false
+        binding.launchBtn.isEnabled = false
 
-        statusTitle.text = "Installing Game Assets..."
-        statusTitle.setTextColor(0xFF2196F3.toInt())
-        statusIndicator.setBackgroundColor(0xFF2196F3.toInt())
-        statusText.text = "Opening disc image (.wbfs / .iso)..."
+        binding.statusTitle.text = "Installing..."
+        binding.statusTitle.setTextColor(0xFF2196F3.toInt())
+        binding.statusIcon.setImageResource(R.drawable.ic_disc)
+        binding.statusBadge.visibility = View.VISIBLE
+        binding.statusBadge.text = "EXTRACTING"
+        binding.statusText.text = "Opening disc image (.wbfs / .iso)..."
 
         val targetDir = getExtractionTargetDirectory()
 
@@ -712,15 +672,15 @@ class MainActivity : AppCompatActivity() {
                         isCancelled = { isFinishing || isDestroyed }
                     ) { status, percent ->
                         runOnUiThread {
-                            progressBar.progress = percent
-                            statusText.text = "$status ($percent%)"
+                            binding.progressBar.progress = percent
+                            binding.statusText.text = "$status ($percent%)"
                         }
                     }
 
                     runOnUiThread {
                         isExtracting = false
-                        progressBar.visibility = View.GONE
-                        selectDiscBtn.isEnabled = true
+                        binding.progressBar.visibility = View.GONE
+                        binding.selectDiscBtn.isEnabled = true
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
                         if (result.success) {
@@ -758,8 +718,8 @@ class MainActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 runOnUiThread {
                     isExtracting = false
-                    progressBar.visibility = View.GONE
-                    selectDiscBtn.isEnabled = true
+                    binding.progressBar.visibility = View.GONE
+                    binding.selectDiscBtn.isEnabled = true
                     window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     checkPermissionsAndData()
 

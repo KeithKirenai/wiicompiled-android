@@ -1,4 +1,4 @@
-#include "gpu.hpp"
+﻿#include "gpu.hpp"
 
 #include <array>
 #include <algorithm>
@@ -24,6 +24,39 @@
 
 #if defined(WEBGPU_DAWN) && !defined(__MINGW32__)
 #include "../dawn/BackendBinding.hpp"
+#if defined(__ANDROID__)
+#include <android/log.h>
+#include <dlfcn.h>
+#include <cstdarg>
+
+extern "C" __attribute__((visibility("default"))) int __android_log_print(int prio, const char* tag, const char* fmt, ...) {
+    if (tag && std::strcmp(tag, "Dawn") == 0 && fmt && std::strstr(fmt, "VKDBGUTILWARN")) {
+        return 0;
+    }
+    va_list ap;
+    va_start(ap, fmt);
+    static auto* real_vprint = reinterpret_cast<int (*)(int, const char*, const char*, va_list)>(dlsym(RTLD_NEXT, "__android_log_vprint"));
+    int ret = real_vprint ? real_vprint(prio, tag, fmt, ap) : 0;
+    va_end(ap);
+    return ret;
+}
+
+extern "C" __attribute__((visibility("default"))) int __android_log_vprint(int prio, const char* tag, const char* fmt, va_list ap) {
+    if (tag && std::strcmp(tag, "Dawn") == 0 && fmt && std::strstr(fmt, "VKDBGUTILWARN")) {
+        return 0;
+    }
+    static auto* real_vprint = reinterpret_cast<int (*)(int, const char*, const char*, va_list)>(dlsym(RTLD_NEXT, "__android_log_vprint"));
+    return real_vprint ? real_vprint(prio, tag, fmt, ap) : 0;
+}
+
+extern "C" __attribute__((visibility("default"))) int __android_log_write(int prio, const char* tag, const char* text) {
+    if (tag && std::strcmp(tag, "Dawn") == 0 && text && std::strstr(text, "VKDBGUTILWARN")) {
+        return 0;
+    }
+    static auto* real_write = reinterpret_cast<int (*)(int, const char*, const char*)>(dlsym(RTLD_NEXT, "__android_log_write"));
+    return real_write ? real_write(prio, tag, text) : 0;
+}
+#endif
 #include <dawn/native/DawnNative.h>
 #if defined(DAWN_ENABLE_BACKEND_OPENGL) || defined(DAWN_ENABLE_BACKEND_OPENGLES)
 #include <dawn/native/OpenGLBackend.h>

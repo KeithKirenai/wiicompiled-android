@@ -16,7 +16,7 @@
         android:appCategory="game"
         android:isGame="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="WiiCompiled MKW"
+        android:label="WheelDroid"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.WiiCompiled.Material3">
@@ -31,10 +31,11 @@
             </intent-filter>
         </activity>
 
-<activity
+        <activity
             android:name=".GameActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:process=":game"
+            android:launchMode="singleTask"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation">
         </activity>

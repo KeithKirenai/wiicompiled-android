@@ -16,38 +16,54 @@
         android:paddingBottom="36dp">
 
         <!-- Top Header Title matching Material You showcase -->
+        <!-- Top Header Title matching Material You showcase -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="24dp">
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="22dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="WiiCompiled"
-                android:textColor="@color/md_theme_dark_onBackground"
-                android:textSize="32sp"
-                android:fontFamily="sans-serif"
-                android:letterSpacing="-0.02" />
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@mipmap/ic_launcher"
+                android:contentDescription="WheelDroid App Icon"
+                android:layout_marginEnd="14dp" />
 
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:text="WiiCompiled Android Runtime"
-                android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                android:textSize="14sp"
-                android:layout_marginTop="2dp" />
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WheelDroid"
+                    android:textColor="@color/md_theme_dark_onBackground"
+                    android:textSize="28sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="-0.02" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="WiiCompiled MKW Android Port"
+                    android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                    android:textSize="13sp"
+                    android:layout_marginTop="1dp" />
+            </LinearLayout>
         </LinearLayout>
 
-        <!-- Status Card (Material You Pill / Rounded Surface Container) -->
+        <!-- Minimalist Material 3 Status Pill -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
-            app:cardCornerRadius="28dp"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
             app:strokeWidth="1dp"
             app:strokeColor="@color/md_theme_dark_outlineVariant">
@@ -56,7 +72,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp">
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -64,44 +81,55 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <View
-                        android:id="@+id/statusIndicator"
-                        android:layout_width="10dp"
-                        android:layout_height="10dp"
-                        android:background="@drawable/btn_round_ctrl"
-                        android:backgroundTint="@color/status_ready"
+                    <ImageView
+                        android:id="@+id/statusIcon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_check_circle"
+                        android:contentDescription="Status Icon"
                         android:layout_marginEnd="10dp" />
 
-                    <TextView
-                        android:id="@+id/statusTitle"
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Ready"
-                        android:textColor="@color/status_ready"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/statusTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Ready"
+                            android:textColor="@color/status_ready"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/statusText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Mario Kart Wii (RMCP01) Verified"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp"
+                            android:maxLines="1"
+                            android:ellipsize="middle"
+                            android:layout_marginTop="1dp" />
+                    </LinearLayout>
 
                     <TextView
+                        android:id="@+id/statusBadge"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="RMCP01"
                         android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                        android:textSize="12sp"
+                        android:textSize="11sp"
+                        android:fontFamily="sans-serif-medium"
                         android:background="@drawable/btn_round_ctrl"
                         android:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
-                        android:paddingHorizontal="10dp"
-                        android:paddingVertical="4dp" />
+                        android:paddingHorizontal="8dp"
+                        android:paddingVertical="3dp"
+                        android:layout_marginStart="8dp" />
                 </LinearLayout>
-
-                <TextView
-                    android:id="@+id/statusText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Game Data Verified"
-                    android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                    android:textSize="13sp"
-                    android:layout_marginTop="8dp" />
 
                 <!-- Stock Material 3 Linear Progress Indicator -->
                 <com.google.android.material.progressindicator.LinearProgressIndicator
@@ -110,12 +138,54 @@
                     android:layout_height="wrap_content"
                     android:indeterminate="true"
                     android:visibility="gone"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="10dp"
                     app:indicatorColor="@color/md_theme_dark_primary"
                     app:trackColor="@color/md_theme_dark_surfaceContainerHighest"
                     app:trackCornerRadius="4dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Primary Actions: Launch & Select Disc (Prominently Placed at Top) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="20dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/launchBtn"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:text="Launch Game"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:icon="@drawable/ic_play_arrow"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:iconSize="22dp"
+                app:iconTint="@color/md_theme_dark_onPrimary"
+                app:cornerRadius="29dp"
+                android:layout_marginBottom="10dp"
+                android:enabled="false"
+                app:backgroundTint="@color/md_theme_dark_primary"
+                android:textColor="@color/md_theme_dark_onPrimary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/selectDiscBtn"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Select Disc Image (.wbfs / .iso)"
+                android:textSize="14sp"
+                app:icon="@drawable/ic_disc"
+                app:iconGravity="textStart"
+                app:iconPadding="10dp"
+                app:iconSize="20dp"
+                app:iconTint="@color/md_theme_dark_primary"
+                app:cornerRadius="26dp"
+                app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+                android:textColor="@color/md_theme_dark_onSurface" />
+        </LinearLayout>
 
         <!-- Category: Display & Performance -->
         <TextView
@@ -150,31 +220,46 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Graphics Backend"
-                        android:textColor="@color/md_theme_dark_onSurface"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_aspect_ratio"
+                        android:contentDescription="Graphics API Icon"
+                        android:layout_marginEnd="14dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Select Vulkan or OpenGL ES for non-Vulkan devices"
-                        android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="6dp" />
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                    <Spinner
-                        android:id="@+id/spinnerGraphicsApi"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/md_theme_dark_primary" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Graphics Backend"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Select Vulkan or OpenGL ES for non-Vulkan devices"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="1dp" />
+
+                        <Spinner
+                            android:id="@+id/spinnerGraphicsApi"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:backgroundTint="@color/md_theme_dark_primary" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <View
@@ -187,31 +272,46 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Internal Resolution"
-                        android:textColor="@color/md_theme_dark_onSurface"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_speedometer"
+                        android:contentDescription="Resolution Icon"
+                        android:layout_marginEnd="14dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Render scale for 3D geometry"
-                        android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="6dp" />
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                    <Spinner
-                        android:id="@+id/spinnerResolution"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/md_theme_dark_primary" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Internal Resolution"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Render scale for 3D geometry"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="1dp" />
+
+                        <Spinner
+                            android:id="@+id/spinnerResolution"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:backgroundTint="@color/md_theme_dark_primary" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <View
@@ -506,6 +606,13 @@
                     android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_touch_app"
+                        android:contentDescription="Touch Icon"
+                        android:layout_marginEnd="14dp" />
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -548,6 +655,13 @@
                     android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_steering_wheel"
+                        android:contentDescription="Steering Icon"
+                        android:layout_marginEnd="14dp" />
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -575,6 +689,30 @@
                         android:layout_height="wrap_content"
                         android:checked="true" />
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_theme_dark_outlineVariant"
+                    android:layout_marginVertical="6dp" />
+
+                <!-- Controller Remap Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRemapper"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="4dp"
+                    android:text="Gamepad &amp; Button Mapping"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_controller"
+                    app:iconGravity="textStart"
+                    app:iconPadding="10dp"
+                    app:iconSize="20dp"
+                    app:iconTint="@color/md_theme_dark_secondary"
+                    app:cornerRadius="25dp"
+                    app:strokeColor="@color/md_theme_dark_outlineVariant"
+                    android:textColor="@color/md_theme_dark_secondary" />
 
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -620,6 +758,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_volume_up"
+                            android:contentDescription="Volume Icon"
+                            android:layout_marginEnd="10dp" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -828,31 +973,46 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Frame Interpolation (HFR)"
-                        android:textColor="@color/md_theme_dark_onSurface"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_interpolation"
+                        android:contentDescription="HFR Icon"
+                        android:layout_marginEnd="14dp" />
 
-                    <TextView
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Interpolates animation frames to high refresh rate"
-                        android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp"
-                        android:layout_marginBottom="6dp" />
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
-                    <Spinner
-                        android:id="@+id/spinnerFrameInterpolation"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:backgroundTint="@color/md_theme_dark_primary" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Frame Interpolation (HFR)"
+                            android:textColor="@color/md_theme_dark_onSurface"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Enhance animation to high refresh rate"
+                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
+                            android:textSize="12sp"
+                            android:layout_marginTop="1dp" />
+
+                        <Spinner
+                            android:id="@+id/spinnerFrameInterpolation"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:backgroundTint="@color/md_theme_dark_primary" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <View
@@ -868,6 +1028,13 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
                     android:paddingVertical="8dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_controller"
+                        android:contentDescription="Vibration Icon"
+                        android:layout_marginEnd="14dp" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -911,6 +1078,13 @@
                     android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_texture"
+                        android:contentDescription="Textures Icon"
+                        android:layout_marginEnd="14dp" />
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -927,7 +1101,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Loads HD texture packs from UserData"
+                            android:text="Apply HD texture packs"
                             android:textColor="@color/md_theme_dark_onSurfaceVariant"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -953,6 +1127,13 @@
                     android:gravity="center_vertical"
                     android:paddingVertical="8dp">
 
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:src="@drawable/ic_speedometer"
+                        android:contentDescription="FPS Counter Icon"
+                        android:layout_marginEnd="14dp" />
+
                     <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
@@ -969,7 +1150,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Displays frame rate overlay in upper corner"
+                            android:text="Real-time performance overlay"
                             android:textColor="@color/md_theme_dark_onSurfaceVariant"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -981,122 +1162,93 @@
                         android:checked="false" />
                 </LinearLayout>
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="@color/md_theme_dark_outlineVariant"
-                    android:layout_marginVertical="6dp" />
-
-                <!-- Network Multiplayer -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:paddingVertical="8dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Online Network (Wiimmfi)"
-                            android:textColor="@color/md_theme_dark_onSurface"
-                            android:textSize="15sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Enables custom online match server connections"
-                            android:textColor="@color/md_theme_dark_onSurfaceVariant"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/switchNetworkEnabled"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:checked="false" />
-                </LinearLayout>
-
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Actions: Material 3 Buttons (Filled & Tonal & Outlined) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/launchBtn"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="Launch Game"
-            android:textSize="16sp"
+        <!-- Category: Diagnostics & Data Management -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DATA &amp; DIAGNOSTICS"
+            android:textColor="@color/md_theme_dark_primary"
+            android:textSize="12sp"
             android:textStyle="bold"
-            app:cornerRadius="28dp"
-            android:layout_marginBottom="12dp"
-            android:enabled="false"
-            app:backgroundTint="@color/md_theme_dark_primary"
-            android:textColor="@color/md_theme_dark_onPrimary" />
+            android:letterSpacing="0.08"
+            android:layout_marginStart="8dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/selectDiscBtn"
-            style="@style/Widget.Material3.Button.TonalButton"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:text="Select Disc Image (.wbfs / .iso)"
-            android:textSize="14sp"
-            app:cornerRadius="26dp"
-            android:layout_marginBottom="10dp"
-            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
-            android:textColor="@color/md_theme_dark_onSurface" />
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            app:cardBackgroundColor="@color/md_theme_dark_surfaceContainer"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/md_theme_dark_outlineVariant">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnRemapper"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:text="Controller Configuration"
-            android:textSize="14sp"
-            app:cornerRadius="25dp"
-            android:layout_marginBottom="10dp"
-            app:strokeColor="@color/md_theme_dark_outlineVariant"
-            android:textColor="@color/md_theme_dark_secondary" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <!-- Clear Logs Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnClearLogs"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="6dp"
-            android:text="Clear Crash Logs (0 MB)"
-            android:textSize="13sp"
-            app:cornerRadius="24dp"
-            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
-            android:textColor="@color/md_theme_dark_error" />
+                <!-- Clear Logs Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnClearLogs"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Clear Crash Logs (0 MB)"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_delete_sweep"
+                    app:iconGravity="textStart"
+                    app:iconPadding="12dp"
+                    app:iconSize="22dp"
+                    app:iconTint="#E57373"
+                    app:cornerRadius="26dp"
+                    app:strokeColor="#8D6E63"
+                    app:strokeWidth="1.5dp"
+                    android:textColor="#FFA726" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/exportLogsBtn"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="44dp"
-            android:text="Export Diagnostic Logs"
-            android:textSize="13sp"
-            android:textColor="@color/md_theme_dark_onSurfaceVariant" />
+                <!-- Export Logs Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/exportLogsBtn"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginBottom="10dp"
+                    android:text="Export Diagnostic Logs"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_share"
+                    app:iconGravity="textStart"
+                    app:iconPadding="12dp"
+                    app:iconSize="20dp"
+                    app:iconTint="#FFB74D"
+                    android:textColor="#FFB74D" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnWipeSaveData"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginBottom="44dp"
-            android:text="Wipe Save Data (Fresh Run)"
-            android:textSize="14sp"
-            android:textColor="@color/md_theme_dark_secondary"
-            android:strokeColor="@color/md_theme_dark_secondary"
-            app:cornerRadius="26dp" />
+                <!-- Wipe Save Data Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnWipeSaveData"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="Wipe Save Data (Fresh Run)"
+                    android:textSize="14sp"
+                    app:icon="@drawable/ic_power_settings"
+                    app:iconGravity="textStart"
+                    app:iconPadding="12dp"
+                    app:iconSize="22dp"
+                    app:iconTint="#BA68C8"
+                    android:textColor="@color/md_theme_dark_onSurface"
+                    app:strokeColor="@color/md_theme_dark_outline"
+                    app:strokeWidth="1dp"
+                    app:cornerRadius="26dp" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

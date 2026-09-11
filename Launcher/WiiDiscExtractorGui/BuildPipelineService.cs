@@ -243,8 +243,6 @@ public sealed class BuildPipelineService
         {
             var sb = new StringBuilder();
             sb.AppendLine($"sdk.dir={toolchain.SdkPath.Replace("\\", "/")}");
-            if (!string.IsNullOrEmpty(toolchain.NdkPath))
-                sb.AppendLine($"ndk.dir={toolchain.NdkPath.Replace("\\", "/")}");
             File.WriteAllText(localProps, sb.ToString(), Encoding.ASCII);
         }
 

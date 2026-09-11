@@ -215,8 +215,9 @@ std::atomic_bool g_strapInputAccepted = false;
 std::atomic_uint64_t g_startupDismissFrame = UINT64_MAX;
 constexpr uint64_t kStrapTransitionCoverFrames = 60;
 
-constexpr std::array<ResolutionItem, 8> kResolutions = {{
-    {"Auto (window size)", 0.0f}, {"Native (1x)", 1.0f}, {"1.5x", 1.5f}, {"2x", 2.0f},
+constexpr std::array<ResolutionItem, 10> kResolutions = {{
+    {"Auto (window size)", 0.0f}, {"0.5x (Experimental)", 0.5f}, {"0.75x (Experimental)", 0.75f},
+    {"Native (1x)", 1.0f}, {"1.5x", 1.5f}, {"2x", 2.0f},
     {"3x", 3.0f}, {"4x", 4.0f}, {"6x", 6.0f}, {"8x", 8.0f},
 }};
 
@@ -853,7 +854,9 @@ void DrawFpsOverlay() {
                                          ImGuiWindowFlags_NoNav |
                                          ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin("Profiler Overlay", nullptr, kFlags)) {
+#if !defined(__ANDROID__)
         ImGui::SetWindowFontScale(1.35f);
+#endif
         if (presentTiming.sampleCount == 0) {
             ImGui::TextUnformatted("FPS: --  |  Measuring...");
         } else {
@@ -999,7 +1002,9 @@ void DrawShaderCompilationStatus() {
                                         ImGuiWindowFlags_NoNav |
                                         ImGuiWindowFlags_NoSavedSettings;
     if (ImGui::Begin("Pipeline Build Status", nullptr, kFlags)) {
+#if !defined(__ANDROID__)
         ImGui::SetWindowFontScale(1.4f);
+#endif
         const auto* blob = aurora_get_blob_cache_stats();
         const bool replaying = blob && blob->lookups > 0 && blob->hits == blob->lookups;
         ImGui::TextColored(replaying ? ImVec4(0.4f, 1.0f, 0.4f, 1.0f)
@@ -1030,7 +1035,9 @@ void DrawStartupScreen() {
                                         ImGuiWindowFlags_NoSavedSettings |
                                         ImGuiWindowFlags_NoBringToFrontOnFocus;
     if (ImGui::Begin("Wiicompiled Startup", nullptr, kFlags)) {
+#if !defined(__ANDROID__)
         ImGui::SetWindowFontScale(1.25f);
+#endif
         constexpr const char* kTitle = "WiiCompiled";
         const ImVec2 titleSize = ImGui::CalcTextSize(kTitle);
         const float titleX = std::max(0.0f, (viewport->Size.x - titleSize.x) * 0.5f);
@@ -1199,13 +1206,32 @@ void Draw() noexcept {
     // and started the next ImGui frame, so all overlay callers can now safely issue ImGui commands.
     aurora_wait_for_frame_worker();
 #if defined(__ANDROID__)
-    static bool s_styleConfigured = false;
-    if (!s_styleConfigured) {
-        s_styleConfigured = true;
+    // Dynamically scale ImGui so that overlay text, margins, and widgets stay proportional
+    // and inline with 1x scale across any downscaling (0.5x, 0.75x) or native/upscaled mode.
+    // 528.0f is native MKW/Wii vertical resolution.
+    {
         ImGuiIO& io = ImGui::GetIO();
-        io.FontGlobalScale = 1.35f;
-        ImGuiStyle& style = ImGui::GetStyle();
-        style.ScaleAllSizes(1.35f);
+        static ImGuiStyle s_baseStyle = ImGui::GetStyle();
+        static bool s_baseSaved = false;
+        if (!s_baseSaved) {
+            s_baseSaved = true;
+            s_baseStyle = ImGui::GetStyle();
+        }
+
+        const float resRatio = (io.DisplaySize.y > 0.0f) ? (io.DisplaySize.y / 528.0f) : 1.0f;
+        // Base Android touch/readability boost is 1.35f at 1.0x native.
+        // Scale proportionally with render resolution so 0.5x res has 0.5x font size in pixels,
+        // which renders to the exact same physical size when stretched to the phone screen!
+        const float targetScale = std::clamp(1.35f * resRatio, 0.5f, 2.5f);
+        io.FontGlobalScale = targetScale;
+
+        static float s_lastAppliedStyleScale = 1.0f;
+        if (std::fabs(s_lastAppliedStyleScale - targetScale) > 0.01f) {
+            s_lastAppliedStyleScale = targetScale;
+            ImGuiStyle& style = ImGui::GetStyle();
+            style = s_baseStyle;
+            style.ScaleAllSizes(targetScale);
+        }
     }
 #endif
     // Also drive the Wii Remote rescan from here: PADRead runs it too, but this

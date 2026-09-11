@@ -42,10 +42,6 @@ class MainActivity : AppCompatActivity() {
             launchGame()
         }
 
-        binding.btnFpsSettings.setOnClickListener {
-            showFpsAdvancedSettingsDialog()
-        }
-
         binding.btnRemapper.setOnClickListener {
             startActivity(Intent(this, RemapperActivity::class.java))
         }
@@ -89,7 +85,6 @@ class MainActivity : AppCompatActivity() {
         setupSection(binding.headerGraphics, binding.cardGraphics, binding.arrowGraphics, "section_graphics_expanded", defaultExpanded = true)
         setupSection(binding.headerInput, binding.cardInput, binding.arrowInput, "section_input_expanded", defaultExpanded = true)
         setupSection(binding.headerAudio, binding.cardAudio, binding.arrowAudio, "section_audio_expanded", defaultExpanded = false)
-        setupSection(binding.headerFeatures, binding.cardFeatures, binding.arrowFeatures, "section_features_expanded", defaultExpanded = false)
         setupSection(binding.headerDiagnostics, binding.cardDiagnostics, binding.arrowDiagnostics, "section_diagnostics_expanded", defaultExpanded = false)
     }
 
@@ -299,6 +294,8 @@ class MainActivity : AppCompatActivity() {
 
         // 1. Resolution
         val resOptions = arrayOf(
+            "0.5x (Downscale 240p/264p) [Experimental]",
+            "0.75x (Downscale 360p/396p) [Experimental]",
             "1.0x (Native 480p/528p)",
             "1.5x (HD 720p/792p)",
             "2.0x (FHD 960p/1056p)",
@@ -306,7 +303,7 @@ class MainActivity : AppCompatActivity() {
         )
         val resAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, resOptions)
         binding.spinnerResolution.adapter = resAdapter
-        val savedResIdx = prefs.getInt("resolution_idx", 0)
+        val savedResIdx = prefs.getInt("resolution_idx", 2)
         binding.spinnerResolution.setSelection(savedResIdx.coerceIn(0, resOptions.size - 1))
 
         // 2. Graphics toggles
@@ -346,9 +343,6 @@ class MainActivity : AppCompatActivity() {
 
         binding.switchAudioMuted.isChecked = prefs.getBoolean("audio_muted", false)
 
-        binding.switchRumble.isChecked = prefs.getBoolean("rumble", true)
-        binding.switchShowFps.isChecked = prefs.getBoolean("show_fps", false)
-
         val autoSaveChecked = android.widget.CompoundButton.OnCheckedChangeListener { _, _ -> saveConfigOptions() }
         binding.switchWidescreen.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchExtendToNotch.setOnCheckedChangeListener(autoSaveChecked)
@@ -360,8 +354,6 @@ class MainActivity : AppCompatActivity() {
         binding.switchTouchControls.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchTiltControls.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchAudioMuted.setOnCheckedChangeListener(autoSaveChecked)
-        binding.switchRumble.setOnCheckedChangeListener(autoSaveChecked)
-        binding.switchShowFps.setOnCheckedChangeListener(autoSaveChecked)
 
         val autoSaveSelected = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -402,8 +394,6 @@ class MainActivity : AppCompatActivity() {
         val sfxVol = binding.sliderSfxVolume.value.toInt()
         val audioMuted = binding.switchAudioMuted.isChecked
 
-        val rumble = binding.switchRumble.isChecked
-        val showFps = binding.switchShowFps.isChecked
         val networkEnabled = false // Disabled until native Wiimmfi netplay is implemented (see unimplemented_features.md)
 
         prefs.edit()
@@ -422,20 +412,22 @@ class MainActivity : AppCompatActivity() {
             .putInt("audio_music_volume", musicVol)
             .putInt("audio_sfx_volume", sfxVol)
             .putBoolean("audio_muted", audioMuted)
-            .putBoolean("rumble", rumble)
-            .putBoolean("show_fps", showFps)
             .putBoolean("network_enabled", networkEnabled)
             .apply()
 
         val multiplier = when (resIdx) {
-            0 -> "1.0"
-            1 -> "1.5"
-            2 -> "2.0"
-            3 -> "3.0"
+            0 -> "0.5"
+            1 -> "0.75"
+            2 -> "1.0"
+            3 -> "1.5"
+            4 -> "2.0"
+            5 -> "3.0"
             else -> "1.0"
         }
 
         val frameInterpolationFps = 0
+        val rumble = prefs.getBoolean("rumble", true)
+        val showFps = prefs.getBoolean("show_fps", false)
 
         updateConfigFile(
             graphicsApi = "vulkan",
@@ -588,9 +580,7 @@ class MainActivity : AppCompatActivity() {
     private fun updateLogsButtonSize() {
         if (!::binding.isInitialized) return
         pruneOldLogs(keepCount = 3)
-        val logsDir = File(filesDir, "WiiCompiled/Logs")
-        val bytes = getFolderSize(logsDir)
-        binding.btnClearLogs.text = "Clear Crash Logs (${formatSize(bytes)})"
+        binding.btnClearLogs.text = "Clear Logs"
     }
 
     override fun onPause() {

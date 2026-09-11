@@ -163,7 +163,7 @@ inline std::string RemoveComment(std::string_view line) {
 }
 
 inline bool IsSupportedResolutionMultiplier(float value) {
-    static constexpr std::array values{0.0f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f, 8.0f};
+    static constexpr std::array values{0.0f, 0.5f, 0.75f, 1.0f, 1.5f, 2.0f, 3.0f, 4.0f, 6.0f, 8.0f};
     return std::find(values.begin(), values.end(), value) != values.end();
 }
 

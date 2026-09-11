@@ -1,4 +1,4 @@
-﻿#include "gpu.hpp"
+#include "gpu.hpp"
 
 #include <array>
 #include <algorithm>
@@ -752,7 +752,9 @@ bool initialize(AuroraBackend auroraBackend) {
       // this toggle. Used purely for diagnostics: Vulkan timestamp queries around each render pass.
       "allow_unsafe_apis",
       "disable_symbol_renaming",
+#if !defined(ANDROID) && !defined(NDEBUG)
       "enable_immediate_error_handling",
+#endif
         /* clang-format on */
     };
 #if defined(NDEBUG) || defined(ANDROID)

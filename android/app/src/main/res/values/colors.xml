@@ -39,6 +39,31 @@
     <color name="status_working">#42A5F5</color>
     <color name="status_working_container">#0D2B45</color>
 
+    <!-- Slider Accents & Representative Icons -->
+    <color name="slider_master_accent">#4FC3F7</color>
+    <color name="slider_music_accent">#BA68C8</color>
+    <color name="slider_sfx_accent">#FFB74D</color>
+
+    <!-- Switch & Button Accents -->
+    <color name="switch_cyan_thumb">#4DD0E1</color>
+    <color name="switch_cyan_track">#004D40</color>
+    <color name="switch_green_thumb">#81C784</color>
+    <color name="switch_green_track">#1B5E20</color>
+    <color name="switch_yellow_thumb">#FFD54F</color>
+    <color name="switch_yellow_track">#FF6F00</color>
+    <color name="switch_blue_thumb">#4FC3F7</color>
+    <color name="switch_blue_track">#01579B</color>
+    <color name="switch_rose_thumb">#FF8A80</color>
+    <color name="switch_rose_track">#B71C1C</color>
+    <color name="switch_orange_thumb">#FF7043</color>
+    <color name="switch_orange_track">#BF360C</color>
+    <color name="switch_teal_thumb">#26A69A</color>
+    <color name="switch_teal_track">#004D40</color>
+    <color name="switch_purple_thumb">#AB47BC</color>
+    <color name="switch_purple_track">#4A148C</color>
+    <color name="switch_red_thumb">#EF5350</color>
+    <color name="switch_red_track">#B71C1C</color>
+
     <!-- General Utility -->
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>

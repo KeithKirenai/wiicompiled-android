@@ -31,9 +31,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/assets/ui_app_launcher.png" alt="Android App Launcher Settings" width="280" />
+  <img src="docs/assets/ui_app_launcher.png" alt="Android App Launcher Settings" width="550" />
   <br>
-  <em>Android App Launcher & Settings UI</em>
+  <em>Android App Launcher &amp; Settings UI</em>
 </p>
 
 ---

@@ -397,18 +397,32 @@ void HleFifoWrite(u32 val, uint32_t sizeBytes) {
 
     auto consumeBytes = [&](uint32_t count, u32& out) -> bool {
         if (count == 0 || g_hleGxState.fifoByteCount < count) return false;
-        u32 value = 0;
-        const uint32_t foldCount = (count > 4) ? 4 : count;
         uint8_t* data = fifoData();
-        for (uint32_t i = 0; i < foldCount; ++i) {
-            value = (value << 8) | data[i];
+        switch (count) {
+        case 1:
+            out = data[0];
+            break;
+        case 2:
+            out = BigEndian::Read16(data);
+            break;
+        case 4:
+            out = BigEndian::Read32(data);
+            break;
+        default: {
+            u32 value = 0;
+            const uint32_t foldCount = (count > 4) ? 4 : count;
+            for (uint32_t i = 0; i < foldCount; ++i) {
+                value = (value << 8) | data[i];
+            }
+            out = value;
+            break;
+        }
         }
         g_hleGxState.fifoReadOffset += count;
         g_hleGxState.fifoByteCount -= count;
         if (g_hleGxState.fifoByteCount == 0) {
             g_hleGxState.fifoReadOffset = 0;
         }
-        out = value;
         return true;
     };
 
@@ -575,9 +589,8 @@ void HleFifoWrite(u32 val, uint32_t sizeBytes) {
 
                 uint8_t colorBytes[4] = {0, 0, 0, 0};
                 uint8_t* data = fifoData();
-                for (uint32_t i = 0; i < colorSize && i < 4; ++i) {
-                    colorBytes[i] = data[i];
-                }
+                const uint32_t copyBytes = (colorSize < 4u) ? colorSize : 4u;
+                std::memcpy(colorBytes, data, copyBytes);
                 g_hleGxState.fifoReadOffset += colorSize;
                 g_hleGxState.fifoByteCount -= colorSize;
                 if (g_hleGxState.fifoByteCount == 0) {

@@ -128,12 +128,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
         // Fullscreen immersive mode & Display Cutout / Notch extension
         applyCutoutMode(extendToNotchEnabled)
-
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)?.let { controller ->
-            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        }
+        hideSystemBars()
 
         // Keep the screen on while racing; manual power-button locks still
         // exercise the pause path.
@@ -154,14 +149,17 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         // Universal hardware scaling for mobile GPUs:
         // Configures the SurfaceView buffer resolution so lower-end GPUs don't choke on 1080p/1440p panels,
         // letting the device's hardware display processor (DPU) scale the surface with zero GPU overhead.
-        val resIdx = prefs.getInt("resolution_idx", 0)
+        val resIdx = prefs.getInt("resolution_idx", 2)
         touchControlsEnabled = prefs.getBoolean("touch_controls", true)
         tiltControlsEnabled = prefs.getBoolean("tilt_controls", true)
 
         activeResMultiplier = when (resIdx) {
-            1 -> 1.5f
-            2 -> 2.0f
-            3 -> 3.0f
+            0 -> 0.5f
+            1 -> 0.75f
+            2 -> 1.0f
+            3 -> 1.5f
+            4 -> 2.0f
+            5 -> 3.0f
             else -> 1.0f
         }
 
@@ -177,25 +175,37 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         val aspect = if (screenH > 0) screenW.toFloat() / screenH.toFloat() else (16f / 9f)
 
         when (resIdx) {
-            0 -> { // Native (480p/528p)
+            0 -> { // Downscale 0.5x (240p/264p)
+                val targetH = 264
+                val targetW = (targetH * aspect).toInt()
+                surfaceView.holder.setFixedSize(targetW, targetH)
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (Downscale 264p, 0.5x)")
+            }
+            1 -> { // Downscale 0.75x (360p/396p)
+                val targetH = 396
+                val targetW = (targetH * aspect).toInt()
+                surfaceView.holder.setFixedSize(targetW, targetH)
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (Downscale 396p, 0.75x)")
+            }
+            2 -> { // Native (480p/528p)
                 val targetH = 528
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
-                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (Native 528p)")
+                android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (Native 528p, 1.0x)")
             }
-            1 -> { // HD (720p/792p)
+            3 -> { // HD (720p/792p)
                 val targetH = 792
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
                 android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (HD 792p, 1.5x)")
             }
-            2 -> { // FHD (960p/1056p)
+            4 -> { // FHD (960p/1056p)
                 val targetH = 1056
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
                 android.util.Log.i("WiiCompiled", "Hardware scaler configured: ${targetW}x${targetH} (FHD 1056p, 2.0x)")
             }
-            3 -> { // QHD (1440p/1584p)
+            5 -> { // QHD (1440p/1584p)
                 val targetH = 1584
                 val targetW = (targetH * aspect).toInt()
                 surfaceView.holder.setFixedSize(targetW, targetH)
@@ -387,6 +397,7 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
 
     override fun onResume() {
         super.onResume()
+        hideSystemBars()
         if (!isFinishing) {
             nativeOnAppResume()
         }
@@ -394,6 +405,30 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         accelerometer?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            hideSystemBars()
+        }
+    }
+
+    private fun hideSystemBars() {
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)?.let { controller ->
+            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        }
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            or View.SYSTEM_UI_FLAG_FULLSCREEN
+        )
     }
 
     override fun onPause() {

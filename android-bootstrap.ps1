@@ -275,9 +275,6 @@ function Has-DotNet8 {
 function Write-LocalProperties {
     $content = @()
     $content += "sdk.dir=$($script:SdkRootDetected -replace '\\', '/')"
-    if ($script:NdkDetected) {
-        $content += "ndk.dir=$($script:NdkDetected -replace '\\', '/')"
-    }
     # cmake.dir is only meaningful for a real CMake install; the SDK-managed
     # cmake (pinned via `version = "4.1.2"` in build.gradle.kts) is resolved by
     # Gradle itself, so PATH shims are intentionally omitted.

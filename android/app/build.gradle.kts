@@ -42,10 +42,10 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags("-std=c++20", "-fexceptions", "-frtti", "-O3", "-DNDEBUG")
+                cppFlags("-std=c++20", "-fexceptions", "-frtti", "-O3", "-DNDEBUG", "-ffunction-sections", "-fdata-sections")
                 arguments(
                     *(
-                        listOf("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release") + ccacheArgs
+                        listOf("-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,--gc-sections") + ccacheArgs
                     ).toTypedArray()
                 )
             }

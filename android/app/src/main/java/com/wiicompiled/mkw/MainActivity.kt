@@ -264,24 +264,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupConfigOptions() {
         val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
 
-        // 1. Graphics Backend
-        val backendOptions = arrayOf(
-            "Vulkan (Recommended)",
-            "OpenGL ES (Compatibility)",
-            "Auto (System Preferred)"
-        )
-        val backendAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, backendOptions)
-        binding.spinnerGraphicsApi.adapter = backendAdapter
-        val savedBackend = prefs.getString("graphics_api", "vulkan") ?: "vulkan"
-        val backendIdx = when (savedBackend) {
-            "vulkan" -> 0
-            "opengles", "opengl" -> 1
-            "auto" -> 2
-            else -> 0
-        }
-        binding.spinnerGraphicsApi.setSelection(backendIdx)
-
-        // 2. Resolution
+        // 1. Resolution
         val resOptions = arrayOf(
             "1.0x (Native 480p/528p)",
             "1.5x (HD 720p/792p)",
@@ -406,16 +389,8 @@ class MainActivity : AppCompatActivity() {
         val showFps = binding.switchShowFps.isChecked
         val networkEnabled = false // Disabled until native Wiimmfi netplay is implemented (see unimplemented_features.md)
 
-        val backendIdx = binding.spinnerGraphicsApi.selectedItemPosition
-        val graphicsApi = when (backendIdx) {
-            0 -> "vulkan"
-            1 -> "opengles"
-            2 -> "auto"
-            else -> "vulkan"
-        }
-
         prefs.edit()
-            .putString("graphics_api", graphicsApi)
+            .putString("graphics_api", "vulkan")
             .putInt("resolution_idx", resIdx)
             .putBoolean("widescreen", widescreen)
             .putBoolean("extend_to_notch", extendToNotch)
@@ -452,7 +427,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         updateConfigFile(
-            graphicsApi = graphicsApi,
+            graphicsApi = "vulkan",
             resolutionMultiplier = multiplier,
             widescreen = widescreen,
             skipUnreadyPipelines = skipUnreadyPipelines,

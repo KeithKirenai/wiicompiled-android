@@ -38,10 +38,6 @@ class MainActivity : AppCompatActivity() {
             installLauncher.launch(Intent(this, InstallActivity::class.java))
         }
 
-        binding.selectDiscBtn.setOnClickListener {
-            installLauncher.launch(Intent(this, InstallActivity::class.java))
-        }
-
         binding.launchBtn.setOnClickListener {
             launchGame()
         }
@@ -84,6 +80,45 @@ class MainActivity : AppCompatActivity() {
 
         binding.btnWipeSaveData.setOnClickListener {
             wipeSaveData()
+        }
+
+        setupCollapsibleSections()
+    }
+
+    private fun setupCollapsibleSections() {
+        setupSection(binding.headerGraphics, binding.cardGraphics, binding.arrowGraphics, "section_graphics_expanded", defaultExpanded = true)
+        setupSection(binding.headerInput, binding.cardInput, binding.arrowInput, "section_input_expanded", defaultExpanded = true)
+        setupSection(binding.headerAudio, binding.cardAudio, binding.arrowAudio, "section_audio_expanded", defaultExpanded = false)
+        setupSection(binding.headerFeatures, binding.cardFeatures, binding.arrowFeatures, "section_features_expanded", defaultExpanded = false)
+        setupSection(binding.headerDiagnostics, binding.cardDiagnostics, binding.arrowDiagnostics, "section_diagnostics_expanded", defaultExpanded = false)
+    }
+
+    private fun setupSection(
+        header: View,
+        card: View,
+        arrow: android.widget.ImageView,
+        prefKey: String,
+        defaultExpanded: Boolean
+    ) {
+        val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
+        var isExpanded = prefs.getBoolean(prefKey, defaultExpanded)
+
+        fun updateVisuals(animate: Boolean) {
+            card.visibility = if (isExpanded) View.VISIBLE else View.GONE
+            val targetRotation = if (isExpanded) 0f else -90f
+            if (animate) {
+                arrow.animate().rotation(targetRotation).setDuration(200).start()
+            } else {
+                arrow.rotation = targetRotation
+            }
+        }
+
+        updateVisuals(animate = false)
+
+        header.setOnClickListener {
+            isExpanded = !isExpanded
+            prefs.edit().putBoolean(prefKey, isExpanded).apply()
+            updateVisuals(animate = true)
         }
     }
 
@@ -312,7 +347,6 @@ class MainActivity : AppCompatActivity() {
         binding.switchAudioMuted.isChecked = prefs.getBoolean("audio_muted", false)
 
         binding.switchRumble.isChecked = prefs.getBoolean("rumble", true)
-        binding.switchTextureReplacements.isChecked = prefs.getBoolean("texture_replacements", false)
         binding.switchShowFps.isChecked = prefs.getBoolean("show_fps", false)
 
         val autoSaveChecked = android.widget.CompoundButton.OnCheckedChangeListener { _, _ -> saveConfigOptions() }
@@ -327,7 +361,6 @@ class MainActivity : AppCompatActivity() {
         binding.switchTiltControls.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchAudioMuted.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchRumble.setOnCheckedChangeListener(autoSaveChecked)
-        binding.switchTextureReplacements.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchShowFps.setOnCheckedChangeListener(autoSaveChecked)
 
         val autoSaveSelected = object : android.widget.AdapterView.OnItemSelectedListener {
@@ -370,7 +403,6 @@ class MainActivity : AppCompatActivity() {
         val audioMuted = binding.switchAudioMuted.isChecked
 
         val rumble = binding.switchRumble.isChecked
-        val textureReplacements = binding.switchTextureReplacements.isChecked
         val showFps = binding.switchShowFps.isChecked
         val networkEnabled = false // Disabled until native Wiimmfi netplay is implemented (see unimplemented_features.md)
 
@@ -391,7 +423,6 @@ class MainActivity : AppCompatActivity() {
             .putInt("audio_sfx_volume", sfxVol)
             .putBoolean("audio_muted", audioMuted)
             .putBoolean("rumble", rumble)
-            .putBoolean("texture_replacements", textureReplacements)
             .putBoolean("show_fps", showFps)
             .putBoolean("network_enabled", networkEnabled)
             .apply()
@@ -420,7 +451,6 @@ class MainActivity : AppCompatActivity() {
             audioMuted = audioMuted,
             frameInterpolationFps = frameInterpolationFps,
             rumble = rumble,
-            textureReplacements = textureReplacements,
             showFps = showFps,
             networkEnabled = networkEnabled
         )
@@ -440,7 +470,7 @@ class MainActivity : AppCompatActivity() {
         audioMuted: Boolean,
         frameInterpolationFps: Int,
         rumble: Boolean,
-        textureReplacements: Boolean,
+        textureReplacements: Boolean = false,
         showFps: Boolean,
         networkEnabled: Boolean,
         customDvdRoot: String? = null
@@ -624,7 +654,6 @@ class MainActivity : AppCompatActivity() {
             binding.headerStatusText.text = "Ready"
             binding.headerStatusText.setTextColor(getColor(R.color.status_ready))
             binding.launchBtn.isEnabled = true
-            binding.selectDiscBtn.text = "Change Disc (.wbfs / .iso)"
         } else {
             binding.headerStatusBadge.backgroundTintList = android.content.res.ColorStateList.valueOf(0xFF381E1E.toInt())
             binding.headerStatusIcon.setImageResource(R.drawable.ic_error)
@@ -632,7 +661,6 @@ class MainActivity : AppCompatActivity() {
             binding.headerStatusText.text = "No Data"
             binding.headerStatusText.setTextColor(0xFFEF5350.toInt())
             binding.launchBtn.isEnabled = false
-            binding.selectDiscBtn.text = "Install Disc (.wbfs / .iso)"
         }
     }
 }

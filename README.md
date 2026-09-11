@@ -145,8 +145,8 @@ Either way, make `adb` reachable (add `%ANDROID_HOME%\platform-tools` to your `P
 ### Step 2 — Clone the repository
 
 ```bat
-git clone https://github.com/KeithKirenai/wiicompiled-android.git
-cd wiicompiled-android
+git clone https://github.com/KeithKirenai/wheeldroid.git
+cd wheeldroid
 ```
 
 ### Step 3 — Build & Install the APK

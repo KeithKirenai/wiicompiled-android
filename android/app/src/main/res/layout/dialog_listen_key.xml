@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal"
+    android:background="@color/md_theme_dark_surfaceContainer">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        app:cardCornerRadius="32dp"
+        app:cardElevation="0dp"
+        app:cardBackgroundColor="@color/md_theme_dark_primaryContainer"
+        app:strokeWidth="0dp"
+        android:layout_marginBottom="16dp">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_controller"
+            app:tint="@color/md_theme_dark_onPrimaryContainer"
+            android:contentDescription="Listening for input" />
+    </com.google.android.material.card.MaterialCardView>
+
+    <TextView
+        android:id="@+id/tvDialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Assign Button"
+        android:textColor="@color/md_theme_dark_onSurface"
+        android:textSize="20sp"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvDialogActionName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Accelerate / Confirm"
+        android:textColor="@color/md_theme_dark_primary"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:layout_marginTop="4dp"
+        android:gravity="center" />
+
+    <TextView
+        android:id="@+id/tvDialogPrompt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Press any button on your gamepad now...&#10;(Triggers, Face Buttons, Bumpers, or D-Pad)"
+        android:textColor="@color/md_theme_dark_onSurfaceVariant"
+        android:textSize="13sp"
+        android:gravity="center"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="24dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDialogUnassign"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Unbind"
+            android:textColor="@color/md_theme_dark_error"
+            app:strokeColor="@color/md_theme_dark_outlineVariant"
+            app:cornerRadius="24dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDialogCancel"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="0dp"
+            android:layout_height="48dp"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Cancel"
+            android:textColor="@color/md_theme_dark_onSurface"
+            app:backgroundTint="@color/md_theme_dark_surfaceContainerHigh"
+            app:cornerRadius="24dp" />
+    </LinearLayout>
+
+</LinearLayout>

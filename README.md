@@ -1,12 +1,12 @@
-# WiiCompiled — Android Port
+# WheelDroid — WiiCompiled Mario Kart Wii Android Port
 
-This repository is an **Android port of [WiiCompiled](https://github.com/patchzyy/Wiicompiled)**,
-the native static-recompilation project that plays **Mario Kart Wii** with no emulator,
+**WheelDroid** is the native Android port of **[WiiCompiled](https://github.com/patchzyy/Wiicompiled)**,
+the static-recompilation project that runs **Mario Kart Wii** natively on ARM64 with no emulator,
 interpreter, or JIT in the loop. The port is **AI-assisted**, and both the engine and the
-mobile control layer come from two upstream projects; see [Credits & Licenses](#credits--licenses).
+mobile control layer come from upstream projects; see [Credits & Licenses](#credits--licenses).
 
 > [!NOTE]
-> This is a work-in-progress Android port, not the upstream desktop project. It **boots and renders**
+> WheelDroid is a work-in-progress Android port, not the upstream desktop project. It **boots and renders**
 > on an Android device, but it is still **experimental and slow** — performance work is ongoing.
 
 > [!IMPORTANT]

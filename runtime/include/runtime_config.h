@@ -47,8 +47,6 @@ struct RuntimeUserConfig {
     std::optional<bool> textureDumps;
     std::optional<bool> showFps;
     std::optional<bool> showFpsDetailed;
-    std::optional<bool> showFpsCpu;
-    std::optional<bool> showFpsGpu;
     std::optional<bool> showFpsPasses;
     std::optional<bool> showFpsDraws;
     std::optional<bool> showFpsBandwidth;
@@ -472,8 +470,6 @@ inline RuntimeUserConfig ParseConfigDocument(const toml::value& document) {
     config.disableCopyFilter = FindConfigValue<bool>(document, "video", "disable_copy_filter");
     config.showFps = FindConfigValue<bool>(document, "video", "show_fps");
     config.showFpsDetailed = FindConfigValue<bool>(document, "video", "show_fps_detailed");
-    config.showFpsCpu = FindConfigValue<bool>(document, "video", "show_fps_cpu");
-    config.showFpsGpu = FindConfigValue<bool>(document, "video", "show_fps_gpu");
     config.showFpsPasses = FindConfigValue<bool>(document, "video", "show_fps_passes");
     config.showFpsDraws = FindConfigValue<bool>(document, "video", "show_fps_draws");
     config.showFpsBandwidth = FindConfigValue<bool>(document, "video", "show_fps_bandwidth");
@@ -931,16 +927,8 @@ inline bool ShowFps(bool fallback = true) {
     return Get().showFps.value_or(fallback);
 }
 
-inline bool ShowFpsDetailed(bool fallback = true) {
+inline bool ShowFpsDetailed(bool fallback = false) {
     return Get().showFpsDetailed.value_or(fallback);
-}
-
-inline bool ShowFpsCpu(bool fallback = true) {
-    return Get().showFpsCpu.value_or(fallback);
-}
-
-inline bool ShowFpsGpu(bool fallback = true) {
-    return Get().showFpsGpu.value_or(fallback);
 }
 
 inline bool ShowFpsPasses(bool fallback = false) {

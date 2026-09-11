@@ -104,8 +104,6 @@ int g_displayMode = [] {
 bool g_skipUnreadyPipelines = RuntimeConfigFile::SkipUnreadyPipelines(true);
 bool g_disableCopyFilter = RuntimeConfigFile::DisableCopyFilter(true);
 bool g_showFps = RuntimeConfigFile::ShowFps(true);
-bool g_showFpsCpu = RuntimeConfigFile::ShowFpsCpu(true);
-bool g_showFpsGpu = RuntimeConfigFile::ShowFpsGpu(true);
 bool g_showFpsPasses = RuntimeConfigFile::ShowFpsPasses(false);
 bool g_showFpsDraws = RuntimeConfigFile::ShowFpsDraws(false);
 bool g_showFpsBandwidth = RuntimeConfigFile::ShowFpsBandwidth(false);
@@ -864,23 +862,6 @@ void DrawFpsOverlay() {
             ImGui::SameLine();
             ImGui::Text("(%.1fms)", presentTiming.averageFrameTimeMs);
 
-            // CPU frame time
-            if (g_showFpsCpu) {
-                ImGui::SameLine();
-                ImGui::TextDisabled("|");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "CPU: %.1fms", s_cpuTimeMs);
-            }
-
-            // GPU frame time
-            const float gpuMs = static_cast<float>(presentTiming.averageFrameTimeMs);
-            if (g_showFpsGpu) {
-                ImGui::SameLine();
-                ImGui::TextDisabled("|");
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "GPU: %.1fms", gpuMs);
-            }
-
             // Per-pass encoder breakdown (CPU command-encode ms, native frame only)
             if (g_showFpsPasses) {
                 AuroraGpuPassTimings gpuPassTimings;
@@ -960,11 +941,9 @@ void DrawFpsOverlay() {
             if (++s_logPerfCounter >= 60) {
                 s_logPerfCounter = 0;
                 __android_log_print(ANDROID_LOG_INFO, "MKW-PERF",
-                    "FPS: %.1f (%.1fms) | CPU: %.1fms | GPU: %.1fms | Draws: %u (+%u merged) | Geom: %.0fKB | Builds: %u",
+                    "FPS: %.1f (%.1fms) | Draws: %u (+%u merged) | Geom: %.0fKB | Builds: %u",
                     presentTiming.framesPerSecond,
                     presentTiming.averageFrameTimeMs,
-                    s_cpuTimeMs,
-                    gpuMs,
                     stats ? stats->drawCallCount : 0,
                     stats ? stats->mergedDrawCallCount : 0,
                     stats ? static_cast<float>(stats->lastVertSize + stats->lastIndexSize) / 1024.0f : 0.0f,

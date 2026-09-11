@@ -217,6 +217,7 @@ class MainActivity : AppCompatActivity() {
         saveConfigOptions()
         val intent = Intent(this, GameActivity::class.java).apply {
             putExtra("SUSTAINED_PERF", binding.switchSustainedPerf.isChecked)
+            putExtra("EXTEND_TO_NOTCH", binding.switchExtendToNotch.isChecked)
         }
         startActivity(intent)
     }
@@ -255,6 +256,7 @@ class MainActivity : AppCompatActivity() {
 
         // 2. Graphics toggles
         binding.switchWidescreen.isChecked = prefs.getBoolean("widescreen", true)
+        binding.switchExtendToNotch.isChecked = prefs.getBoolean("extend_to_notch", true)
         binding.switchSkipUnreadyPipelines.isChecked = prefs.getBoolean("skip_unready_pipelines", true)
         binding.switchDisableCopyFilter.isChecked = prefs.getBoolean("disable_copy_filter", true)
         binding.switchDisableBloom.isChecked = prefs.getBoolean("disable_bloom", true)
@@ -306,6 +308,7 @@ class MainActivity : AppCompatActivity() {
 
         val autoSaveChecked = android.widget.CompoundButton.OnCheckedChangeListener { _, _ -> saveConfigOptions() }
         binding.switchWidescreen.setOnCheckedChangeListener(autoSaveChecked)
+        binding.switchExtendToNotch.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchSkipUnreadyPipelines.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchDisableCopyFilter.setOnCheckedChangeListener(autoSaveChecked)
         binding.switchDisableBloom.setOnCheckedChangeListener(autoSaveChecked)
@@ -343,6 +346,7 @@ class MainActivity : AppCompatActivity() {
 
         val resIdx = binding.spinnerResolution.selectedItemPosition
         val widescreen = binding.switchWidescreen.isChecked
+        val extendToNotch = binding.switchExtendToNotch.isChecked
         val skipUnreadyPipelines = binding.switchSkipUnreadyPipelines.isChecked
         val disableCopyFilter = binding.switchDisableCopyFilter.isChecked
         val disableBloom = binding.switchDisableBloom.isChecked
@@ -375,6 +379,7 @@ class MainActivity : AppCompatActivity() {
             .putString("graphics_api", graphicsApi)
             .putInt("resolution_idx", resIdx)
             .putBoolean("widescreen", widescreen)
+            .putBoolean("extend_to_notch", extendToNotch)
             .putBoolean("skip_unready_pipelines", skipUnreadyPipelines)
             .putBoolean("disable_copy_filter", disableCopyFilter)
             .putBoolean("disable_bloom", disableBloom)

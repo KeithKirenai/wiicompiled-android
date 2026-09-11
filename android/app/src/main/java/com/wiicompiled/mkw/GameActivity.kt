@@ -36,10 +36,12 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
     private lateinit var menuPause: Button
     private lateinit var menuTouchControls: Button
     private lateinit var menuTiltControls: Button
+    private lateinit var menuNotch: Button
     private lateinit var menuExit: Button
     private lateinit var touchOverlayContainer: View
     private var touchControlsEnabled = true
     private var tiltControlsEnabled = true
+    private var extendToNotchEnabled = true
     private var menuOpen = false
     private var gamePaused = false
 
@@ -117,7 +119,12 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
             }
         }
 
-        // Fullscreen immersive mode
+        val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
+        extendToNotchEnabled = intent.getBooleanExtra("EXTEND_TO_NOTCH", prefs.getBoolean("extend_to_notch", true))
+
+        // Fullscreen immersive mode & Display Cutout / Notch extension
+        applyCutoutMode(extendToNotchEnabled)
+
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)?.let { controller ->
             controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -143,7 +150,6 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         // Universal hardware scaling for mobile GPUs:
         // Configures the SurfaceView buffer resolution so lower-end GPUs don't choke on 1080p/1440p panels,
         // letting the device's hardware display processor (DPU) scale the surface with zero GPU overhead.
-        val prefs = getSharedPreferences("wiicompiled_settings", Context.MODE_PRIVATE)
         val resIdx = prefs.getInt("resolution_idx", 0)
         touchControlsEnabled = prefs.getBoolean("touch_controls", true)
         tiltControlsEnabled = prefs.getBoolean("tilt_controls", true)
@@ -212,13 +218,16 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         menuPause = findViewById(R.id.menuPause)
         menuTouchControls = findViewById(R.id.menuTouchControls)
         menuTiltControls = findViewById(R.id.menuTiltControls)
+        menuNotch = findViewById(R.id.menuNotch)
         menuExit = findViewById(R.id.menuExit)
         menuPause.setOnClickListener { togglePause() }
         menuTouchControls.setOnClickListener { toggleTouchControls() }
         menuTiltControls.setOnClickListener { toggleTiltControls() }
+        menuNotch.setOnClickListener { toggleNotchExtension() }
         menuExit.setOnClickListener { exitToLauncher() }
         menuTouchControls.text = if (touchControlsEnabled) "Touch Controls: On" else "Touch Controls: Off"
         menuTiltControls.text = if (tiltControlsEnabled) "Tilt Steering: On" else "Tilt Steering: Off"
+        menuNotch.text = if (extendToNotchEnabled) "Notch Area: Extend" else "Notch Area: Inset"
 
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -478,6 +487,29 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         }
         menuTiltControls.text = if (tiltControlsEnabled) "Tilt Steering: On" else "Tilt Steering: Off"
         android.util.Log.i("WiiCompiled", "In-game tilt steering: $tiltControlsEnabled")
+    }
+
+    private fun toggleNotchExtension() {
+        if (!menuOpen) return
+        extendToNotchEnabled = !extendToNotchEnabled
+        val prefs = getSharedPreferences("wiicompiled_settings", android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("extend_to_notch", extendToNotchEnabled).apply()
+
+        applyCutoutMode(extendToNotchEnabled)
+        menuNotch.text = if (extendToNotchEnabled) "Notch Area: Extend" else "Notch Area: Inset"
+        android.util.Log.i("WiiCompiled", "In-game extend into display cutout: $extendToNotchEnabled")
+    }
+
+    private fun applyCutoutMode(extend: Boolean) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            val lp = window.attributes
+            lp.layoutInDisplayCutoutMode = if (extend) {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            } else {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_NEVER
+            }
+            window.attributes = lp
+        }
     }
 
     private fun exitToLauncher() {

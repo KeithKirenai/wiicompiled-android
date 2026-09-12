@@ -34,4 +34,11 @@
         <item name="android:navigationBarColor">@color/md_theme_dark_background</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <!-- Game Activity Fullscreen Immersive Theme -->
+    <style name="Theme.WiiCompiled.Game" parent="Theme.WiiCompiled.Material3">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
 </resources>

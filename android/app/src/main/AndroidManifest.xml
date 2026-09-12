@@ -36,6 +36,7 @@
             android:exported="true"
             android:process=":game"
             android:launchMode="singleTask"
+            android:theme="@style/Theme.WiiCompiled.Game"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|navigation">
         </activity>

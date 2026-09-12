@@ -130,6 +130,16 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         applyCutoutMode(extendToNotchEnabled)
         hideSystemBars()
 
+        // Ensure status and navigation bars re-hide immediately if exposed by lock screen or notifications
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(window.decorView) { _, insets ->
+            val isVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            if (isVisible) {
+                window.decorView.post(rehideSystemUiRunnable)
+                window.decorView.postDelayed(rehideSystemUiRunnable, 300)
+            }
+            insets
+        }
+
         // Keep the screen on while racing; manual power-button locks still
         // exercise the pause path.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -395,9 +405,16 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         }
     }
 
+    private val rehideSystemUiRunnable = Runnable {
+        hideSystemBars()
+    }
+
     override fun onResume() {
         super.onResume()
         hideSystemBars()
+        window.decorView.post(rehideSystemUiRunnable)
+        window.decorView.postDelayed(rehideSystemUiRunnable, 300)
+        window.decorView.postDelayed(rehideSystemUiRunnable, 1000)
         if (!isFinishing) {
             nativeOnAppResume()
         }
@@ -411,6 +428,8 @@ class GameActivity : AppCompatActivity(), SurfaceHolder.Callback, SensorEventLis
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
             hideSystemBars()
+            window.decorView.post(rehideSystemUiRunnable)
+            window.decorView.postDelayed(rehideSystemUiRunnable, 300)
         }
     }
 

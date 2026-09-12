@@ -65,7 +65,7 @@ project.lock.json
 # Local tooling and editors
 /.vs/
 /.vscode/
-/.idea/
+.idea/
 /tools/
 /TEMP/
 /tmp/
